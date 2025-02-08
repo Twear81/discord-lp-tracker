@@ -18,3 +18,12 @@ LP tracker for league of legend
 /help
 
 /commands
+
+# Config.json example
+
+
+{
+	"token": "xxx",
+	"clientId": "xxx",
+	"guildId": "xxx"
+}
