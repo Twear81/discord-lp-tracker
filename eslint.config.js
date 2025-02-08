@@ -8,11 +8,10 @@ module.exports = [
 		},
 		rules: {
 			'arrow-spacing': ['warn', { before: true, after: true }],
-			'brace-style': ['error', 'stroustrup', { allowSingleLine: true }],
+			'brace-style': ['error', '1tbs'],
 			'comma-dangle': ['error', 'always-multiline'],
 			'comma-spacing': 'error',
 			'comma-style': 'error',
-			curly: ['error', 'consistent'],
 			'dot-location': ['error', 'property'],
 			'handle-callback-err': 'off',
 			indent: ['error', 'tab'],
