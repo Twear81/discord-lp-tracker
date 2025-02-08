@@ -1,4 +1,6 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
+const { updateLangServer } = require('../database/databaseHelper');
+const { ErrorTypes } = require('../error/error');
 
 // const locales = {
 // 	en: '!',
@@ -18,9 +20,31 @@ module.exports = {
 				    { name: 'en', value: 'en' },
 				)),
 	async execute(interaction) {
-		 // interaction.user is the object representing the User who ran the command
-		// interaction.member is the GuildMember object, which represents the user in the specific guild
-		await interaction.reply('Pong!');
+		try {
+			const serverId = interaction.guildId;
+			const lang = interaction.options.getString('lang');
+
+			await updateLangServer(serverId, lang);
+
+			await interaction.reply({
+				content: `The bot has been set to "${lang}" language.`,
+				flags: MessageFlags.Ephemeral,
+			});
+			console.log(`The language has been changed for serverId: ${serverId}`);
+		} catch (error) {
+			if (error.type == ErrorTypes.SERVER_NOT_INITIALIZE) {
+				await interaction.reply({
+					content: 'You have to init the bot first',
+					flags: MessageFlags.Ephemeral,
+				});
+			} else {
+				console.error('Failed to change the language :', error);
+				await interaction.reply({
+					content: 'Failed to change the language, contact the dev',
+					flags: MessageFlags.Ephemeral,
+				});
+			}
+		}
 	},
 };
 

@@ -17,7 +17,10 @@
   },
   "homepage": "https://github.com/Twear81/lp-tracker#readme",
   "dependencies": {
-    "discord.js": "^14.17.3"
+    "@fightmegg/riot-api": "^0.0.20",
+    "discord.js": "^14.17.3",
+    "sequelize": "^6.37.5",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",

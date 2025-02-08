@@ -1,4 +1,5 @@
-const { ChannelType, SlashCommandBuilder } = require('discord.js');
+const { ChannelType, SlashCommandBuilder, MessageFlags } = require('discord.js');
+const { addOrUpdateServer } = require('../database/databaseHelper');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -22,12 +23,27 @@ module.exports = {
 					{ name: 'en', value: 'en' },
 				)),
 	async execute(interaction) {
-		// const serverId = interaction.guildId;
-		const channelId = interaction.options.getChannel('channel');
-		const flexToggle = interaction.options.getBoolean('flextoggle');
-		const lang = interaction.options.getString('lang');
+		try {
+			const serverId = interaction.guildId;
+			const channel = interaction.options.getChannel('channel');
+			const channelId = channel.id;
+			const flexToggle = interaction.options.getBoolean('flextoggle');
+			const lang = interaction.options.getString('lang');
 
-		const flexMessage = flexToggle == true ? 'it will watch for flex game' : 'it will not watch for flex game';
-		await interaction.reply(`The bot has been setup in ${channelId}, ${flexMessage} and has been set to "${lang}" language.`);
+			await addOrUpdateServer(serverId, channelId, flexToggle, lang);
+
+			const flexMessage = flexToggle == true ? 'it will watch for flex game' : 'it will not watch for flex game';
+			await interaction.reply({
+				content: `The bot has been setup in ${channel.name}, ${flexMessage} and has been set to "${lang}" language.`,
+				flags: MessageFlags.Ephemeral,
+			});
+			console.log(`Bot has been setup for serverId: ${serverId}`);
+		} catch (error) {
+			console.error('Failed to init :', error);
+			await interaction.reply({
+				content: 'Failed to init, contact the dev',
+				flags: MessageFlags.Ephemeral,
+			});
+		}
 	},
 };
