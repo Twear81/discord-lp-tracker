@@ -74,6 +74,20 @@ const updateFlexToggleServer = async (serverId, flexToggle) => {
 		}
 	}
 };
+const getLangServer = async (serverId) => {
+	try {
+		const existingServer = await Server.findOne({ where: { serverid: serverId } });
+		// Check if the server has already been init
+		if (existingServer != null) {
+			return existingServer.dataValues.lang;
+		} else {
+			return 'en';
+		}
+	} catch (error) {
+		console.error(`❌ Failed to get the lang for the serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to get the lang');
+	}
+};
 
 // PLAYER PART
 const addPlayer = async (serverId, accountname, tag, region) => {
@@ -124,4 +138,4 @@ const listAllPlayer = async (serverId) => {
 	}
 };
 
-module.exports = { addPlayer, listAllPlayer, addOrUpdateServer, updateFlexToggleServer, updateLangServer };
+module.exports = { addPlayer, listAllPlayer, addOrUpdateServer, updateFlexToggleServer, updateLangServer, getLangServer };
