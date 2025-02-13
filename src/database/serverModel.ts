@@ -1,5 +1,6 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('./database');
+import { DataTypes } from 'sequelize';
+import sequelize from './database';
+
 
 // Define a Server model (can be any entity you are working with)
 const Server = sequelize.define('Server', {
@@ -23,5 +24,4 @@ const Server = sequelize.define('Server', {
 	},
 });
 
-// Export the User model
-module.exports = Server;
+export default Server;

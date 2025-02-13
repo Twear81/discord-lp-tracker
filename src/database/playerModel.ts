@@ -1,7 +1,8 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('./database');
 
-// Define a User model (can be any entity you are working with)
+import { DataTypes } from 'sequelize';
+import sequelize from './database';
+
+// Define a Player model (can be any entity you are working with)
 const Player = sequelize.define('Player', {
 	id: {
 		type: DataTypes.INTEGER,
@@ -27,5 +28,5 @@ const Player = sequelize.define('Player', {
 	},
 });
 
-// Export the User model
-module.exports = Player;
+// Export the Player model
+export default Player;

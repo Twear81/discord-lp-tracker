@@ -1,5 +1,5 @@
-const { SlashCommandBuilder, MessageFlags, EmbedBuilder } = require('discord.js');
-const { getLangServer } = require('../database/databaseHelper');
+import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { getLangServer } from '../database/databaseHelper';
 
 const languages = {
 	fr: {
@@ -38,31 +38,32 @@ const languages = {
 	},
 };
 
-module.exports = {
-	data: new SlashCommandBuilder()
-		.setName('help')
-		.setDescription('I will explain you how to setup the bot on your server!'),
-	async execute(interaction) {
-		try {
-			const serverId = interaction.guildId;
-			const lang = await getLangServer(serverId);
-			// Create the message
-			const helpEmbed = new EmbedBuilder()
-				.setTitle(languages[lang].title)
-				.setColor(0x0099FF)
-				.setDescription(languages[lang].description)
-				.setTimestamp();
-			await interaction.reply({
-				embeds: [helpEmbed],
-				flags: MessageFlags.Ephemeral,
-			});
-			console.log('The help has been called');
-		} catch (error) {
-			console.error('Failed to display the help :', error);
-			await interaction.reply({
-				content: 'Failed to display the help, contact the dev',
-				flags: MessageFlags.Ephemeral,
-			});
-		}
-	},
-};
+export const data = new SlashCommandBuilder()
+	.setName('help')
+	.setDescription('I will explain you how to setup the bot on your server!');
+
+export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
+	try {
+		const serverId = interaction.guildId as string;
+		const lang = await getLangServer(serverId);
+
+		// Create the message
+		const helpEmbed = new EmbedBuilder()
+			.setTitle(languages[lang].title)
+			.setColor(0x0099FF)
+			.setDescription(languages[lang].description)
+			.setTimestamp();
+
+		await interaction.reply({
+			embeds: [helpEmbed],
+			flags: MessageFlags.Ephemeral,
+		});
+		console.log('The help has been called');
+	} catch (error) {
+		console.error('Failed to display the help:', error);
+		await interaction.reply({
+			content: 'Failed to display the help, contact the dev',
+			flags: MessageFlags.Ephemeral,
+		});
+	}
+}
