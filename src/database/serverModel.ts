@@ -3,7 +3,7 @@ import sequelize from './database';
 
 
 // Define a Server model (can be any entity you are working with)
-const Server = sequelize.define('Server', {
+export const Server = sequelize.define('Server', {
 	serverid: {
 		type: DataTypes.STRING,
 		allowNull: false,
@@ -23,5 +23,3 @@ const Server = sequelize.define('Server', {
 		allowNull: false,
 	},
 });
-
-export default Server;

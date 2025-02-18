@@ -1,6 +1,6 @@
 import sequelize from './database';
-import Player from './playerModel';
-import Server from './serverModel';
+import { Player } from './playerModel';
+import { Server } from './serverModel';
 
 const initDB = async (): Promise<void> => {
 	try {

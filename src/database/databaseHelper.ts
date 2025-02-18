@@ -1,5 +1,5 @@
-import Player from './playerModel';
-import Server from './serverModel';
+import { Player } from './playerModel';
+import { Server } from './serverModel';
 import { AppError, ErrorTypes } from '../error/error';
 import { Model } from 'sequelize';
 
@@ -60,6 +60,17 @@ export const getLangServer = async (serverId: string): Promise<string> => {
 	}
 };
 
+export const getAllServer = async (): Promise<ServerInfo[]> => {
+	try {
+		const servers = await Server.findAll({ attributes: ['serverid', 'channelid', 'flextoggle', 'lang'] });
+		const result: ServerInfo[] = servers.map(server => server.dataValues);
+		return result;
+	} catch (error) {
+		console.error('❌ Failed to list servers :', error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list servers');
+	}
+};
+
 // PLAYER PART
 export const addPlayer = async (serverId: string, puuid: string, accountName: string, tag: string, region: string): Promise<void> => {
 	try {
@@ -105,9 +116,31 @@ export const deletePlayer = async (serverId: string, accountName: string, tag: s
 	}
 };
 
+export const updatePlayerLastGameId = async (serverId: string, puuid: string, lastGameID: string): Promise<void> => {
+	try {
+		
+		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
+		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+
+		if (existingServer != null) {
+			if (existingPlayer != null) {
+				console.log(lastGameID);
+				// await Player.update({ lastGameID: lastGameID }, { where: { serverid: serverId, puuid: puuid } });
+			} else {
+				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
+			}
+		} else {
+			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
+		}
+	} catch (error) {
+		console.error(`❌ Failed to update lastGameID player ${puuid} for the serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to add the player ${puuid}`);
+	}
+};
+
 export const listAllPlayer = async (serverId: string): Promise<PlayerInfo[]> => {
 	try {
-		const players = await Player.findAll({ attributes: ['accountnametag', 'region'] });
+		const players = await Player.findAll({ attributes: ['puuid', 'serverid', 'accountnametag', 'region', 'lastGameID'] });
 		const result: PlayerInfo[] = players.map(player => player.dataValues);
 		return result;
 	} catch (error) {
@@ -117,6 +150,16 @@ export const listAllPlayer = async (serverId: string): Promise<PlayerInfo[]> => 
 };
 
 export interface PlayerInfo {
+	puuid: string;
+	serverid: string;
 	accountnametag: string;
 	region: string;
+	lastGameID: string | null;
+}
+
+export interface ServerInfo {
+	serverid: string;
+	channelid: string;
+	flextoggle: boolean;
+	lang: string;
 }

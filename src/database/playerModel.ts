@@ -3,7 +3,7 @@ import { DataTypes } from 'sequelize';
 import sequelize from './database';
 
 // Define a Player model (can be any entity you are working with)
-const Player = sequelize.define('Player', {
+export const Player = sequelize.define('Player', {
 	id: {
 		type: DataTypes.INTEGER,
 		autoIncrement: true,
@@ -31,6 +31,3 @@ const Player = sequelize.define('Player', {
 		defaultValue: null,
 	},
 });
-
-// Export the Player model
-export default Player;

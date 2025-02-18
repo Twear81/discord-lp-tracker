@@ -13,25 +13,68 @@ export async function getSummonerByName(accountName: string, tag: string, region
 			tagLine: tag,
 		});
 	} catch (error) {
-		console.error(`Erreur API Riot (getSummonerByName) :`, error);
+		console.error(`Error API Riot (getSummonerByName) :`, error);
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `No player found for ${accountName}#${tag} for region ${region}`);
 	}
 }
 
-export async function getLastMatches(puuid: string, region: string, ) {
+async function getGameDetail(gameID: string, region: string) {
 	try {
 		const platformId = getPlatformIdFromRegionString(region);
+		return await riotApi.matchV5.getMatchById({
+			cluster: platformId,
+			matchId: gameID
+		});
+	} catch (error) {
+		console.error(`Error API Riot (getGameDetail) :`, error);
+		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No game detail found for gameID ${gameID} for region ${region}`);
+	}
+}
+
+export async function getGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string) {
+	try {
+		const gameDetail = await getGameDetail(gameID, region);
+		// Parse the gameDetail to get data for the specific player
+		let result: PlayerGameInfo | null = null;
+		for (const participant of gameDetail.info.participants) {
+			if (participant.puuid == puuid) {
+				result = {
+					assists: participant.assists, 
+					deaths: participant.deaths, 
+					kills: participant.kills, 
+					championId: participant.championId, 
+					championName: participant.championName, 
+					win: participant.win, 
+				}
+			}
+		}
+		if (result == null) {
+			throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No game detail found for gameID ${gameID} for player ${puuid} for region ${region}`);
+		} else {
+			return result;
+		}
+	} catch (error) {
+		console.error(`Error API Riot (getGameDetailForCurrentPlayer) :`, error);
+		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No game detail found for gameID ${gameID} for player ${puuid} for region ${region}`);
+	}
+}
+
+
+export async function getLastMatch(puuid: string, region: string, isFlex: boolean) {
+	try {
+		const platformId = getPlatformIdFromRegionString(region);
+		const queueID: number = isFlex ? 440 : 420; // 440 flex, 420 soloq
 		return await riotApi.matchV5.getIdsByPuuid({
 			cluster: platformId,
 			puuid,
 			params: {
-				queue: 440, // 440 flex, 420 soloq
-				count: 2
+				queue: queueID, 
+				count: 1
 			}
 		});
 	} catch (error) {
-		console.error(`Erreur API Riot (getLastMatches) :`, error);
-		return [];
+		console.error(`Error API Riot (getIdsByPuuid) :`, error);
+		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last match found for player ${puuid} for region ${region}`);
 	}
 }
 
@@ -42,4 +85,13 @@ function getPlatformIdFromRegionString(region: string): PlatformId.EUROPE | Plat
 	};
 
 	return mapping[region.toUpperCase()];
+}
+
+export interface PlayerGameInfo {
+	assists: number;
+	deaths: number;
+	kills: number;
+	championId: number;
+	championName: string;
+	win: boolean;
 }
