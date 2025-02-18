@@ -61,15 +61,15 @@ export const getLangServer = async (serverId: string): Promise<string> => {
 };
 
 // PLAYER PART
-export const addPlayer = async (serverId: string, accountName: string, tag: string, region: string): Promise<void> => {
+export const addPlayer = async (serverId: string, puuid: string, accountName: string, tag: string, region: string): Promise<void> => {
 	try {
 		const accountNameTag: string = `${accountName}#${tag}`;
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
-		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, accountnametag: accountNameTag, region } });
+		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
 
 		if (existingServer != null) {
-			if (existingPlayer != null) {
-				await Player.create({ serverid: serverId, accountnametag: accountNameTag, region });
+			if (existingPlayer == null) {
+				await Player.create({ serverid: serverId, puuid: puuid, accountnametag: accountNameTag, region: region });
 				// console.log(`The player ${accountNameTag} has been added to the database`);
 			} else {
 				throw new AppError(ErrorTypes.DATABASE_ALREADY_INSIDE, 'Player already exists');
@@ -79,6 +79,28 @@ export const addPlayer = async (serverId: string, accountName: string, tag: stri
 		}
 	} catch (error) {
 		console.error(`❌ Failed to add the player ${accountName}#${tag} for the serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to add the player ${accountName}#${tag}`);
+	}
+};
+
+export const deletePlayer = async (serverId: string, accountName: string, tag: string, region: string): Promise<void> => {
+	try {
+		const accountNameTag: string = `${accountName}#${tag}`;
+		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
+		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, accountNameTag: accountNameTag, region: region } });
+
+		if (existingServer != null) {
+			if (existingPlayer != null) {
+				await Player.destroy({ where: { serverid: serverId, accountNameTag: accountNameTag, region: region } });
+				// console.log(`The player ${accountNameTag} has been added to the database`);
+			} else {
+				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
+			}
+		} else {
+			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
+		}
+	} catch (error) {
+		console.error(`❌ Failed to delete the player ${accountName}#${tag} for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to add the player ${accountName}#${tag}`);
 	}
 };

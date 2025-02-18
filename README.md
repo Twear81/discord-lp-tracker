@@ -25,5 +25,6 @@ LP tracker for league of legend
 {
 	"token": "xxx",
 	"clientId": "xxx",
-	"guildId": "xxx"
+	"guildId": "xxx",
+	"leagueAPI": "xxx"
 }

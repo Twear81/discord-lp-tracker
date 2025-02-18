@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
 import { addPlayer } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
+import { getSummonerByName } from '../riot/riotHelper';
 
 export const data = new SlashCommandBuilder()
 	.setName('addplayer')
@@ -33,7 +34,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		const tag = interaction.options.getString('tag')!;
 		const region = interaction.options.getString('region')!;
 
-		await addPlayer(serverId, accountname, tag, region);
+		const summoner = await getSummonerByName(accountname, tag, region);
+
+		await addPlayer(serverId, summoner.puuid, accountname, tag, region);
 
 		await interaction.reply({
 			content: `The player "${accountname}#${tag}" for region ${region} has been added.`,
@@ -51,6 +54,11 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			} else if (error.type === ErrorTypes.DATABASE_ALREADY_INSIDE) {
 				await interaction.reply({
 					content: 'Player already added',
+					flags: MessageFlags.Ephemeral,
+				});
+			} else if (error.type === ErrorTypes.PLAYER_NOT_FOUND) {
+				await interaction.reply({
+					content: 'Player not found',
 					flags: MessageFlags.Ephemeral,
 				});
 			}

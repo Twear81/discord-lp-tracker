@@ -9,6 +9,10 @@ const Player = sequelize.define('Player', {
 		autoIncrement: true,
 		primaryKey: true,
 	},
+	puuid: {
+		type: DataTypes.STRING,
+		allowNull: false,
+	},
 	serverid: {
 		type: DataTypes.STRING,
 		allowNull: false,
