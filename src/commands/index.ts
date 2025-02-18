@@ -1,6 +1,7 @@
 import * as init from "./init";
 import * as help from "./help";
 import * as addplayer from "./addPlayer";
+import * as deleteplayer from "./deletePlayer";
 import * as flextoggle from "./flexToggle";
 import * as language from "./language";
 import * as leaderboard from "./leaderboard";
@@ -10,6 +11,7 @@ export const commands = {
 	init,
 	help,
 	addplayer,
+	deleteplayer,
 	flextoggle,
 	language,
 	leaderboard,
