@@ -41,7 +41,7 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 						// Create the message with game detail
 						const channel = (await client.channels.fetch(server.channelid)) as TextChannel;
 						if (channel != null) {
-							sendGameResultMessage(channel, player.accountnametag, gameDetailForThePlayer, "", 0, server.lang);
+							sendGameResultMessage(channel, player.accountnametag, gameDetailForThePlayer, "", 0, player.region,currentGameId ,server.lang);
 						} else {
 							console.error('❌ Failed send the message, can`t find the channel');
 						}
@@ -55,11 +55,12 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 	}
 };
 
-export const sendGameResultMessage = async (channel: TextChannel, playerName: string, gameInfo: PlayerGameInfo, rank: string, lpChange: number, lang: string): Promise<void> => {
+export const sendGameResultMessage = async (channel: TextChannel, playerName: string, gameInfo: PlayerGameInfo, rank: string, lpChange: number, region: string, gameId: string, lang: string): Promise<void> => {
+	const matchUrl = `https://www.leagueofgraphs.com/match/${region}/${gameId}`;
 	// Définition des traductions
 	const translations = {
 		fr: {
-			title: "📜 Résultat de partie",
+			title: `[📜 Résultat de partie - Click Here](${matchUrl})`,
 			win: "Victoire",
 			loss: "Défaite",
 			lpChange: lpChange > 0 ? `gagner` : `perdre`,
@@ -71,7 +72,7 @@ export const sendGameResultMessage = async (channel: TextChannel, playerName: st
 			timestamp: "Date"
 		},
 		en: {
-			title: "📜 Match Result",
+			title: `[📜 Match Result - Click Here](${matchUrl})`,
 			win: "Victory",
 			loss: "Defeat",
 			lpChange: lpChange > 0 ? `gained` : `lost`,
