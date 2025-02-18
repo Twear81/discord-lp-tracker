@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
 import { addPlayer } from '../database/databaseHelper';
-import { ErrorTypes } from '../error/error';
+import { AppError, ErrorTypes } from '../error/error';
 
 export const data = new SlashCommandBuilder()
 	.setName('addplayer')
@@ -40,17 +40,20 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			flags: MessageFlags.Ephemeral,
 		});
 		console.log(`The player ${accountname}#${tag} has been added for serverId: ${serverId}`);
-	} catch (error) {
-		if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
-			await interaction.reply({
-				content: 'You have to init the bot first',
-				flags: MessageFlags.Ephemeral,
-			});
-		} else if (error.type === ErrorTypes.DATABASE_ALREADY_INSIDE) {
-			await interaction.reply({
-				content: 'Player already added',
-				flags: MessageFlags.Ephemeral,
-			});
+	} catch (error: unknown) {
+		if (error instanceof AppError) {
+			// Inside this block, err is known to be a ValidationError
+			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
+				await interaction.reply({
+					content: 'You have to init the bot first',
+					flags: MessageFlags.Ephemeral,
+				});
+			} else if (error.type === ErrorTypes.DATABASE_ALREADY_INSIDE) {
+				await interaction.reply({
+					content: 'Player already added',
+					flags: MessageFlags.Ephemeral,
+				});
+			}
 		} else {
 			console.error('Failed to add the player:', error);
 			await interaction.reply({

@@ -1,45 +1,47 @@
 import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { listAllPlayer, PlayerInfo } from '../database/databaseHelper';
-import { ErrorTypes } from '../error/error';
+import { AppError, ErrorTypes } from '../error/error';
 
 export const data = new SlashCommandBuilder()
-  .setName('list')
-  .setDescription('List all players watched!');
+	.setName('list')
+	.setDescription('List all players watched!');
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
-  try {
-    const serverId = interaction.guildId as string;
+	try {
+		const serverId = interaction.guildId as string;
 
-    // [accountNameTagList.dataValues: { accountnametag: 'test#test', region: 'EUW' }]
-    const accountNameTagPlayerList: PlayerInfo[] = await listAllPlayer(serverId);
+		// [accountNameTagList.dataValues: { accountnametag: 'test#test', region: 'EUW' }]
+		const accountNameTagPlayerList: PlayerInfo[] = await listAllPlayer(serverId);
 
-	console.log(accountNameTagPlayerList);
-    // Create the message
-    const messageToDisplay = new EmbedBuilder()
-      .setColor(0x0099FF)
-      .setTitle('List of player tracked')
-      .setDescription(
-        accountNameTagPlayerList.map(acc => `**Account:** ${acc.accountnametag}\n**Region:** ${acc.region}`).join('\n\n')
-      )
-      .setTimestamp();
+		console.log(accountNameTagPlayerList);
+		// Create the message
+		const messageToDisplay = new EmbedBuilder()
+			.setColor(0x0099FF)
+			.setTitle('List of player tracked')
+			.setDescription(
+				accountNameTagPlayerList.map(acc => `**Account:** ${acc.accountnametag}\n**Region:** ${acc.region}`).join('\n\n')
+			)
+			.setTimestamp();
 
-    await interaction.reply({
-      embeds: [messageToDisplay],
-      flags: MessageFlags.Ephemeral,
-    });
-    console.log('The list has been demanded');
-  } catch (error) {
-    if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
-      await interaction.reply({
-        content: 'You have to init the bot first',
-        flags: MessageFlags.Ephemeral,
-      });
-    } else {
-      console.error('Failed to display the list:', error);
-      await interaction.reply({
-        content: 'Failed to display the list, contact the dev',
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-  }
+		await interaction.reply({
+			embeds: [messageToDisplay],
+			flags: MessageFlags.Ephemeral,
+		});
+		console.log('The list has been demanded');
+	} catch (error) {
+		if (error instanceof AppError) {
+			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
+				await interaction.reply({
+					content: 'You have to init the bot first',
+					flags: MessageFlags.Ephemeral,
+				});
+			}
+		} else {
+			console.error('Failed to display the list:', error);
+			await interaction.reply({
+				content: 'Failed to display the list, contact the dev',
+				flags: MessageFlags.Ephemeral,
+			});
+		}
+	}
 }

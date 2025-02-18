@@ -45,13 +45,14 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
 	try {
 		const serverId = interaction.guildId as string;
-		const lang = await getLangServer(serverId);
+		const lang: string = await getLangServer(serverId);
 
 		// Create the message
+		const messageWithTheRightServerLanguage = languages[lang as keyof typeof languages];
 		const helpEmbed = new EmbedBuilder()
-			.setTitle(languages[lang].title)
+			.setTitle(messageWithTheRightServerLanguage.title)
 			.setColor(0x0099FF)
-			.setDescription(languages[lang].description)
+			.setDescription(messageWithTheRightServerLanguage.description)
 			.setTimestamp();
 
 		await interaction.reply({
