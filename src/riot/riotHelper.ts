@@ -1,4 +1,4 @@
-import { PlatformId, RiotAPI } from "@fightmegg/riot-api";
+import { PlatformId, RiotAPI, RiotAPITypes } from "@fightmegg/riot-api";
 import { leagueAPI } from '../../config.json';
 import { AppError, ErrorTypes } from "../error/error";
 
@@ -39,13 +39,13 @@ export async function getGameDetailForCurrentPlayer(puuid: string, gameID: strin
 		for (const participant of gameDetail.info.participants) {
 			if (participant.puuid == puuid) {
 				result = {
-					assists: participant.assists, 
-					deaths: participant.deaths, 
-					kills: participant.kills, 
-					championId: participant.championId, 
-					championName: participant.championName, 
-					win: participant.win, 
-				}
+					assists: participant.assists,
+					deaths: participant.deaths,
+					kills: participant.kills,
+					championId: participant.championId,
+					championName: participant.championName,
+					win: participant.win,
+				};
 			}
 		}
 		if (result == null) {
@@ -63,15 +63,26 @@ export async function getGameDetailForCurrentPlayer(puuid: string, gameID: strin
 export async function getLastMatch(puuid: string, region: string, isFlex: boolean) {
 	try {
 		const platformId = getPlatformIdFromRegionString(region);
-		const queueID: number = isFlex ? 440 : 420; // 440 flex, 420 soloq
-		return await riotApi.matchV5.getIdsByPuuid({
-			cluster: platformId,
-			puuid,
-			params: {
-				queue: queueID, 
-				count: 1
-			}
-		});
+		if (isFlex == false) {
+			const queueID: number = 420; // 440 flex, 420 soloq
+			return await riotApi.matchV5.getIdsByPuuid({
+				cluster: platformId,
+				puuid,
+				params: {
+					queue: queueID,
+					count: 1
+				}
+			});
+		} else {
+			return await riotApi.matchV5.getIdsByPuuid({
+				cluster: platformId,
+				puuid,
+				params: {
+					type: RiotAPITypes.MatchV5.MatchType.Ranked,
+					count: 1
+				}
+			});
+		}
 	} catch (error) {
 		console.error(`Error API Riot (getIdsByPuuid) :`, error);
 		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last match found for player ${puuid} for region ${region}`);
