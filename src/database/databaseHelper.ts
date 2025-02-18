@@ -125,7 +125,7 @@ export const updatePlayerLastGameId = async (serverId: string, puuid: string, la
 		if (existingServer != null) {
 			if (existingPlayer != null) {
 				console.log(lastGameID);
-				// await Player.update({ lastGameID: lastGameID }, { where: { serverid: serverId, puuid: puuid } });
+				// await existingPlayer.update({ lastGameID: lastGameID });
 			} else {
 				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 			}

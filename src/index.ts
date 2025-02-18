@@ -6,7 +6,11 @@ import { commands } from "./commands";
 import { initDB } from  './database/init_database';
 import { trackPlayer } from "./tracking/tracking";
 
-export const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+export const client = new Client({ intents: [
+	GatewayIntentBits.Guilds,
+	GatewayIntentBits.GuildMessages,
+	GatewayIntentBits.MessageContent 
+] });
 // const CHECK_INTERVAL = 300000; // track every 5 min
 
 client.once("ready", async () => {

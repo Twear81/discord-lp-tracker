@@ -37,7 +37,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
 		const flexMessage: string = flexToggle ? 'it will watch for flex game' : 'it will not watch for flex game';
 		await interaction.reply({
-			content: `The bot has been setup in ${channel.name}, ${flexMessage} and has been set to "${lang}" language.`,
+			content: `The bot has been setup in ${channel.name}/${channelId}, ${flexMessage} and has been set to "${lang}" language.`,
 			flags: MessageFlags.Ephemeral,
 		});
 		console.log(`Bot has been setup for serverId: ${serverId}`);
