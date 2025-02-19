@@ -130,7 +130,7 @@ export const sendGameResultMessage = async (channel: TextChannel, playerName: st
 		.setColor(gameInfo.win ? '#00FF00' : '#FF0000') // grean if win, Red if loose
 		.setTitle(t.title)
 		.setURL(matchUrl)
-		.setDescription(`**${gameInfo.win ? t.win : t.loss}**\n\n${playerName} vient de ${t.lpChange} ${Math.abs(lpChange)} ${t.league} ! **(${rank} ${tier})**`)
+		.setDescription(`**${gameInfo.win ? t.win : t.loss}**\n\n${playerName} vient de ${t.lpChange} ${Math.abs(lpChange)} ${t.league} ! **(${tier} ${rank})**`)
 		.addFields(
 			{ name: t.score, value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },
 			{ name: t.champion, value: gameInfo.championName, inline: true },
