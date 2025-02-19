@@ -27,11 +27,11 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 				const { player, matchIds } = result;
 				if (player.lastGameID != matchIds[0]) { // New game detected
 					// Get game details
-					const currentGameId = matchIds[0]; // example -> EUW1_7294524077
-					const gameDetailForThePlayer: PlayerGameInfo = await getGameDetailForCurrentPlayer(player.puuid, currentGameId, player.region);
+					const currentGameIdWithRegion = matchIds[0]; // example -> EUW1_7294524077
+					const gameDetailForThePlayer: PlayerGameInfo = await getGameDetailForCurrentPlayer(player.puuid, currentGameIdWithRegion, player.region);
 
 					// Update last game inside database
-					await updatePlayerLastGameId(currentServerID, player.puuid, currentGameId);
+					await updatePlayerLastGameId(currentServerID, player.puuid, currentGameIdWithRegion);
 
 					// Send the notification to the specified channel
 					if (firstRun == true) {
@@ -41,7 +41,9 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 						// Create the message with game detail
 						const channel = (await client.channels.fetch(server.channelid)) as TextChannel;
 						if (channel != null) {
-							sendGameResultMessage(channel, player.accountnametag, gameDetailForThePlayer, "", 0, player.region,currentGameId ,server.lang);
+							const rank = "";
+							const lpGain = 0;
+							sendGameResultMessage(channel, player.accountnametag, gameDetailForThePlayer, rank, lpGain, player.region, currentGameIdWithRegion, server.lang);
 						} else {
 							console.error('❌ Failed send the message, can`t find the channel');
 						}
@@ -55,41 +57,43 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 	}
 };
 
-export const sendGameResultMessage = async (channel: TextChannel, playerName: string, gameInfo: PlayerGameInfo, rank: string, lpChange: number, region: string, gameId: string, lang: string): Promise<void> => {
-	const matchUrl = `https://www.leagueofgraphs.com/match/${region}/${gameId}`;
-	// Définition des traductions
+export const sendGameResultMessage = async (channel: TextChannel, playerName: string, gameInfo: PlayerGameInfo, rank: string, lpChange: number, region: string, gameIdWithRegion: string, lang: string): Promise<void> => {
 	const translations = {
 		fr: {
-			title: `[📜 Résultat de partie - Click Here](${matchUrl})`,
+			title: "[📜 Résultat de partie ]",
 			win: "Victoire",
 			loss: "Défaite",
-			lpChange: lpChange > 0 ? `gagner` : `perdre`,
+			lpChange: lpChange > 0 ? "gagner" : "perdre",
 			league: "point(s) de ligue",
 			score: "Score",
 			champion: "Champion",
 			queue: "File",
-			queueType: "Solo/Duo", // TODO fix
+			queueType: gameInfo.isFlex ? "Flex" : "Solo/Duo", // TODO fix
 			timestamp: "Date"
 		},
 		en: {
-			title: `[📜 Match Result - Click Here](${matchUrl})`,
+			title: "[📜 Match Result ]",
 			win: "Victory",
 			loss: "Defeat",
-			lpChange: lpChange > 0 ? `gained` : `lost`,
+			lpChange: lpChange > 0 ? "gained" : "lost",
 			league: "league point(s)",
 			score: "Score",
 			champion: "Champion",
 			queue: "Queue",
-			queueType: "Solo/Duo", // TODO fix
+			queueType: gameInfo.isFlex ? "Flex" : "Solo/Duo",
 			timestamp: "Date"
 		}
 	};
 
 	const t = translations[lang as keyof typeof translations];
 
+	const currentGameId = gameIdWithRegion.split("_")[1];
+	const matchUrl = `https://www.leagueofgraphs.com/match/${region.toLocaleLowerCase()}/${currentGameId}`;
+	
 	const embed = new EmbedBuilder()
 		.setColor(gameInfo.win ? '#00FF00' : '#FF0000') // grean if win, Red if loose
 		.setTitle(t.title)
+		.setURL(matchUrl)
 		.setDescription(`**${gameInfo.win ? t.win : t.loss}**\n\n${playerName} vient de ${t.lpChange} ${Math.abs(lpChange)} ${t.league} ! **(${rank})**`)
 		.addFields(
 			{ name: t.score, value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },

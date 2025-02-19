@@ -45,6 +45,7 @@ export async function getGameDetailForCurrentPlayer(puuid: string, gameID: strin
 					championId: participant.championId,
 					championName: participant.championName,
 					win: participant.win,
+					isFlex: gameDetail.info.queueId == 440 ? true : false,
 				};
 			}
 		}
@@ -105,4 +106,5 @@ export interface PlayerGameInfo {
 	championId: number;
 	championName: string;
 	win: boolean;
+	isFlex: boolean;
 }
