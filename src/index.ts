@@ -24,7 +24,7 @@ client.once("ready", async () => {
 	console.log("First tracking end");
 
 	// Start the tracking
-	cron.schedule("5 * * * *", async () => {
+	cron.schedule("*/5 * * * *", async () => {
 		console.log("Tracking start");
 		await trackPlayer(false);
 		console.log("Tracking finish");
