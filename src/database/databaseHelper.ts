@@ -165,7 +165,7 @@ export const updatePlayerCurrentOrLastDayRank = async (serverId: string, puuid: 
 		} else {
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
-		
+
 	} catch (error) {
 		console.error(`❌ Failed to update lastDayRank player ${puuid} for serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to update lastDayRank for player ${puuid}`);
@@ -180,6 +180,44 @@ export const updatePlayerLastDate = async (serverId: string, puuid: string, curr
 		if (existingServer != null) {
 			if (existingPlayer != null) {
 				await existingPlayer.update({ lastDayDate: currentDate });
+			} else {
+				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
+			}
+		} else {
+			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
+		}
+	} catch (error) {
+		console.error(`❌ Failed to update lastDayDate player ${puuid} for serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to update lastDayDate for player ${puuid}`);
+	}
+};
+
+export const updatePlayerWinLose = async (serverId: string, puuid: string, queueType: string, isWin: boolean): Promise<void> => {
+	try {
+		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
+		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+
+		if (existingServer != null) {
+			if (existingPlayer != null) {
+				if (queueType === "RANKED_FLEX_SR") {
+					let lastDayFlexWin: number = existingPlayer.dataValues.lastDayFlexWin != null ? existingPlayer.dataValues.lastDayFlexWin : 0;
+					let lastDayFlexLose: number = existingPlayer.dataValues.lastDayFlexLose != null ? existingPlayer.dataValues.lastDayFlexLose : 0;
+					if (isWin == true) {
+						lastDayFlexWin += 1;
+					} else {
+						lastDayFlexLose += 1;
+					}
+					await existingPlayer.update({ lastDayFlexWin: lastDayFlexWin, lastDayFlexLose: lastDayFlexLose });
+				} else {
+					let lastDaySoloQWin: number = existingPlayer.dataValues.lastDaySoloQWin != null ? existingPlayer.dataValues.lastDaySoloQWin : 0;
+					let lastDaySoloQLose: number = existingPlayer.dataValues.lastDaySoloQLose != null ? existingPlayer.dataValues.lastDaySoloQLose : 0;
+					if (isWin == true) {
+						lastDaySoloQWin += 1;
+					} else {
+						lastDaySoloQLose += 1;
+					}
+					await existingPlayer.update({ lastDaySoloQWin: lastDaySoloQWin, lastDaySoloQLose: lastDaySoloQLose });
+				}
 			} else {
 				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 			}
@@ -261,7 +299,7 @@ export const getPlayerForSpecificServer = async (serverId: string, puuid: string
 		if (player != null) {
 			const result: PlayerInfo = player.dataValues;
 			return result;
-		} 
+		}
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 	} catch (error) {
 		console.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);

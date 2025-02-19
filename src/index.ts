@@ -1,5 +1,6 @@
 
 import { CacheType, ChatInputCommandInteraction, Client, GatewayIntentBits } from "discord.js";
+import cron from "node-cron";
 import { token } from '../config.json';
 import { commands } from "./commands";
 import { deployCommands } from "./deploy-commands";
@@ -11,19 +12,34 @@ export const client = new Client({ intents: [
 	GatewayIntentBits.GuildMessages,
 	GatewayIntentBits.MessageContent 
 ] });
-// const CHECK_INTERVAL = 300000; // track every 5 min
 
 client.once("ready", async () => {
 	await initDB();
 	console.log("Discord bot is ready! 🤖");
 
-	// First run for the tracker
 	await initLastDayInfo(false);
+	// First run for the tracker
 	console.log("First tracking");
-	await trackPlayer(false);
+	await trackPlayer(true);
 	// Start the tracking
-	console.log("Tracking start");
-	// setInterval(trackPlayer, CHECK_INTERVAL);
+	
+	cron.schedule("5 * * * *", async () => {
+		console.log("Tracking start");
+		await trackPlayer(false);
+		console.log("Tracking finish");
+	}, {
+		timezone: "Europe/Paris"
+	});
+
+	cron.schedule("1 7 * * *", async () => { // Each day on 7am 01
+		console.log("Generate recap of the day start");
+		// await generateRecapOfTheDay();
+		// Reset for the next day
+		await initLastDayInfo(true);
+		console.log("Generate recap of the day finish");
+	}, {
+		timezone: "Europe/Paris"
+	});
 });
 
 client.on("guildCreate", async (guild) => {

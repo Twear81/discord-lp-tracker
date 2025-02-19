@@ -56,7 +56,6 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 						// Create the message with game detail
 						const updatePlayer = await getPlayerForSpecificServer(currentServerID, player.puuid);
 						const channel = (await client.channels.fetch(server.channelid)) as TextChannel;
-						console.log(updatePlayer);
 						if (channel != null) {
 							let rank = null;
 							let tier = null;
@@ -79,7 +78,6 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 								}
 							}
 							sendGameResultMessage(channel, player.accountnametag, gameDetailForThePlayer, rank!, tier!, lpGain!, player.region, currentGameIdWithRegion, server.lang);
-
 						} else {
 							console.error('❌ Failed send the message, can`t find the channel');
 						}
@@ -171,7 +169,6 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 				if (!result) continue;
 				const { player, playerRankInfos } = result;
 				for (const playerRankStat of playerRankInfos) {
-					console.log(playerRankStat);
 					const queueType = playerRankStat.queueType;
 					const leaguePoints = playerRankStat.leaguePoints;
 					const rank = playerRankStat.rank;
