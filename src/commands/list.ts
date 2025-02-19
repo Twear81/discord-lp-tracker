@@ -10,10 +10,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 	try {
 		const serverId = interaction.guildId as string;
 
-		// [accountNameTagList.dataValues: { accountnametag: 'test#test', region: 'EUW' }]
 		const accountNameTagPlayerList: PlayerInfo[] = await listAllPlayerForSpecificServer(serverId);
 
-		console.log(accountNameTagPlayerList);
 		// Create the message
 		const messageToDisplay = new EmbedBuilder()
 			.setColor(0x0099FF)

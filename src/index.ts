@@ -19,10 +19,11 @@ client.once("ready", async () => {
 
 	await initLastDayInfo(false);
 	// First run for the tracker
-	console.log("First tracking");
+	console.log("First tracking start");
 	await trackPlayer(true);
+	console.log("First tracking end");
+
 	// Start the tracking
-	
 	cron.schedule("5 * * * *", async () => {
 		console.log("Tracking start");
 		await trackPlayer(false);

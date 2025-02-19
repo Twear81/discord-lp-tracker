@@ -93,7 +93,6 @@ export async function getLastMatch(puuid: string, region: string, isFlex: boolea
 export async function getPlayerRankInfo(puuid: string, region: string) {
 	try {
 		const platformId = getLolRegionFromRegionString(region);
-		console.log(puuid);
 		const summoner = await riotApi.summoner.getByPUUID({
 			region: platformId,
 			puuid: puuid,
