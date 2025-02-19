@@ -90,12 +90,39 @@ export async function getLastMatch(puuid: string, region: string, isFlex: boolea
 	}
 }
 
+export async function getPlayerRankInfo(puuid: string, region: string) {
+	try {
+		const platformId = getLolRegionFromRegionString(region);
+		console.log(puuid);
+		const summoner = await riotApi.summoner.getByPUUID({
+			region: platformId,
+			puuid: puuid,
+		 });
+		 const summonerId = summoner.id; // Encrypted summonerId
+		 
+		return await riotApi.league.getEntriesBySummonerId({
+			region: platformId,
+			summonerId: summonerId,
+		});
+	} catch (error) {
+		console.error(`Error API Riot (getIdsByPuuid) :`, error);
+		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last match found for player ${puuid} for region ${region}`);
+	}
+}
+
 function getPlatformIdFromRegionString(region: string): PlatformId.EUROPE | PlatformId.AMERICAS {
 	const mapping: Record<string, (PlatformId.EUROPE | PlatformId.AMERICAS)> = {
 		"EUW": PlatformId.EUROPE,
 		"NA": PlatformId.AMERICAS
 	};
+	return mapping[region.toUpperCase()];
+}
 
+function getLolRegionFromRegionString(region: string): PlatformId.EUW1 | PlatformId.NA1 {
+	const mapping: Record<string, (PlatformId.EUW1 | PlatformId.NA1)> = {
+		"EUW": PlatformId.EUW1,
+		"NA": PlatformId.NA1
+	};
 	return mapping[region.toUpperCase()];
 }
 

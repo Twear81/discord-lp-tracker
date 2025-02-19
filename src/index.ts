@@ -4,7 +4,7 @@ import { token } from '../config.json';
 import { commands } from "./commands";
 import { deployCommands } from "./deploy-commands";
 import { initDB } from  './database/init_database';
-import { trackPlayer } from "./tracking/tracking";
+import { initLastDayInfo, trackPlayer } from "./tracking/tracking";
 
 export const client = new Client({ intents: [
 	GatewayIntentBits.Guilds,
@@ -18,6 +18,7 @@ client.once("ready", async () => {
 	console.log("Discord bot is ready! 🤖");
 
 	// First run for the tracker
+	await initLastDayInfo(false);
 	console.log("First tracking");
 	await trackPlayer(false);
 	// Start the tracking

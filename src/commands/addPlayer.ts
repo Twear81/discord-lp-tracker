@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
-import { addPlayer } from '../database/databaseHelper';
+import { addPlayer, getPlayerForSpecificServer, updatePlayerInfo } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
-import { getSummonerByName } from '../riot/riotHelper';
+import { getPlayerRankInfo, getSummonerByName } from '../riot/riotHelper';
 
 export const data = new SlashCommandBuilder()
 	.setName('addplayer')
@@ -35,9 +35,13 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		const region = interaction.options.getString('region')!;
 
 		const summoner = await getSummonerByName(accountname, tag, region);
-
+		const playerRankInfos = await getPlayerRankInfo(summoner.puuid, region);
+		
 		await addPlayer(serverId, summoner.puuid, accountname, tag, region);
-
+		const currentPlayer = await getPlayerForSpecificServer(serverId, summoner.puuid);
+		for (const playerRankStat of playerRankInfos) {
+			await updatePlayerInfo(serverId, currentPlayer, playerRankStat.queueType, playerRankStat.leaguePoints, playerRankStat.rank, playerRankStat.tier);
+		}
 		await interaction.reply({
 			content: `The player "${accountname}#${tag}" for region ${region} has been added.`,
 			flags: MessageFlags.Ephemeral,

@@ -62,7 +62,7 @@ export const getLangServer = async (serverId: string): Promise<string> => {
 
 export const getAllServer = async (): Promise<ServerInfo[]> => {
 	try {
-		const servers = await Server.findAll({ attributes: ['serverid', 'channelid', 'flextoggle', 'lang'] });
+		const servers = await Server.findAll();
 		const result: ServerInfo[] = servers.map(server => server.dataValues);
 		return result;
 	} catch (error) {
@@ -118,14 +118,13 @@ export const deletePlayer = async (serverId: string, accountName: string, tag: s
 
 export const updatePlayerLastGameId = async (serverId: string, puuid: string, lastGameID: string): Promise<void> => {
 	try {
-		
+
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
 		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
-				console.log(lastGameID);
-				// await existingPlayer.update({ lastGameID: lastGameID });
+				await existingPlayer.update({ lastGameID: lastGameID + "fail" }); // TODO dev purpose
 			} else {
 				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 			}
@@ -133,16 +132,137 @@ export const updatePlayerLastGameId = async (serverId: string, puuid: string, la
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to update lastGameID player ${puuid} for the serverID -> ${serverId} :`, error);
-		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to add the player ${puuid}`);
+		console.error(`❌ Failed to update lastGameID player ${puuid} for serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to update lastGameID for player ${puuid}`);
 	}
 };
 
-export const listAllPlayer = async (serverId: string): Promise<PlayerInfo[]> => {
+export const updatePlayerCurrentOrLastDayRank = async (serverId: string, puuid: string, isCurrent: boolean, queueType: string, leaguePoints: number, rank: string, tier: string): Promise<void> => {
 	try {
-		const players = await Player.findAll({ attributes: ['puuid', 'serverid', 'accountnametag', 'region', 'lastGameID'] });
+		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
+		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+
+		if (existingServer != null) {
+			if (existingPlayer != null) {
+				if (isCurrent == true) {
+					if (queueType === "RANKED_FLEX_SR") {
+						await existingPlayer.update({ oldFlexRank: existingPlayer.dataValues.currentFlexRank, oldFlexTier: existingPlayer.dataValues.currentFlexTier, oldFlexLP: existingPlayer.dataValues.currentFlexLP });
+						await existingPlayer.update({ currentFlexRank: rank, currentFlexTier: tier, currentFlexLP: leaguePoints });
+					} else {
+						await existingPlayer.update({ oldSoloQRank: existingPlayer.dataValues.currentSoloQRank, oldSoloQTier: existingPlayer.dataValues.currentSoloQTier, oldSoloQLP: existingPlayer.dataValues.currentSoloQLP });
+						await existingPlayer.update({ currentSoloQRank: rank, currentSoloQTier: tier, currentSoloQLP: leaguePoints });
+					}
+				} else {
+					if (queueType === "RANKED_FLEX_SR") {
+						await existingPlayer.update({ lastDayFlexRank: rank, lastDayFlexTier: tier, lastDayFlexLP: leaguePoints });
+					} else {
+						await existingPlayer.update({ lastDaySoloQRank: rank, lastDaySoloQTier: tier, lastDaySoloQLP: leaguePoints });
+					}
+				}
+			} else {
+				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
+			}
+		} else {
+			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
+		}
+		
+	} catch (error) {
+		console.error(`❌ Failed to update lastDayRank player ${puuid} for serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to update lastDayRank for player ${puuid}`);
+	}
+};
+
+export const updatePlayerLastDate = async (serverId: string, puuid: string, currentDate: Date): Promise<void> => {
+	try {
+		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
+		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+
+		if (existingServer != null) {
+			if (existingPlayer != null) {
+				await existingPlayer.update({ lastDayDate: currentDate });
+			} else {
+				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
+			}
+		} else {
+			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
+		}
+	} catch (error) {
+		console.error(`❌ Failed to update lastDayDate player ${puuid} for serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to update lastDayDate for player ${puuid}`);
+	}
+};
+
+export const updatePlayerInfo = async (serverId: string, player: PlayerInfo, queueType: string, leaguePoints: number, rank: string, tier: string): Promise<void> => {
+	try {
+		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
+		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: player.puuid } });
+
+		if (existingServer != null) {
+			if (existingPlayer != null) {
+				// Update inside database
+				const isCurrent = false;
+				await updatePlayerCurrentOrLastDayRank(serverId, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
+				// Update the date inside last day player
+				await updatePlayerLastDate(serverId, player.puuid, new Date());
+			} else {
+				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
+			}
+		} else {
+			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
+		}
+	} catch (error) {
+		console.error(`❌ Failed to updatePlayerInfo player ${player.puuid} for serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to updatePlayerInfo for player ${player.puuid}`);
+	}
+};
+
+export const resetLastDayOfAllPlayer = async (): Promise<void> => {
+	try {
+		const existingPlayers: Model[] | null = await Player.findAll();
+		if (existingPlayers != null) {
+			for (const player of existingPlayers) {
+				player.update({
+					lastDaySoloQWin: null,
+					lastDaySoloQLose: null,
+					lastDaySoloQRank: null,
+					lastDaySoloQTier: null,
+					lastDaySoloQLP: null,
+					lastDayFlexWin: null,
+					lastDayFlexLose: null,
+					lastDayFlexRank: null,
+					lastDayFlexTier: null,
+					lastDayFlexLP: null,
+					lastDayDate: null,
+				})
+			}
+		} else {
+			throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'No players to reset');
+		}
+	} catch (error) {
+		console.error(`❌ Failed to reset last day of all player :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to reset last day of all player`);
+	}
+};
+
+export const listAllPlayerForSpecificServer = async (serverId: string): Promise<PlayerInfo[]> => {
+	try {
+		const players = await Player.findAll({ where: { serverId: serverId } });
 		const result: PlayerInfo[] = players.map(player => player.dataValues);
 		return result;
+	} catch (error) {
+		console.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list players');
+	}
+};
+
+export const getPlayerForSpecificServer = async (serverId: string, puuid: string): Promise<PlayerInfo> => {
+	try {
+		const player = await Player.findOne({ where: { serverId: serverId, puuid: puuid } });
+		if (player != null) {
+			const result: PlayerInfo = player.dataValues;
+			return result;
+		} 
+		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 	} catch (error) {
 		console.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list players');
@@ -155,6 +275,29 @@ export interface PlayerInfo {
 	accountnametag: string;
 	region: string;
 	lastGameID: string | null;
+	currentSoloQRank: string | null;
+	currentSoloQTier: string | null;
+	currentSoloQLP: number | null;
+	currentFlexRank: string | null;
+	currentFlexTier: string | null;
+	currentFlexLP: number | null;
+	oldSoloQRank: string | null;
+	oldSoloQTier: string | null;
+	oldSoloQLP: number | null;
+	oldFlexRank: string | null;
+	oldFlexTier: string | null;
+	oldFlexLP: number | null;
+	lastDaySoloQWin: number | null;
+	lastDaySoloQLose: number | null;
+	lastDaySoloQRank: string | null;
+	lastDaySoloQTier: string | null;
+	lastDaySoloQLP: number | null;
+	lastDayFlexWin: number | null;
+	lastDayFlexLose: number | null;
+	lastDayFlexRank: string | null;
+	lastDayFlexTier: string | null;
+	lastDayFlexLP: number | null;
+	lastDayDate: Date | null;
 }
 
 export interface ServerInfo {

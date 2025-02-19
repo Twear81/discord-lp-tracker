@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
-import { listAllPlayer, PlayerInfo } from '../database/databaseHelper';
+import { listAllPlayerForSpecificServer, PlayerInfo } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
 
 export const data = new SlashCommandBuilder()
@@ -11,7 +11,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		const serverId = interaction.guildId as string;
 
 		// [accountNameTagList.dataValues: { accountnametag: 'test#test', region: 'EUW' }]
-		const accountNameTagPlayerList: PlayerInfo[] = await listAllPlayer(serverId);
+		const accountNameTagPlayerList: PlayerInfo[] = await listAllPlayerForSpecificServer(serverId);
 
 		console.log(accountNameTagPlayerList);
 		// Create the message
