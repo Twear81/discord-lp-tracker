@@ -16,10 +16,12 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 		const playerSortForSoloQ = sortPlayers(accountNameTagPlayerList, "RANKED_SOLO_5x5");
 		const playerSortForFlex = sortPlayers(accountNameTagPlayerList, "RANKED_FLEX_SR");
 
+		let hasAlreadySentAMassage = false;
 		if (serverInfo.flextoggle == true) {
-			await generateLeaderboardMessage(interaction, serverInfo.lang, playerSortForFlex, "RANKED_FLEX_SR");
+			await generateLeaderboardMessage(interaction, serverInfo.lang, playerSortForFlex, "RANKED_FLEX_SR", hasAlreadySentAMassage);
+			hasAlreadySentAMassage = true;
 		}
-		await generateLeaderboardMessage(interaction, serverInfo.lang, playerSortForSoloQ, "RANKED_SOLO_5x5");
+		await generateLeaderboardMessage(interaction, serverInfo.lang, playerSortForSoloQ, "RANKED_SOLO_5x5", hasAlreadySentAMassage);
 		console.log('The leaderboard has been demanded');
 	} catch (error) {
 		if (error instanceof AppError) {
@@ -39,25 +41,25 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 	}
 }
 
-const generateLeaderboardMessage = async (interaction: CommandInteraction, lang: string, sortedPlayers: PlayerInfo[], queueType: string) => {
+const generateLeaderboardMessage = async (interaction: CommandInteraction, lang: string, sortedPlayers: PlayerInfo[], queueType: string, isSecondMessage: boolean) => {
 	const rankEmojis: Record<string, string> = {
-		"Iron": "⬛",
-		"Bronze": "🟫",
-		"Silver": "⬜",
-		"Gold": "🟨",
-		"Platinum": "🟩",
-		"Emerald": "💚",
-		"Diamond": "🔷",
-		"Master": "🟣",
-		"Grandmaster": "🔴",
-		"Challenger": "👑"
+		"IRON": "⬛",
+		"BRONZE": "🟫",
+		"SILVER": "⬜",
+		"GOLD": "🟨",
+		"PLATINUM": "🟩",
+		"EMERALD": "💚",
+		"DIAMOND": "🔷",
+		"MASTER": "🟣",
+		"GRANDMASTER": "🔴",
+		"CHALLENGER": "👑"
 	};
 	const translations = {
 		fr: {
 			title: queueType === "RANKED_SOLO_5x5" ? "🏆 Classement SoloQ" : "🏆 Classement FlexQ",
 			description: "Voici les joueurs classés du plus fort au plus faible :",
 			playerLine: (index: number, name: string, region: string, rank: string, tier: string, lp: number) =>
-				`**#${index}** ${rankEmojis[rank] || ""} **${name}**\n🌍 **Région:** ${region} | 🏅 **Rang:** ${rank} ${tier} | 🔥 **LP:** ${lp}`,
+				`**#${index}** **${name}**\n🌍 **Région:** ${region} |  **Rang:** ${rankEmojis[tier] || "🏅"} ${tier} ${rank} | 🔥 **LP:** ${lp}`,
 			total: (count: number) => `Total: ${count} joueur(s) classés`,
 			noPlayers: "📭 Aucun joueur classé pour le moment !"
 		},
@@ -65,7 +67,7 @@ const generateLeaderboardMessage = async (interaction: CommandInteraction, lang:
 			title: queueType === "RANKED_SOLO_5x5" ? "🏆 SoloQ Leaderboard" : "🏆 FlexQ Leaderboard",
 			description: "Here are the players ranked from strongest to weakest:",
 			playerLine: (index: number, name: string, region: string, rank: string, tier: string, lp: number) =>
-				`**#${index}** ${rankEmojis[rank] || ""} **${name}**\n🌍 **Region:** ${region} | 🏅 **Rank:** ${rank} ${tier} | 🔥 **LP:** ${lp}`,
+				`**#${index}** **${name}**\n🌍 **Region:** ${region} | **Rank:** ${rankEmojis[tier] || "🏅"} ${tier} ${rank} | 🔥 **LP:** ${lp}`,
 			total: (count: number) => `Total: ${count} ranked players`,
 			noPlayers: "📭 No ranked players at the moment!"
 		}
@@ -96,8 +98,16 @@ const generateLeaderboardMessage = async (interaction: CommandInteraction, lang:
 		.setFooter({ text: t.total(sortedPlayers.length) })
 		.setTimestamp();
 
-	await interaction.reply({
-		embeds: [messageToDisplay],
-		flags: MessageFlags.Ephemeral,
-	});
+	if (isSecondMessage == true) {
+		await interaction.followUp({
+			embeds: [messageToDisplay],
+			flags: MessageFlags.Ephemeral,
+		});
+	} else {
+		await interaction.reply({
+			embeds: [messageToDisplay],
+			flags: MessageFlags.Ephemeral,
+		});
+	}
+	
 } 

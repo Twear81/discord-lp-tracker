@@ -1,5 +1,5 @@
 import { EmbedBuilder, TextChannel } from 'discord.js';
-import { getAllServer, listAllPlayerForSpecificServer, resetLastDayOfAllPlayer, updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, updatePlayerLastDate, getPlayerForSpecificServer } from '../database/databaseHelper';
+import { getAllServer, listAllPlayerForSpecificServer, resetLastDayOfAllPlayer, updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, updatePlayerLastDate, getPlayerForSpecificServer, PlayerInfo } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
 import { getGameDetailForCurrentPlayer, getLastMatch, getPlayerRankInfo, PlayerGameInfo } from '../riot/riotHelper';
 import { client } from '../index';
@@ -31,7 +31,6 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 					const gameDetailForThePlayer: PlayerGameInfo = await getGameDetailForCurrentPlayer(player.puuid, currentGameIdWithRegion, player.region);
 					// Get current player rank info
 					const playerRankStats = await getPlayerRankInfo(player.puuid, player.region);
-
 					// Update current player rank
 					const currentQueueType = gameDetailForThePlayer.isFlex ? "RANKED_FLEX_SR" : "RANKED_SOLO_5x5";
 					for (const playerRankStat of playerRankStats) {
@@ -174,7 +173,9 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 					const rank = playerRankStat.rank;
 					const tier = playerRankStat.tier;
 					// Update inside database
-					const isCurrent = false;
+					let isCurrent = false;
+					await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
+					isCurrent = true;
 					await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
 				}
 				// Update the date inside last day player
@@ -188,16 +189,118 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 };
 
 const calculateLPDifference = (beforeRank: string, afterRank: string, beforeTier: string, afterTier: string, beforeLP: number, afterLP: number): number => {
+	const rankOrder: string[] = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINIUM", "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"];
 	const tierOrder: string[] = ["IV", "III", "II", "I"];
-    if (beforeRank !== afterRank || beforeTier !== afterTier) {
-        // Handle promotion or demotion properly
-        if (tierOrder.indexOf(beforeTier) < tierOrder.indexOf(afterTier)) {
-            // Promotion: LP resets, difference is just the new LP
-            return afterLP;
-        } else {
-            // Demotion: Assume LP was reset at 0 before dropping
-            return afterLP - 100;
-        }
-    }
-    return afterLP - beforeLP;
+	if (beforeRank === null || beforeTier === null || beforeLP === null) {
+		return 0; // If previous rank info is null, return 0
+	}
+
+	const oldRankIndex = rankOrder.indexOf(beforeRank);
+	const currentRankIndex = rankOrder.indexOf(afterRank);
+	const oldTierIndex = tierOrder.indexOf(beforeTier);
+	const currentTierIndex = tierOrder.indexOf(afterTier);
+
+	if (oldRankIndex < currentRankIndex || (oldRankIndex === currentRankIndex && oldTierIndex < currentTierIndex)) {
+		// Promotion: LP resets, calculate LP difference correctly
+		return afterLP + (100 - beforeLP) + (currentRankIndex - oldRankIndex) * 400 + (currentTierIndex - oldTierIndex) * 100;
+	} else if (oldRankIndex > currentRankIndex || (oldRankIndex === currentRankIndex && oldTierIndex > currentTierIndex)) {
+		// Demotion: Assume LP was reset before dropping
+		return afterLP - (beforeLP + (oldRankIndex - currentRankIndex) * 400 + (oldTierIndex - currentTierIndex) * 100);
+	}
+	return afterLP - beforeLP;
 };
+
+export const generateRecapOfTheDay = async (): Promise<void> => {
+	try {
+		// Get all the servers
+		const servers = await getAllServer();
+
+		for (const server of servers) {
+			const currentServerID = server.serverid;
+			// Get all the players for the current server
+			const players = await listAllPlayerForSpecificServer(currentServerID);
+			const channel = (await client.channels.fetch(server.channelid)) as TextChannel;
+
+			if (channel != null) {
+				// Flex part
+				if (server.flextoggle == true) {
+					const flexChanges: PlayerRecapInfo[] = players.map<PlayerRecapInfo>(player => (
+						{
+							player,
+							lpChange: calculateLPDifference(player.lastDayFlexRank!, player.currentFlexRank!, player.lastDayFlexTier!, player.currentFlexTier!, player.lastDayFlexLP!, player.currentFlexLP!)
+						}
+					))
+						.filter(entry => entry.player.lastDayFlexWin != null && entry.player.lastDayFlexLose != null) // Remove entries with no win/lose (didn't play)
+						.sort((a, b) => b.lpChange - a.lpChange);
+					await sendRecapMessage(channel, flexChanges, true, server.lang);
+				}
+
+				// Soloq part
+				const soloQChanges: PlayerRecapInfo[] = players.map<PlayerRecapInfo>(player => (
+					{
+						player,
+						lpChange: calculateLPDifference(player.lastDaySoloQRank!, player.currentSoloQRank!, player.lastDaySoloQTier!, player.currentSoloQTier!, player.lastDaySoloQLP!, player.currentSoloQLP!)
+					}
+				))
+					.filter(entry => entry.player.lastDaySoloQWin != null && entry.player.lastDaySoloQLose != null) // Remove entries with no win/lose (didn't play)
+					.sort((a, b) => b.lpChange - a.lpChange);
+				await sendRecapMessage(channel, soloQChanges, false, server.lang);
+			} else {
+				console.error('❌ Failed send the message, can`t find the channel');
+			}
+
+		}
+	} catch (error) {
+		console.error('❌ Failed to generate the recap :', error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to generate the recap');
+	}
+};
+
+const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: PlayerRecapInfo[], isFlex: boolean, lang: string): Promise<void> => {
+	const translations = {
+		fr: {
+			title: isFlex ? "[📊 Résumé Quotidien Flex]" : "[📈 Résumé Quotidien SoloQ]",
+			league: "point(s) de ligue",
+			wins: "Victoires",
+			losses: "Défaites",
+			from: "De",
+			to: "À"
+		},
+		en: {
+			title: isFlex ? "[📊 Flex Daily Recap]" : "[📈 SoloQ Daily Recap]",
+			league: "league point(s)",
+			wins: "Wins",
+			losses: "Losses",
+			from: "From",
+			to: "To"
+		}
+	};
+
+	const t = translations[lang as keyof typeof translations];
+
+	const embed = new EmbedBuilder()
+		.setTitle(t.title)
+		.setColor(isFlex ? 'Purple' : 'Blue')
+		.setDescription(
+			playerRecapInfos.map(entry => {
+				const { accountnametag, currentSoloQTier, currentSoloQRank, currentFlexTier, currentFlexRank, lastDaySoloQTier, lastDaySoloQRank, lastDayFlexTier, lastDayFlexRank, lastDaySoloQWin, lastDaySoloQLose, lastDayFlexWin, lastDayFlexLose } = entry.player;
+				const tier = isFlex ? currentFlexTier : currentSoloQTier;
+				const rank = isFlex ? currentFlexRank : currentSoloQRank;
+				const lastTier = isFlex ? lastDayFlexTier : lastDaySoloQTier;
+				const lastRank = isFlex ? lastDayFlexRank : lastDaySoloQRank;
+				const wins = isFlex ? lastDayFlexWin : lastDaySoloQWin;
+				const losses = isFlex ? lastDayFlexLose : lastDaySoloQLose;
+				return `🎖 **${accountnametag}** 
+					🏆 ${t.wins}: **${wins}** | ❌ ${t.losses}: **${losses}** 
+					📉 ${t.from}: ${lastTier} ${lastRank} ➡️ ${t.to}: ${tier} ${rank} 
+					📈 ${entry.lpChange > 0 ? '+' : ''}${entry.lpChange} ${t.league}`;
+			}).join('\n\n')
+		);
+
+	await channel.send({ embeds: [embed] });
+};
+
+interface PlayerRecapInfo {
+	player: PlayerInfo;
+	lpChange: number;
+}

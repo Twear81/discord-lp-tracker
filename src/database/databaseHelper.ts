@@ -252,7 +252,9 @@ export const updatePlayerInfo = async (serverId: string, player: PlayerInfo, que
 		if (existingServer != null) {
 			if (existingPlayer != null) {
 				// Update inside database
-				const isCurrent = false;
+				let isCurrent = false;
+				await updatePlayerCurrentOrLastDayRank(serverId, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
+				isCurrent = true;
 				await updatePlayerCurrentOrLastDayRank(serverId, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
 				// Update the date inside last day player
 				await updatePlayerLastDate(serverId, player.puuid, new Date());

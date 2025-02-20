@@ -5,7 +5,7 @@ import { token } from '../config.json';
 import { commands } from "./commands";
 import { deployCommands } from "./deploy-commands";
 import { initDB } from  './database/init_database';
-import { initLastDayInfo, trackPlayer } from "./tracking/tracking";
+import { generateRecapOfTheDay, initLastDayInfo, trackPlayer } from "./tracking/tracking";
 
 export const client = new Client({ intents: [
 	GatewayIntentBits.Guilds,
@@ -17,7 +17,9 @@ client.once("ready", async () => {
 	await initDB();
 	console.log("Discord bot is ready! 🤖");
 
+	console.log("Init LastDay start");
 	await initLastDayInfo(false);
+	console.log("Init LastDay end");
 	// First run for the tracker
 	console.log("First tracking start");
 	await trackPlayer(true);
@@ -27,17 +29,17 @@ client.once("ready", async () => {
 	cron.schedule("*/5 * * * *", async () => {
 		console.log("Tracking start");
 		await trackPlayer(false);
-		console.log("Tracking finish");
+		console.log("Tracking end");
 	}, {
 		timezone: "Europe/Paris"
 	});
 
 	cron.schedule("1 7 * * *", async () => { // Each day on 7am 01
 		console.log("Generate recap of the day start");
-		// await generateRecapOfTheDay();
+		await generateRecapOfTheDay();
 		// Reset for the next day
 		await initLastDayInfo(true);
-		console.log("Generate recap of the day finish");
+		console.log("Generate recap of the day end");
 	}, {
 		timezone: "Europe/Paris"
 	});
