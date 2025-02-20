@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
-import { addPlayer, getPlayerForSpecificServer, updatePlayerInfo } from '../database/databaseHelper';
+import { addPlayer, getPlayerForSpecificServer, getServer, updatePlayerInfo, updatePlayerLastGameId } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
-import { getPlayerRankInfo, getSummonerByName } from '../riot/riotHelper';
+import { getLastMatch, getPlayerRankInfo, getSummonerByName } from '../riot/riotHelper';
 
 export const data = new SlashCommandBuilder()
 	.setName('addplayer')
@@ -34,14 +34,23 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		const tag = interaction.options.getString('tag')!;
 		const region = interaction.options.getString('region')!;
 
+		const serverInfo = await getServer(serverId);
+
 		const summoner = await getSummonerByName(accountname, tag, region);
 		const playerRankInfos = await getPlayerRankInfo(summoner.puuid, region);
-		
+
 		await addPlayer(serverId, summoner.puuid, accountname, tag, region);
 		const currentPlayer = await getPlayerForSpecificServer(serverId, summoner.puuid);
 		for (const playerRankStat of playerRankInfos) {
 			await updatePlayerInfo(serverId, currentPlayer, playerRankStat.queueType, playerRankStat.leaguePoints, playerRankStat.rank, playerRankStat.tier);
 		}
+
+		// Get it's last game
+		const matchIds = await getLastMatch(currentPlayer.puuid, currentPlayer.region, serverInfo.flextoggle);
+		const currentGameIdWithRegion = matchIds[0]; // example -> EUW1_7294524077
+		// Update last game inside database
+		await updatePlayerLastGameId(serverId, currentPlayer.puuid, currentGameIdWithRegion);
+
 		await interaction.reply({
 			content: `The player "${accountname}#${tag}" for region ${region} has been added.`,
 			flags: MessageFlags.Ephemeral,

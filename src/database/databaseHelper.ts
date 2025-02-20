@@ -71,6 +71,20 @@ export const getAllServer = async (): Promise<ServerInfo[]> => {
 	}
 };
 
+export const getServer = async (serverId: string): Promise<ServerInfo> => {
+	try {
+		const server = await Server.findOne({ where: { serverId: serverId } });
+		if (server != null) {
+			const result: ServerInfo = server.dataValues;
+			return result;
+		}
+		throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not initialize');
+	} catch (error) {
+		console.error('❌ Failed to list servers :', error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list servers');
+	}
+};
+
 // PLAYER PART
 export const addPlayer = async (serverId: string, puuid: string, accountName: string, tag: string, region: string): Promise<void> => {
 	try {
