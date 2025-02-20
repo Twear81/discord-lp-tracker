@@ -321,6 +321,47 @@ export const getPlayerForSpecificServer = async (serverId: string, puuid: string
 	}
 };
 
+const rankOrder: Record<string, number> = {
+    "IRON": 1, "BRONZE": 2, "SILVER": 3, "GOLD": 4, "PLATINUM": 5, 
+    "EMERALD": 6, "DIAMOND": 7, "MASTER": 8, "GRANDMASTER": 9, "CHALLENGER": 10
+};
+
+const tierOrder: Record<string, number> = { "IV": 1, "III": 2, "II": 3, "I": 4 };
+
+function comparePlayers(a: PlayerInfo, b: PlayerInfo, queueType: string): number {
+    const rankKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQRank" : "currentFlexRank";
+    const tierKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQTier" : "currentFlexTier";
+    const lpKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQLP" : "currentFlexLP";
+
+    const rankA = rankOrder[a[rankKey] || "IRON"] || 0;
+    const rankB = rankOrder[b[rankKey] || "IRON"] || 0;
+    
+    if (rankA !== rankB) return rankB - rankA; // Classement décroissant
+
+    const tierA = tierOrder[a[tierKey] || "IV"] || 0;
+    const tierB = tierOrder[b[tierKey] || "IV"] || 0;
+
+    if (tierA !== tierB) return tierB - tierA; // Classement décroissant
+
+    const lpA = a[lpKey] || 0;
+    const lpB = b[lpKey] || 0;
+
+    return lpB - lpA; // Classement décroissant
+}
+
+// Fonction pour trier un tableau de joueurs
+export const sortPlayers = (players: PlayerInfo[], queueType: string): PlayerInfo[] => {
+    // Don't want null info
+    const filteredPlayers = players.filter(player => {
+        const rankKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQRank" : "currentFlexRank";
+        const tierKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQTier" : "currentFlexTier";
+        const lpKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQLP" : "currentFlexLP";
+
+        return player[rankKey] !== null && player[tierKey] !== null && player[lpKey] !== null;
+    });
+	return filteredPlayers.sort((a, b) => comparePlayers(a, b, queueType));
+}
+
 export interface PlayerInfo {
 	puuid: string;
 	serverid: string;
