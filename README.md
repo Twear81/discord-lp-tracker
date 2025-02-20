@@ -22,30 +22,29 @@ The bot is built using:
 ## 🚀 Features
 ✅ Sends a daily recap of tracked players' ranked performance every morning  
 ✅ Sends a summary after every ranked SoloQ/Flex game played by a tracked player  
-✅ Leaderboard feature
-✅ `.devcontainer` included for quick development setup  
+✅ Leaderboard feature   
 
 ## 📌 Bot Usage Guide
 Welcome! Here are the commands to use the bot properly:
 
-🔹 **Initialization**
-➜ `/init` : Initializes the bot for your server.
+### 🔹 Initialization
+- `/init` : Initializes the bot for your server.
 
-🔹 **Adding Players**
-➜ `/addplayer accountname:<name> tag:<tag> region:<region>` : Adds a player to the tracking list.
+### 🔹 Adding Players
+- `/addplayer accountname:<name> tag:<tag> region:<region>` : Adds a player to the tracking list.
 
-🔹 **Player Management**
-➜ `/deleteplayer accountname:<name> tag:<tag> region:<region>` : Removes a player from the list.
-➜ `/list` : Displays the list of tracked players.
-➜ `/leaderboard` : Shows the general ranking of players.
+### 🔹 Player Management
+- `/deleteplayer accountname:<name> tag:<tag> region:<region>` : Removes a player from the list.
+- `/list` : Displays the list of tracked players.
+- `/leaderboard` : Shows the general ranking of players.
 
-🔹 **Language Selection**
-➜ `/language` : Switch the bot's language between English and French. 🌍
-
-🔹 **Daily Recap**
+### 🔹 Daily Recap
 📢 Every morning, the bot sends a performance summary:
 - Wins / Losses 🎉💀
 - LP gained / lost 📈📉
+
+### 🔹 Language Selection
+- `/language` : Switch the bot's language between English and French. 🌍
 
 *Need help? Feel free to ask!*
 
@@ -72,9 +71,3 @@ npm start
 
 ## 🤝 Contributing
 Pull requests are welcome! Feel free to fork the repository and submit your improvements.
-
-## 📜 License
-This project is licensed under the MIT License.
-
----
-Made with ❤️ by Twear81
