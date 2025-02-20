@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
-import { listAllPlayerForSpecificServer, PlayerInfo } from '../database/databaseHelper';
+import { getServer, listAllPlayerForSpecificServer, PlayerInfo } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
 
 export const data = new SlashCommandBuilder()
@@ -9,22 +9,50 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
 	try {
 		const serverId = interaction.guildId as string;
-
+		const serverInfo = await getServer(serverId);
 		const accountNameTagPlayerList: PlayerInfo[] = await listAllPlayerForSpecificServer(serverId);
 
-		// Create the message
-		const messageToDisplay = new EmbedBuilder()
-			.setColor(0x0099FF)
-			.setTitle('List of player tracked')
-			.setDescription(
-				accountNameTagPlayerList.map(acc => `**Account:** ${acc.accountnametag}\n**Region:** ${acc.region}`).join('\n\n')
-			)
-			.setTimestamp();
+		const lang = serverInfo.lang;
+		const translations = {
+			fr: {
+				title: "📋 Liste des joueurs suivis",
+				description: "Voici la liste des joueurs actuellement suivis :",
+				playerLine: (index: number, name: string, region: string) => `**${index}.** 🎮 **${name}**\n🌍 Région: **${region}**`,
+				total: (count: number) => `Total: ${count} joueur(s)`,
+				noPlayers: "📭 Aucun joueur n'est suivi pour le moment !"
+			},
+			en: {
+				title: "📋 List of Tracked Players",
+				description: "Here is the list of currently tracked players:",
+				playerLine: (index: number, name: string, region: string) => `**${index}.** 🎮 **${name}**\n🌍 Region: **${region}**`,
+				total: (count: number) => `Total: ${count} player(s)`,
+				noPlayers: "📭 No players are being tracked at the moment!"
+			}
+		};
+	
+		const t = translations[lang as keyof typeof translations];
 
-		await interaction.reply({
-			embeds: [messageToDisplay],
-			flags: MessageFlags.Ephemeral,
-		});
+		if (accountNameTagPlayerList.length === 0) {
+			await interaction.reply({
+				content: t.noPlayers,
+				flags: MessageFlags.Ephemeral,
+			})
+		} else {
+			const messageToDisplay = new EmbedBuilder()
+				.setTitle(t.title)
+				.setColor(0x0099FF)
+				.setDescription(
+					`${t.description}\n\n` +
+					accountNameTagPlayerList.map((acc, index) => t.playerLine(index + 1, acc.accountnametag, acc.region)).join("\n\n")
+				)
+				.setFooter({ text: t.total(accountNameTagPlayerList.length), iconURL: "https://cdn-icons-png.flaticon.com/512/5968/5968899.png" })
+				.setTimestamp();
+
+			await interaction.reply({
+				embeds: [messageToDisplay],
+				flags: MessageFlags.Ephemeral,
+			});
+		}
 		console.log('The list has been demanded');
 	} catch (error) {
 		if (error instanceof AppError) {
