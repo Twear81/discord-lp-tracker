@@ -59,10 +59,12 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 							let rank = null;
 							let tier = null;
 							let lpGain = 0;
+							let updatedLP = 0;
 							if (gameDetailForThePlayer.isFlex == true) {
 								if (updatePlayer.currentFlexRank != null && updatePlayer.currentFlexTier != null && updatePlayer.currentFlexLP != null) {
 									rank = updatePlayer.currentFlexRank;
 									tier = updatePlayer.currentFlexTier;
+									updatedLP = updatePlayer.currentFlexLP;
 									if (updatePlayer.oldFlexRank !== null && updatePlayer.oldFlexTier !== null && updatePlayer.oldFlexLP !== null) {
 										lpGain = calculateLPDifference(updatePlayer.oldFlexRank, updatePlayer.currentFlexRank, updatePlayer.oldFlexTier, updatePlayer.currentFlexTier, updatePlayer.oldFlexLP, updatePlayer.currentFlexLP);
 									}
@@ -71,12 +73,13 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 								if (updatePlayer.currentSoloQRank != null && updatePlayer.currentSoloQTier != null && updatePlayer.currentSoloQLP != null) {
 									rank = updatePlayer.currentSoloQRank;
 									tier = updatePlayer.currentSoloQTier;
+									updatedLP = updatePlayer.currentSoloQLP;
 									if (updatePlayer.oldSoloQRank !== null && updatePlayer.oldSoloQTier !== null && updatePlayer.oldSoloQLP !== null) {
 										lpGain = calculateLPDifference(updatePlayer.oldSoloQRank, updatePlayer.currentSoloQRank, updatePlayer.oldSoloQTier, updatePlayer.currentSoloQTier, updatePlayer.oldSoloQLP, updatePlayer.currentSoloQLP);
 									}
 								}
 							}
-							sendGameResultMessage(channel, player.accountnametag, gameDetailForThePlayer, rank!, tier!, lpGain!, player.region, currentGameIdWithRegion, server.lang);
+							sendGameResultMessage(channel, player.accountnametag, gameDetailForThePlayer, rank!, tier!, lpGain!, updatedLP, player.region, currentGameIdWithRegion, server.lang);
 						} else {
 							console.error('❌ Failed send the message, can`t find the channel');
 						}
@@ -90,7 +93,7 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 	}
 };
 
-export const sendGameResultMessage = async (channel: TextChannel, playerName: string, gameInfo: PlayerGameInfo, rank: string, tier: string, lpChange: number, region: string, gameIdWithRegion: string, lang: string): Promise<void> => {
+export const sendGameResultMessage = async (channel: TextChannel, playerName: string, gameInfo: PlayerGameInfo, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, lang: string): Promise<void> => {
 	const translations = {
 		fr: {
 			title: "[📜 Résultat de partie ]",
@@ -102,7 +105,16 @@ export const sendGameResultMessage = async (channel: TextChannel, playerName: st
 			champion: "Champion",
 			queue: "File",
 			queueType: gameInfo.isFlex ? "Flex" : "Solo/Duo", // TODO fix
-			timestamp: "Date"
+			timestamp: "Date",
+			date: new Date().toLocaleString("fr-FR", {
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+				hour: "2-digit",
+				minute: "2-digit",
+				second: "2-digit",
+				timeZone: "Europe/Paris",
+			})
 		},
 		en: {
 			title: "[📜 Match Result ]",
@@ -114,7 +126,16 @@ export const sendGameResultMessage = async (channel: TextChannel, playerName: st
 			champion: "Champion",
 			queue: "Queue",
 			queueType: gameInfo.isFlex ? "Flex" : "Solo/Duo",
-			timestamp: "Date"
+			timestamp: "Date",
+			date: new Date().toLocaleString("en-GB", {
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+				hour: "2-digit",
+				minute: "2-digit",
+				second: "2-digit",
+				timeZone: "Europe/London", // Change selon ton besoin
+			}).replace(",", " at")
 		}
 	};
 
@@ -127,14 +148,14 @@ export const sendGameResultMessage = async (channel: TextChannel, playerName: st
 		.setColor(gameInfo.win ? '#00FF00' : '#FF0000') // grean if win, Red if loose
 		.setTitle(t.title)
 		.setURL(matchUrl)
-		.setDescription(`**${gameInfo.win ? t.win : t.loss}**\n\n${playerName} vient de ${t.lpChange} ${Math.abs(lpChange)} ${t.league} ! **(${tier} ${rank})**`)
+		.setDescription(`**${gameInfo.win ? t.win : t.loss}**\n\n${playerName} vient de ${t.lpChange} ${Math.abs(lpChange)} ${t.league} ! **(${tier} ${rank} / ${updatedLP} lp)**`)
 		.addFields(
 			{ name: t.score, value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },
 			{ name: t.champion, value: gameInfo.championName, inline: true },
 			{ name: t.queue, value: t.queueType, inline: true }
 		)
 		.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/14.3.1/img/champion/${gameInfo.championName}.png`)
-		.setFooter({ text: `${t.timestamp}: ${new Date().toLocaleString()}` });
+		.setFooter({ text: `${t.timestamp}: ${t.date}` });
 
 	await channel.send({ embeds: [embed] });
 }
