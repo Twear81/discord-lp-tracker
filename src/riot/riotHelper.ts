@@ -182,9 +182,24 @@ function generateCustomMessage(participant: RiotAPITypes.MatchV5.ParticipantDTO,
 		result = "Team diff"
 	}
 
-	// If the player play Anivia
+	// If the player play Gwen and win
+	if (participant.championName == "Gwen" && participant.win == true) {
+		result = "☕️ Cafe chouchou ! ☕️"
+	}
+
+	// If the player play Gwen and lose
+	if (participant.championName == "Gwen" && participant.win == false) {
+		result = "☕️ Cafe choucroute ? ☕️"
+	}
+
+	// If the player play jungle and loose
 	if (participant.teamPosition == "JUNGLE" && participant.win == false) {
 		result = "Ouin ouin ? 😭"
+	}
+
+	// El famosso 2 7
+	if (participant.kills == 2 && participant.deaths == 7) {
+		result = "💪🏿 Tu connais la recette ? 💪🏿"
 	}
 
 	// If the player don't ward
