@@ -56,15 +56,19 @@ npm install
 ```
 
 ## ⚙️ Configuration
-1. Create a `config.json` file and add your Riot API key and Discord bot token:
-```json
-{
-  "token": "your_discord_bot_token",
-  "clientId": "your_client_id",
-  "leagueAPI": "your_riot_api_key"
-}
+Set up the required environment variables:
+```bash
+export DISCORD_TOKEN=your_discord_bot_token
+export DISCORD_CLIENTID=your_discord_clientid
+export RIOT_API=your_riot_api_key
 ```
-2. Run the bot:
+Alternatively, you can use a `.env` file:
+```env
+DISCORD_TOKEN=your_discord_bot_token
+DISCORD_CLIENTID=your_discord_clientid
+RIOT_API=your_riot_api_key
+```
+Then, run the bot:
 ```bash
 npm start
 ```

@@ -1,12 +1,13 @@
 
 import { CacheType, ChatInputCommandInteraction, Client, GatewayIntentBits } from "discord.js";
 import cron from "node-cron";
-import { token } from '../config.json';
 import { commands } from "./commands";
 import { deployCommands } from "./deploy-commands";
 import { initDB } from  './database/init_database';
 import { generateRecapOfTheDay, initLastDayInfo, trackPlayer } from "./tracking/tracking";
+import dotenv from 'dotenv';
 
+dotenv.config();
 export const client = new Client({ intents: [
 	GatewayIntentBits.Guilds,
 	GatewayIntentBits.GuildMessages,
@@ -60,4 +61,4 @@ client.on("interactionCreate", async (interaction) => {
 	}
 });
 
-client.login(token);
+client.login(process.env.DISCORD_TOKEN);

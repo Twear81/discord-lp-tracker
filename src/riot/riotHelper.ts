@@ -1,8 +1,10 @@
 import { PlatformId, RiotAPI, RiotAPITypes } from "@fightmegg/riot-api";
-import { leagueAPI } from '../../config.json';
 import { AppError, ErrorTypes } from "../error/error";
+import dotenv from 'dotenv';
 
-const riotApi = new RiotAPI(leagueAPI);
+dotenv.config();
+
+const riotApi = new RiotAPI(process.env.RIOT_API!);
 
 export async function getSummonerByName(accountName: string, tag: string, region: string) {
 	try {
