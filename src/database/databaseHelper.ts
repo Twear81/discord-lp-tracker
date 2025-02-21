@@ -335,20 +335,20 @@ function comparePlayers(a: PlayerInfo, b: PlayerInfo, queueType: string): number
     const tierKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQTier" : "currentFlexTier";
     const lpKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQLP" : "currentFlexLP";
 
-    const rankA = rankOrder[a[rankKey] || "IRON"] || 0;
-    const rankB = rankOrder[b[rankKey] || "IRON"] || 0;
+    const tierA = tierOrder[a[tierKey] || "IRON"] || 0;
+    const tierB = tierOrder[b[tierKey] || "IRON"] || 0;
     
-    if (rankA !== rankB) return rankB - rankA; // Classement décroissant
+    if (tierA !== tierB) return tierB - tierA;
 
-    const tierA = tierOrder[a[tierKey] || "IV"] || 0;
-    const tierB = tierOrder[b[tierKey] || "IV"] || 0;
+    const rankA = rankOrder[a[rankKey] || "IV"] || 0;
+    const rankB = rankOrder[b[rankKey] || "IV"] || 0;
 
-    if (tierA !== tierB) return tierB - tierA; // Classement décroissant
+    if (rankA !== rankB) return rankB - rankA;
 
     const lpA = a[lpKey] || 0;
     const lpB = b[lpKey] || 0;
 
-    return lpB - lpA; // Classement décroissant
+    return lpB - lpA;
 }
 
 // Fonction pour trier un tableau de joueurs
