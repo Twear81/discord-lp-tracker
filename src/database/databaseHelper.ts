@@ -323,12 +323,12 @@ export const getPlayerForSpecificServer = async (serverId: string, puuid: string
 	}
 };
 
-const rankOrder: Record<string, number> = {
+const tierOrder: Record<string, number> = {
     "IRON": 1, "BRONZE": 2, "SILVER": 3, "GOLD": 4, "PLATINUM": 5, 
     "EMERALD": 6, "DIAMOND": 7, "MASTER": 8, "GRANDMASTER": 9, "CHALLENGER": 10
 };
 
-const tierOrder: Record<string, number> = { "IV": 1, "III": 2, "II": 3, "I": 4 };
+const rankOrder: Record<string, number> = { "IV": 1, "III": 2, "II": 3, "I": 4 };
 
 function comparePlayers(a: PlayerInfo, b: PlayerInfo, queueType: string): number {
     const rankKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQRank" : "currentFlexRank";
