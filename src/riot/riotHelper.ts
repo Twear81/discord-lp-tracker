@@ -4,7 +4,22 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const riotApi = new RiotAPI(process.env.RIOT_API!);
+const config: RiotAPITypes.Config = {
+	debug: false,
+	cache: {
+	  cacheType: "local", // local or ioredis
+	  ttls: {
+		byMethod: {
+		  [RiotAPITypes.METHOD_KEY.SUMMONER.GET_BY_PUUID]: 60000, // ms
+		  [RiotAPITypes.METHOD_KEY.LEAGUE.GET_ENTRIES_BY_SUMMONER]: 30000, // ms
+		  [RiotAPITypes.METHOD_KEY.ACCOUNT.GET_BY_RIOT_ID]: 60000, // ms
+		  [RiotAPITypes.METHOD_KEY.MATCH_V5.GET_MATCH_BY_ID]: 30000, // ms
+		  [RiotAPITypes.METHOD_KEY.MATCH_V5.GET_IDS_BY_PUUID]: 5000, // ms
+		},
+	  },
+	},
+  };
+const riotApi = new RiotAPI(process.env.RIOT_API!, config);
 
 export async function getSummonerByName(accountName: string, tag: string, region: string) {
 	try {
