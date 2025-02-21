@@ -80,7 +80,11 @@ export async function getGameDetailForCurrentPlayer(puuid: string, gameID: strin
 					championName: participant.championName,
 					win: participant.win,
 					isFlex: gameDetail.info.queueId == 440 ? true : false,
+					customMessage: undefined
 				};
+
+				// Custom Message
+				result.customMessage = generateCustomMessage(participant);
 			}
 		}
 		if (result == null) {
@@ -160,6 +164,27 @@ function getLolRegionFromRegionString(region: string): PlatformId.EUW1 | Platfor
 	return mapping[region.toUpperCase()];
 }
 
+function generateCustomMessage(participant: RiotAPITypes.MatchV5.ParticipantDTO, ): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
+	let result;
+
+	// If the player play Anivia
+	if (participant.championName == "Anivia") {
+		result = "🎵 Floflo toujours dans son délire 🎵"
+	}
+
+	// If the player don't ward
+	if (participant.visionScore <= 10) {
+		result = "Ta mere est une pute si tu ward ou ?"
+	}
+
+	// First blood
+	// if (participant.firstBloodKill <= 10) {
+	// 	result = "Ta mere est une pute si tu ward ou ?"
+	// }
+	
+	return result;
+}
+
 export interface PlayerGameInfo {
 	assists: number;
 	deaths: number;
@@ -168,4 +193,6 @@ export interface PlayerGameInfo {
 	championName: string;
 	win: boolean;
 	isFlex: boolean;
+	customMessage: string | undefined;
 }
+

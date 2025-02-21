@@ -79,7 +79,7 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 									}
 								}
 							}
-							sendGameResultMessage(channel, player.accountnametag, gameDetailForThePlayer, rank!, tier!, lpGain!, updatedLP, player.region, currentGameIdWithRegion, server.lang);
+							sendGameResultMessage(channel, player.accountnametag, gameDetailForThePlayer, rank!, tier!, lpGain!, updatedLP, player.region, currentGameIdWithRegion, gameDetailForThePlayer.customMessage, server.lang);
 						} else {
 							console.error('❌ Failed send the message, can`t find the channel');
 						}
@@ -93,7 +93,7 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 	}
 };
 
-export const sendGameResultMessage = async (channel: TextChannel, playerName: string, gameInfo: PlayerGameInfo, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, lang: string): Promise<void> => {
+export const sendGameResultMessage = async (channel: TextChannel, playerName: string, gameInfo: PlayerGameInfo, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
 	const translations = {
 		fr: {
 			title: "[📜 Résultat de partie ]",
@@ -152,7 +152,8 @@ export const sendGameResultMessage = async (channel: TextChannel, playerName: st
 		.addFields(
 			{ name: t.score, value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },
 			{ name: t.champion, value: gameInfo.championName, inline: true },
-			{ name: t.queue, value: t.queueType, inline: true }
+			{ name: t.queue, value: t.queueType, inline: true },
+			{ name: '', value: customMessage ? customMessage : ""}
 		)
 		.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/14.3.1/img/champion/${gameInfo.championName}.png`)
 		.setFooter({ text: `${t.timestamp}: ${t.date}` });
