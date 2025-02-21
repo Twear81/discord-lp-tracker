@@ -153,7 +153,7 @@ export const sendGameResultMessage = async (channel: TextChannel, playerName: st
 			{ name: t.score, value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },
 			{ name: t.champion, value: gameInfo.championName, inline: true },
 			{ name: t.queue, value: t.queueType, inline: true },
-			{ name: '', value: customMessage ? customMessage : ""}
+			{ name: '', value: customMessage ? "*" + customMessage + "*" : ""}
 		)
 		.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/14.3.1/img/champion/${gameInfo.championName}.png`)
 		.setFooter({ text: `${t.timestamp}: ${t.date}` });

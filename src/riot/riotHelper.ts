@@ -172,9 +172,29 @@ function generateCustomMessage(participant: RiotAPITypes.MatchV5.ParticipantDTO,
 		result = "🎵 Floflo toujours dans son délire 🎵"
 	}
 
+	// If the player play Zoe and win
+	if (participant.championName == "Zoe" && participant.win == true) {
+		result = "🚨 Controle de police ! Photo de pied svp 🚨"
+	}
+
+	// If the player play Zoe and lose
+	if (participant.championName == "Zoe" && participant.win == false) {
+		result = "Team diff"
+	}
+
+	// If the player play Anivia
+	if (participant.teamPosition == "JUNGLE" && participant.win == false) {
+		result = "Ouin ouin ? 😭"
+	}
+
 	// If the player don't ward
 	if (participant.visionScore <= 10) {
-		result = "Ta mere est une pute si tu ward ou ?"
+		result = "Ta mere c'est une pute si tu ward ouuuuuuuu ?"
+	}
+
+	// If the player died too much
+	if (participant.deaths >= 9) {
+		result = "💀 Maxime approuved 💀"
 	}
 
 	// First blood
