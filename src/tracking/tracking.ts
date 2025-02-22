@@ -56,8 +56,8 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 						const updatePlayer = await getPlayerForSpecificServer(currentServerID, player.puuid);
 						const channel = (await client.channels.fetch(server.channelid)) as TextChannel;
 						if (channel != null) {
-							let rank = null;
-							let tier = null;
+							let rank = "";
+							let tier = "Unranked";
 							let lpGain = 0;
 							let updatedLP = 0;
 							if (gameDetailForThePlayer.isFlex == true) {
