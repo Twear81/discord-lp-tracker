@@ -22,11 +22,13 @@ const config: RiotAPITypes.Config = {
 };
 const riotApi = new RiotAPI(process.env.RIOT_API!, config);
 
-// Create a limiter to manage the rate limit
+// Bottleneck configuration for Riot's limits
 const limiter = new Bottleneck({
-	minTime: 100, // Minimum 100ms between each request (10 req/sec max)
-	maxConcurrent: 1, // Only one request at a time
-});
+	minTime: 50, // 1 request per 50ms (ensures < 20 requests per second)
+	reservoir: 100, // Max 100 requests in 2 minutes
+	reservoirRefreshAmount: 100, // Reset to 100 requests
+	reservoirRefreshInterval: 120000, // Every 2 minutes
+  });
 
 // Wrapper function to limit API calls
 const limitedRequest = limiter.wrap(async (fn: () => Promise<RiotAPITypes.Account.AccountDTO | RiotAPITypes.MatchV5.MatchDTO | string[] | RiotAPITypes.League.LeagueEntryDTO[]>) => {
