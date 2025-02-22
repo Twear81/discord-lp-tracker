@@ -29,7 +29,7 @@ client.once("ready", async () => {
 	console.log("First tracking end");
 
 	// Start the tracking
-	cron.schedule("*/5 * * * *", async () => {
+	cron.schedule("*/5 * * * *", async () => { // Each minute 5
 		console.log("Tracking start");
 		await trackPlayer(false);
 		console.log("Tracking end");
@@ -37,7 +37,7 @@ client.once("ready", async () => {
 		timezone: "Europe/Paris"
 	});
 
-	cron.schedule("1 7 * * *", async () => { // Each day on 7am 01
+	cron.schedule("0 7 * * *", async () => { // Each day on 7am 00
 		console.log("Generate recap of the day start");
 		await generateRecapOfTheDay();
 		// Reset for the next day
