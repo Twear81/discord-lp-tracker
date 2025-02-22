@@ -153,7 +153,7 @@ export const sendGameResultMessage = async (channel: TextChannel, playerName: st
 			{ name: t.score, value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },
 			{ name: t.champion, value: gameInfo.championName, inline: true },
 			{ name: t.queue, value: t.queueType, inline: true },
-			{ name: '', value: customMessage ? "*" + customMessage + "*" : ""}
+			{ name: '', value: customMessage ? "*" + customMessage + "*" : "" }
 		)
 		.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/14.3.1/img/champion/${gameInfo.championName}.png`)
 		.setFooter({ text: `${t.timestamp}: ${t.date}` });
@@ -246,27 +246,29 @@ export const generateRecapOfTheDay = async (): Promise<void> => {
 			if (channel != null) {
 				// Flex part
 				if (server.flextoggle == true) {
-					const flexChanges: PlayerRecapInfo[] = players.map<PlayerRecapInfo>(player => (
-						{
-							player,
-							lpChange: calculateLPDifference(player.lastDayFlexRank!, player.currentFlexRank!, player.lastDayFlexTier!, player.currentFlexTier!, player.lastDayFlexLP!, player.currentFlexLP!)
-						}
-					))
-						.filter(entry => entry.player.lastDayFlexWin != null && entry.player.lastDayFlexLose != null) // Remove entries with no win/lose (didn't play)
+					const flexChanges: PlayerRecapInfo[] = players.filter(player => player.lastDayFlexWin != null && player.lastDayFlexLose != null && player.lastDayFlexRank != null && player.currentFlexRank != null && player.lastDayFlexTier != null && player.currentFlexTier != null && player.lastDayFlexLP != null && player.currentFlexLP != null) // Remove entries with no win/lose or unranked (didn't play)
+						.map<PlayerRecapInfo>(player => (
+							{
+								player,
+								lpChange: calculateLPDifference(player.lastDayFlexRank!, player.currentFlexRank!, player.lastDayFlexTier!, player.currentFlexTier!, player.lastDayFlexLP!, player.currentFlexLP!)
+							}
+						))
 						.sort((a, b) => b.lpChange - a.lpChange);
-					await sendRecapMessage(channel, flexChanges, true, server.lang);
+					const isFlex = true;
+					await sendRecapMessage(channel, flexChanges, isFlex, server.lang);
 				}
 
 				// Soloq part
-				const soloQChanges: PlayerRecapInfo[] = players.map<PlayerRecapInfo>(player => (
-					{
-						player,
-						lpChange: calculateLPDifference(player.lastDaySoloQRank!, player.currentSoloQRank!, player.lastDaySoloQTier!, player.currentSoloQTier!, player.lastDaySoloQLP!, player.currentSoloQLP!)
-					}
-				))
-					.filter(entry => entry.player.lastDaySoloQWin != null && entry.player.lastDaySoloQLose != null) // Remove entries with no win/lose (didn't play)
+				const soloQChanges: PlayerRecapInfo[] = players.filter(player => player.lastDaySoloQWin != null && player.lastDaySoloQLose != null && player.lastDaySoloQRank != null && player.currentSoloQRank != null && player.lastDaySoloQTier != null && player.currentSoloQTier != null && player.lastDaySoloQLP != null && player.currentSoloQLP != null) // Remove entries with no win/lose or unranked (didn't play)
+					.map<PlayerRecapInfo>(player => (
+						{
+							player,
+							lpChange: calculateLPDifference(player.lastDaySoloQRank!, player.currentSoloQRank!, player.lastDaySoloQTier!, player.currentSoloQTier!, player.lastDaySoloQLP!, player.currentSoloQLP!)
+						}
+					))
 					.sort((a, b) => b.lpChange - a.lpChange);
-				await sendRecapMessage(channel, soloQChanges, false, server.lang);
+				const isFlex = false;
+				await sendRecapMessage(channel, soloQChanges, isFlex, server.lang);
 			} else {
 				console.error('❌ Failed send the message, can`t find the channel');
 			}
@@ -279,47 +281,52 @@ export const generateRecapOfTheDay = async (): Promise<void> => {
 };
 
 const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: PlayerRecapInfo[], isFlex: boolean, lang: string): Promise<void> => {
-	const translations = {
-		fr: {
-			title: isFlex ? "[📊 Résumé Quotidien Flex]" : "[📈 Résumé Quotidien SoloQ]",
-			league: "point(s) de ligue",
-			wins: "Victoires",
-			losses: "Défaites",
-			from: "De",
-			to: "À"
-		},
-		en: {
-			title: isFlex ? "[📊 Flex Daily Recap]" : "[📈 SoloQ Daily Recap]",
-			league: "league point(s)",
-			wins: "Wins",
-			losses: "Losses",
-			from: "From",
-			to: "To"
-		}
-	};
+	if (playerRecapInfos.length > 0) {
+		const translations = {
+			fr: {
+				title: isFlex ? "[📊 Résumé Quotidien Flex]" : "[📈 Résumé Quotidien SoloQ]",
+				league: "LP",
+				wins: "Victoires",
+				losses: "Défaites",
+				from: "De",
+				to: "À"
+			},
+			en: {
+				title: isFlex ? "[📊 Flex Daily Recap]" : "[📈 SoloQ Daily Recap]",
+				league: "LP",
+				wins: "Wins",
+				losses: "Losses",
+				from: "From",
+				to: "To"
+			}
+		};
 
-	const t = translations[lang as keyof typeof translations];
+		const t = translations[lang as keyof typeof translations];
 
-	const embed = new EmbedBuilder()
-		.setTitle(t.title)
-		.setColor(isFlex ? 'Purple' : 'Blue')
-		.setDescription(
-			playerRecapInfos.map(entry => {
-				const { accountnametag, currentSoloQTier, currentSoloQRank, currentFlexTier, currentFlexRank, lastDaySoloQTier, lastDaySoloQRank, lastDayFlexTier, lastDayFlexRank, lastDaySoloQWin, lastDaySoloQLose, lastDayFlexWin, lastDayFlexLose } = entry.player;
-				const tier = isFlex ? currentFlexTier : currentSoloQTier;
-				const rank = isFlex ? currentFlexRank : currentSoloQRank;
-				const lastTier = isFlex ? lastDayFlexTier : lastDaySoloQTier;
-				const lastRank = isFlex ? lastDayFlexRank : lastDaySoloQRank;
-				const wins = isFlex ? lastDayFlexWin : lastDaySoloQWin;
-				const losses = isFlex ? lastDayFlexLose : lastDaySoloQLose;
-				return `🎖 **${accountnametag}** 
-					🏆 ${t.wins}: **${wins}** | ❌ ${t.losses}: **${losses}** 
-					📉 ${t.from}: ${lastTier} ${lastRank} ➡️ ${t.to}: ${tier} ${rank} 
-					📈 ${entry.lpChange > 0 ? '+' : ''}${entry.lpChange} ${t.league}`;
-			}).join('\n\n')
-		);
+		const embed = new EmbedBuilder()
+			.setTitle(t.title)
+			.setColor(isFlex ? 'Purple' : 'Blue')
+			.setDescription(
+				playerRecapInfos.map(entry => {
+					const { accountnametag, currentSoloQTier, currentSoloQRank, currentFlexTier, currentFlexRank, lastDaySoloQTier, lastDaySoloQRank, lastDayFlexTier, lastDayFlexRank, lastDaySoloQWin, lastDaySoloQLose, lastDayFlexWin, lastDayFlexLose, lastDayFlexLP, lastDaySoloQLP, currentFlexLP, currentSoloQLP } = entry.player;
+					const tier = isFlex ? currentFlexTier : currentSoloQTier;
+					const rank = isFlex ? currentFlexRank : currentSoloQRank;
+					const lastTier = isFlex ? lastDayFlexTier : lastDaySoloQTier;
+					const lastRank = isFlex ? lastDayFlexRank : lastDaySoloQRank;
+					const wins = isFlex ? lastDayFlexWin : lastDaySoloQWin;
+					const losses = isFlex ? lastDayFlexLose : lastDaySoloQLose;
+					const lastLP = isFlex ? lastDayFlexLP : lastDaySoloQLP;
+					const currentLP = isFlex ? currentFlexLP : currentSoloQLP;
+					return `**${accountnametag} : ${entry.lpChange > 0 ? '+' : ''}${entry.lpChange} ${t.league}**  
+						🏆 ${t.wins}: **${wins}** | ❌ ${t.losses}: **${losses}** 
+						${t.from}: **${lastTier} ${lastRank} ${lastLP}** ➡️ ${t.to}: **${tier} ${rank} ${currentLP}**`;
+				}).join('\n\n')
+			);
 
-	await channel.send({ embeds: [embed] });
+		await channel.send({ embeds: [embed] });
+	} else {
+		console.log("No player did a game during this last 24 hours.");
+	}
 };
 
 interface PlayerRecapInfo {
