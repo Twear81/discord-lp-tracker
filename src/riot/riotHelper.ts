@@ -165,59 +165,63 @@ function getLolRegionFromRegionString(region: string): PlatformId.EUW1 | Platfor
 }
 
 function generateCustomMessage(participant: RiotAPITypes.MatchV5.ParticipantDTO, ): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
-	let result;
+	let result = undefined;
 
 	// If the player play Anivia
 	if (participant.championName == "Anivia") {
-		result = "🎵 Floflo toujours dans son délire 🎵"
+		result = addCustomMessage(result, "🎵 Floflo toujours dans son délire 🎵");
 	}
 
 	// If the player play Zoe and win
 	if (participant.championName == "Zoe" && participant.win == true) {
-		result = "🚨 Controle de police ! Photo de pied svp 🚨"
+		result = addCustomMessage(result, "🚨 Controle de police ! Photo de pied svp 🚨");
 	}
 
 	// If the player play Zoe and lose
 	if (participant.championName == "Zoe" && participant.win == false) {
-		result = "Team diff"
+		result = addCustomMessage(result, "Team diff");
 	}
 
 	// If the player play Gwen and win
 	if (participant.championName == "Gwen" && participant.win == true) {
-		result = "☕️ Cafe chouchou ! ☕️"
+		result = addCustomMessage(result, "☕️ Cafe chouchou ! ☕️");
 	}
 
 	// If the player play Gwen and lose
 	if (participant.championName == "Gwen" && participant.win == false) {
-		result = "☕️ Cafe choucroute ? ☕️"
+		result = addCustomMessage(result, "☕️ Cafe choucroute ? ☕️");
 	}
 
 	// If the player play jungle and loose
 	if (participant.teamPosition == "JUNGLE" && participant.win == false) {
-		result = "Ouin ouin ? 😭"
+		result = addCustomMessage(result, "Ouin ouin ? 😭");
 	}
 
 	// El famosso 2 7
 	if (participant.kills == 2 && participant.deaths == 7) {
-		result = "💪🏿 Tu connais la recette ? 💪🏿"
+		result = addCustomMessage(result, "💪🏿 Tu connais la recette ? 💪🏿");
 	}
 
 	// If the player don't ward
 	if (participant.visionScore <= 10) {
-		result = "Ta mere c'est une pute si tu ward ouuuuuuuu ?"
+		result = addCustomMessage(result, "Ta mere c'est une pute si tu ward ouuuuuuuu ?");
 	}
 
 	// If the player died too much
 	if (participant.deaths >= 9) {
-		result = "💀 Maxime approuved 💀"
+		result = addCustomMessage(result, "💀 Maxime approuved 💀");
 	}
-
-	// First blood
-	// if (participant.firstBloodKill <= 10) {
-	// 	result = "Ta mere est une pute si tu ward ou ?"
-	// }
 	
 	return result;
+}
+
+function addCustomMessage(finalString: string | undefined, newString: string): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
+	if (finalString == undefined) {
+		finalString = newString;
+	} else {
+		finalString += "\n" + newString;
+	}
+	return finalString;
 }
 
 export interface PlayerGameInfo {
