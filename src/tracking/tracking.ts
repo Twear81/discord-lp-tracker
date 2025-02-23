@@ -1,5 +1,5 @@
 import { EmbedBuilder, TextChannel } from 'discord.js';
-import { getAllServer, listAllPlayerForSpecificServer, resetLastDayOfAllPlayer, updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, updatePlayerLastDate, getPlayerForSpecificServer, PlayerInfo } from '../database/databaseHelper';
+import { getAllServer, listAllPlayerForSpecificServer, resetLastDayOfAllPlayer, updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, updatePlayerLastDate, getPlayerForSpecificServer, PlayerInfo, updatePlayerLastDayWinLose } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
 import { getGameDetailForCurrentPlayer, getLastMatch, getPlayerRankInfo, PlayerGameInfo } from '../riot/riotHelper';
 import { client } from '../index';
@@ -33,6 +33,9 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 					const playerRankStats = await getPlayerRankInfo(player.puuid, player.region);
 					// Update current player rank
 					const currentQueueType = gameDetailForThePlayer.isFlex ? "RANKED_FLEX_SR" : "RANKED_SOLO_5x5";
+					if (isTimestampInRecapRange(gameDetailForThePlayer.gameEndTimestamp) == true) {
+						await updatePlayerLastDayWinLose(currentServerID, player.puuid, currentQueueType, gameDetailForThePlayer.win); // Update win/lose
+					}
 					for (const playerRankStat of playerRankStats) {
 						if (playerRankStat.queueType === currentQueueType) {
 							const queueType = playerRankStat.queueType;
@@ -328,6 +331,24 @@ const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: PlayerRe
 		console.log("No player did a game during this last 24 hours.");
 	}
 };
+
+function isTimestampInRecapRange(timestamp: number): boolean {
+	// Convert timestamp to milliseconds if it's in seconds
+	if (timestamp < 1e12) {
+		timestamp *= 1000; // Convert from seconds to milliseconds
+	}
+
+	const now = new Date();
+
+	// Set 07:00 AM today
+	const today7AM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0, 0);
+
+	// Set 07:00 AM yesterday
+	const yesterday7AM = new Date(today7AM.getTime() - 24 * 60 * 60 * 1000);
+
+	// Check if the timestamp falls within the range
+	return timestamp >= yesterday7AM.getTime() && timestamp <= today7AM.getTime();
+}
 
 interface PlayerRecapInfo {
 	player: PlayerInfo;

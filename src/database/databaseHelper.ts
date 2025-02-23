@@ -186,6 +186,51 @@ export const updatePlayerCurrentOrLastDayRank = async (serverId: string, puuid: 
 	}
 };
 
+export const updatePlayerLastDayWinLose = async (serverId: string, puuid: string, queueType: string, win: boolean): Promise<void> => {
+	try {
+		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
+		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+
+		if (existingServer != null) {
+			if (existingPlayer != null) {
+				if (queueType === "RANKED_FLEX_SR") {
+					// Update win/lose part
+					// Init
+					if (existingPlayer.dataValues.lastDayFlexWin == null && existingPlayer.dataValues.lastDayFlexLose == null) {
+						await existingPlayer.update({ lastDayFlexWin: 0, lastDayFlexLose: 0 });
+					}
+					// Update win/lose in database
+					if (win == true) {
+						await existingPlayer.update({ lastDayFlexWin: existingPlayer.dataValues.lastDayFlexWin += 1 });
+					} else {
+						await existingPlayer.update({ lastDayFlexLose: existingPlayer.dataValues.lastDayFlexLose += 1 });
+					}
+				} else {
+					// Update win/lose part
+					// Init
+					if (existingPlayer.dataValues.lastDaySoloQWin == null && existingPlayer.dataValues.lastDaySoloQLose == null) {
+						await existingPlayer.update({ lastDaySoloQWin: 0, lastDaySoloQLose: 0 });
+					}
+					// Update win/lose in database
+					if (win == true) {
+						await existingPlayer.update({ lastDaySoloQWin: existingPlayer.dataValues.lastDaySoloQWin += 1 });
+					} else {
+						await existingPlayer.update({ lastDaySoloQLose: existingPlayer.dataValues.lastDaySoloQLose += 1 });
+					}
+				}
+			} else {
+				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
+			}
+		} else {
+			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
+		}
+
+	} catch (error) {
+		console.error(`❌ Failed to update lastDayRank player ${puuid} for serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to update lastDayRank for player ${puuid}`);
+	}
+};
+
 export const updatePlayerLastDate = async (serverId: string, puuid: string, currentDate: Date): Promise<void> => {
 	try {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
@@ -324,43 +369,43 @@ export const getPlayerForSpecificServer = async (serverId: string, puuid: string
 };
 
 const tierOrder: Record<string, number> = {
-    "IRON": 1, "BRONZE": 2, "SILVER": 3, "GOLD": 4, "PLATINUM": 5, 
-    "EMERALD": 6, "DIAMOND": 7, "MASTER": 8, "GRANDMASTER": 9, "CHALLENGER": 10
+	"IRON": 1, "BRONZE": 2, "SILVER": 3, "GOLD": 4, "PLATINUM": 5,
+	"EMERALD": 6, "DIAMOND": 7, "MASTER": 8, "GRANDMASTER": 9, "CHALLENGER": 10
 };
 
 const rankOrder: Record<string, number> = { "IV": 1, "III": 2, "II": 3, "I": 4 };
 
 function comparePlayers(a: PlayerInfo, b: PlayerInfo, queueType: string): number {
-    const rankKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQRank" : "currentFlexRank";
-    const tierKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQTier" : "currentFlexTier";
-    const lpKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQLP" : "currentFlexLP";
+	const rankKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQRank" : "currentFlexRank";
+	const tierKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQTier" : "currentFlexTier";
+	const lpKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQLP" : "currentFlexLP";
 
-    const tierA = tierOrder[a[tierKey] || "IRON"] || 0;
-    const tierB = tierOrder[b[tierKey] || "IRON"] || 0;
-    
-    if (tierA !== tierB) return tierB - tierA;
+	const tierA = tierOrder[a[tierKey] || "IRON"] || 0;
+	const tierB = tierOrder[b[tierKey] || "IRON"] || 0;
 
-    const rankA = rankOrder[a[rankKey] || "IV"] || 0;
-    const rankB = rankOrder[b[rankKey] || "IV"] || 0;
+	if (tierA !== tierB) return tierB - tierA;
 
-    if (rankA !== rankB) return rankB - rankA;
+	const rankA = rankOrder[a[rankKey] || "IV"] || 0;
+	const rankB = rankOrder[b[rankKey] || "IV"] || 0;
 
-    const lpA = a[lpKey] || 0;
-    const lpB = b[lpKey] || 0;
+	if (rankA !== rankB) return rankB - rankA;
 
-    return lpB - lpA;
+	const lpA = a[lpKey] || 0;
+	const lpB = b[lpKey] || 0;
+
+	return lpB - lpA;
 }
 
 // Fonction pour trier un tableau de joueurs
 export const sortPlayers = (players: PlayerInfo[], queueType: string): PlayerInfo[] => {
-    // Don't want null info
-    const filteredPlayers = players.filter(player => {
-        const rankKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQRank" : "currentFlexRank";
-        const tierKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQTier" : "currentFlexTier";
-        const lpKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQLP" : "currentFlexLP";
+	// Don't want null info
+	const filteredPlayers = players.filter(player => {
+		const rankKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQRank" : "currentFlexRank";
+		const tierKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQTier" : "currentFlexTier";
+		const lpKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQLP" : "currentFlexLP";
 
-        return player[rankKey] !== null && player[tierKey] !== null && player[lpKey] !== null;
-    });
+		return player[rankKey] !== null && player[tierKey] !== null && player[lpKey] !== null;
+	});
 	return filteredPlayers.sort((a, b) => comparePlayers(a, b, queueType));
 }
 

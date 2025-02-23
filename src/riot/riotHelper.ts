@@ -28,7 +28,7 @@ const limiter = new Bottleneck({
 	reservoir: 100, // Max 100 requests in 2 minutes
 	reservoirRefreshAmount: 100, // Reset to 100 requests
 	reservoirRefreshInterval: 120000, // Every 2 minutes
-  });
+});
 
 // Wrapper function to limit API calls
 const limitedRequest = limiter.wrap(async (fn: () => Promise<RiotAPITypes.Account.AccountDTO | RiotAPITypes.MatchV5.MatchDTO | string[] | RiotAPITypes.League.LeagueEntryDTO[]>) => {
@@ -75,6 +75,7 @@ export async function getGameDetailForCurrentPlayer(puuid: string, gameID: strin
 		for (const participant of gameDetail.info.participants) {
 			if (participant.puuid == puuid) {
 				result = {
+					gameEndTimestamp: gameDetail.info.gameEndTimestamp,
 					assists: participant.assists,
 					deaths: participant.deaths,
 					kills: participant.kills,
@@ -166,7 +167,7 @@ function getLolRegionFromRegionString(region: string): PlatformId.EUW1 | Platfor
 	return mapping[region.toUpperCase()];
 }
 
-function generateCustomMessage(participant: RiotAPITypes.MatchV5.ParticipantDTO, ): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
+function generateCustomMessage(participant: RiotAPITypes.MatchV5.ParticipantDTO,): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
 	let result = undefined;
 
 	// If the player play Anivia
@@ -213,7 +214,7 @@ function generateCustomMessage(participant: RiotAPITypes.MatchV5.ParticipantDTO,
 	if (participant.deaths >= 9) {
 		result = addCustomMessage(result, "💀 Maxime approuved 💀");
 	}
-	
+
 	return result;
 }
 
@@ -227,6 +228,7 @@ function addCustomMessage(finalString: string | undefined, newString: string): s
 }
 
 export interface PlayerGameInfo {
+	gameEndTimestamp: number;
 	assists: number;
 	deaths: number;
 	kills: number;
