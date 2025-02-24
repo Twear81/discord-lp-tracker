@@ -341,8 +341,8 @@ function isTimestampInRecapRange(timestamp: number): boolean {
 
 	const now = new Date();
 
-	// Set 08:33 AM CET today
-	const today8AM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 33, 0, 0); // -1 hour for CET
+	// Set 08:33 AM today
+	const today8AM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 33, 0, 0);
 
 	// Manage the last day
 	if (now.getHours() < 7 || (now.getHours() === 7 && now.getMinutes() < 33)) {

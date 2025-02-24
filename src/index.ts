@@ -33,8 +33,6 @@ client.once("ready", async () => {
 		console.log("Tracking start");
 		await trackPlayer(false);
 		console.log("Tracking end");
-	}, {
-		timezone: "Europe/Paris"
 	});
 
 	cron.schedule("33 8 * * *", async () => { // Each day on 8am 33
@@ -45,8 +43,6 @@ client.once("ready", async () => {
 		await initLastDayInfo(true);
 		console.log("Last day info reseted");
 		console.log("Generate recap of the day end");
-	}, {
-		timezone: "Europe/Paris"
 	});
 });
 
