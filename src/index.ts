@@ -37,11 +37,13 @@ client.once("ready", async () => {
 		timezone: "Europe/Paris"
 	});
 
-	cron.schedule("0 7 * * *", async () => { // Each day on 7am 00
+	cron.schedule("33 8 * * *", async () => { // Each day on 8am 33
 		console.log("Generate recap of the day start");
 		await generateRecapOfTheDay();
+		console.log("Recap generated");
 		// Reset for the next day
 		await initLastDayInfo(true);
+		console.log("Last day info reseted");
 		console.log("Generate recap of the day end");
 	}, {
 		timezone: "Europe/Paris"
