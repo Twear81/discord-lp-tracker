@@ -34,6 +34,7 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 					// Update current player rank
 					const currentQueueType = gameDetailForThePlayer.isFlex ? "RANKED_FLEX_SR" : "RANKED_SOLO_5x5";
 					if (isTimestampInRecapRange(gameDetailForThePlayer.gameEndTimestamp) == true) {
+						console.log("Update Win/lose");
 						await updatePlayerLastDayWinLose(currentServerID, player.puuid, currentQueueType, gameDetailForThePlayer.win); // Update win/lose
 					}
 					for (const playerRankStat of playerRankStats) {
@@ -340,19 +341,16 @@ function isTimestampInRecapRange(timestamp: number): boolean {
 
 	const now = new Date();
 
-	// Set 08:33 AM today
-	const today8AM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 33, 0, 0);
+	// Set 08:33 AM CET today
+	const today8AM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 33, 0, 0); // -1 hour for CET
 
-	// Set 08:33 AM yesterday
-	const yesterday8AM = new Date(today8AM.getTime() - 24 * 60 * 60 * 1000);
-
-	// DEBUG
-	console.log(yesterday8AM.getTime())
-	console.log(today8AM.getTime())
-	console.log(timestamp)
+	// Manage the last day
+	if (now.getHours() < 7 || (now.getHours() === 7 && now.getMinutes() < 33)) {
+        today8AM.setDate(today8AM.getDate() - 1);
+    }
 
 	// Check if the timestamp falls within the range
-	return timestamp >= yesterday8AM.getTime() && timestamp <= today8AM.getTime();
+	return timestamp >= today8AM.getTime();
 }
 
 interface PlayerRecapInfo {
