@@ -340,14 +340,19 @@ function isTimestampInRecapRange(timestamp: number): boolean {
 
 	const now = new Date();
 
-	// Set 07:00 AM today
-	const today7AM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0, 0);
+	// Set 08:33 AM today
+	const today8AM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 33, 0, 0);
 
-	// Set 07:00 AM yesterday
-	const yesterday7AM = new Date(today7AM.getTime() - 24 * 60 * 60 * 1000);
+	// Set 08:33 AM yesterday
+	const yesterday8AM = new Date(today8AM.getTime() - 24 * 60 * 60 * 1000);
+
+	// DEBUG
+	console.log(yesterday8AM.getTime())
+	console.log(today8AM.getTime())
+	console.log(timestamp)
 
 	// Check if the timestamp falls within the range
-	return timestamp >= yesterday7AM.getTime() && timestamp <= today7AM.getTime();
+	return timestamp >= yesterday8AM.getTime() && timestamp <= today8AM.getTime();
 }
 
 interface PlayerRecapInfo {
