@@ -35,7 +35,7 @@ client.once("ready", async () => {
 		console.log("Tracking end");
 	});
 
-	cron.schedule("33 8 * * *", async () => { // Each day on 8am 33
+	cron.schedule("33 6 * * *", async () => { // Each day on 6am 33
 		console.log("Generate recap of the day start");
 		await generateRecapOfTheDay();
 		console.log("Recap generated");
