@@ -186,51 +186,6 @@ export const updatePlayerCurrentOrLastDayRank = async (serverId: string, puuid: 
 	}
 };
 
-export const updatePlayerLastDayWinLose = async (serverId: string, puuid: string, queueType: string, win: boolean): Promise<void> => {
-	try {
-		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
-		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
-
-		if (existingServer != null) {
-			if (existingPlayer != null) {
-				if (queueType === "RANKED_FLEX_SR") {
-					// Update win/lose part
-					// Init
-					if (existingPlayer.dataValues.lastDayFlexWin == null && existingPlayer.dataValues.lastDayFlexLose == null) {
-						await existingPlayer.update({ lastDayFlexWin: 0, lastDayFlexLose: 0 });
-					}
-					// Update win/lose in database
-					if (win == true) {
-						await existingPlayer.update({ lastDayFlexWin: existingPlayer.dataValues.lastDayFlexWin += 1 });
-					} else {
-						await existingPlayer.update({ lastDayFlexLose: existingPlayer.dataValues.lastDayFlexLose += 1 });
-					}
-				} else {
-					// Update win/lose part
-					// Init
-					if (existingPlayer.dataValues.lastDaySoloQWin == null && existingPlayer.dataValues.lastDaySoloQLose == null) {
-						await existingPlayer.update({ lastDaySoloQWin: 0, lastDaySoloQLose: 0 });
-					}
-					// Update win/lose in database
-					if (win == true) {
-						await existingPlayer.update({ lastDaySoloQWin: existingPlayer.dataValues.lastDaySoloQWin += 1 });
-					} else {
-						await existingPlayer.update({ lastDaySoloQLose: existingPlayer.dataValues.lastDaySoloQLose += 1 });
-					}
-				}
-			} else {
-				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
-			}
-		} else {
-			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
-		}
-
-	} catch (error) {
-		console.error(`❌ Failed to update lastDayRank player ${puuid} for serverID -> ${serverId} :`, error);
-		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to update lastDayRank for player ${puuid}`);
-	}
-};
-
 export const updatePlayerLastDate = async (serverId: string, puuid: string, currentDate: Date): Promise<void> => {
 	try {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
@@ -251,7 +206,7 @@ export const updatePlayerLastDate = async (serverId: string, puuid: string, curr
 	}
 };
 
-export const updatePlayerWinLose = async (serverId: string, puuid: string, queueType: string, isWin: boolean): Promise<void> => {
+export const updatePlayerLastDayWinLose = async (serverId: string, puuid: string, queueType: string, isWin: boolean): Promise<void> => {
 	try {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
 		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
