@@ -215,6 +215,10 @@ function generateCustomMessage(participant: RiotAPITypes.MatchV5.ParticipantDTO,
 		result = addCustomMessage(result, "💀 Maxime approuved 💀");
 	}
 
+	if ((participant.riotIdName == "JukeBOox81" || participant.riotIdName == "Baltrou") && participant.win == false) {
+		result = addCustomMessage(result, "Normal, il est jamais la 💀🐸");
+	}
+
 	return result;
 }
 
