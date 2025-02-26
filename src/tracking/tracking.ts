@@ -214,25 +214,29 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 };
 
 const calculateLPDifference = (beforeRank: string, afterRank: string, beforeTier: string, afterTier: string, beforeLP: number, afterLP: number): number => {
-	const rankOrder: string[] = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINIUM", "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"];
-	const tierOrder: string[] = ["IV", "III", "II", "I"];
-	if (beforeRank === null || beforeTier === null || beforeLP === null) {
-		return 0; // If previous rank info is null, return 0
-	}
+    if (!beforeRank || !beforeTier || beforeLP === null || !afterRank || !afterTier || afterLP === null) {
+        return 0; // If any data is null, return 0
+    }
+    const beforeAbsoluteLP = getAbsoluteLP(beforeTier, beforeRank, beforeLP);
+    const afterAbsoluteLP = getAbsoluteLP(afterTier, afterRank, afterLP);
+    
+    return afterAbsoluteLP - beforeAbsoluteLP;
+};
 
-	const oldRankIndex = rankOrder.indexOf(beforeRank);
-	const currentRankIndex = rankOrder.indexOf(afterRank);
-	const oldTierIndex = tierOrder.indexOf(beforeTier);
-	const currentTierIndex = tierOrder.indexOf(afterTier);
+const getAbsoluteLP = (tier: string, rank: string, lp: number): number => {
+	const tierOrder: string[] = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"];
+    const rankOrder: string[] = ["IV", "III", "II", "I"];
 
-	if (oldRankIndex < currentRankIndex || (oldRankIndex === currentRankIndex && oldTierIndex < currentTierIndex)) {
-		// Promotion: LP resets, calculate LP difference correctly
-		return afterLP + (100 - beforeLP) + (currentRankIndex - oldRankIndex) * 400 + (currentTierIndex - oldTierIndex) * 100;
-	} else if (oldRankIndex > currentRankIndex || (oldRankIndex === currentRankIndex && oldTierIndex > currentTierIndex)) {
-		// Demotion: Assume LP was reset before dropping
-		return afterLP - (beforeLP + (oldRankIndex - currentRankIndex) * 400 + (oldTierIndex - currentTierIndex) * 100);
+	const tierIndex = tierOrder.indexOf(tier);
+	const rankIndex = rankOrder.indexOf(rank);
+	
+	if (tierIndex === -1 || rankIndex === -1) return 0; // Safety check for invalid values
+	
+	if (tierIndex >= 7) { // MASTER and above have no fixed ranks
+		return 2800 + (tierIndex - 7) * 1000 + lp; 
 	}
-	return afterLP - beforeLP;
+	
+	return tierIndex * 400 + rankIndex * 100 + lp;
 };
 
 export const generateRecapOfTheDay = async (): Promise<void> => {
