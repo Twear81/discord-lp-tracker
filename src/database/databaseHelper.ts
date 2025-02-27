@@ -85,6 +85,21 @@ export const getServer = async (serverId: string): Promise<ServerInfo> => {
 	}
 };
 
+export const deleteServer = async (serverId: string): Promise<void> => {
+	try {
+		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
+
+		if (existingServer != null) {
+			await Server.destroy({ where: { serverid: serverId } });
+		} else {
+			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
+		}
+	} catch (error) {
+		console.error('❌ Failed to delete the server :', error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to delete the server');
+	}
+};
+
 // PLAYER PART
 export const addPlayer = async (serverId: string, puuid: string, accountName: string, tag: string, region: string): Promise<void> => {
 	try {
@@ -117,7 +132,6 @@ export const deletePlayer = async (serverId: string, accountName: string, tag: s
 		if (existingServer != null) {
 			if (existingPlayer != null) {
 				await Player.destroy({ where: { serverid: serverId, accountNameTag: accountNameTag, region: region } });
-				// console.log(`The player ${accountNameTag} has been added to the database`);
 			} else {
 				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 			}
@@ -126,7 +140,21 @@ export const deletePlayer = async (serverId: string, accountName: string, tag: s
 		}
 	} catch (error) {
 		console.error(`❌ Failed to delete the player ${accountName}#${tag} for the serverID -> ${serverId} :`, error);
-		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to add the player ${accountName}#${tag}`);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to delete the player ${accountName}#${tag} for the serverID -> ${serverId}`);
+	}
+};
+
+export const deleteAllPlayersOfServer = async (serverId: string): Promise<void> => {
+	try {
+		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
+		if (existingServer != null) {
+			await Player.destroy({ where: { serverid: serverId } });
+		} else {
+			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
+		}
+	} catch (error) {
+		console.error(`❌ Failed to delete all the players for the serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to delete all players for the serverID -> ${serverId}`);
 	}
 };
 

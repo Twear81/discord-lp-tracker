@@ -1,11 +1,12 @@
 
-import { CacheType, ChatInputCommandInteraction, Client, GatewayIntentBits } from "discord.js";
+import { CacheType, ChatInputCommandInteraction, Client, Events, GatewayIntentBits, Guild } from "discord.js";
 import cron from "node-cron";
 import { commands } from "./commands";
 import { deployCommands } from "./deploy-commands";
 import { initDB } from './database/init_database';
 import { generateRecapOfTheDay, initLastDayInfo, trackPlayer } from "./tracking/tracking";
 import dotenv from 'dotenv';
+import { deleteAllPlayersOfServer, deleteServer } from "./database/databaseHelper";
 
 dotenv.config();
 export const client = new Client({
@@ -16,7 +17,7 @@ export const client = new Client({
 	]
 });
 
-client.once("ready", async () => {
+client.once(Events.ClientReady, async () => {
 	await initDB();
 	console.log("Discord bot is ready! 🤖");
 
@@ -46,11 +47,18 @@ client.once("ready", async () => {
 	});
 });
 
-client.on("guildCreate", async (guild) => {
+client.on(Events.GuildCreate, async (guild: Guild) => {
 	await deployCommands({ guildId: guild.id });
 });
 
-client.on("interactionCreate", async (interaction) => {
+client.on(Events.GuildDelete, async (guild: Guild) => {
+	const serverId = guild.id;
+
+	await deleteServer(serverId);
+	await deleteAllPlayersOfServer(serverId);
+});
+
+client.on(Events.InteractionCreate, async (interaction) => {
 	if (!interaction.isCommand()) {
 		console.error(`No command matching ${interaction.valueOf()} was found.`);
 		return;
