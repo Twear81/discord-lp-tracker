@@ -18,6 +18,7 @@ export const client = new Client({
 });
 
 client.once(Events.ClientReady, async () => {
+	await deployCommands();
 	await initDB();
 	console.log("Discord bot is ready! 🤖");
 
@@ -47,9 +48,9 @@ client.once(Events.ClientReady, async () => {
 	});
 });
 
-client.on(Events.GuildCreate, async (guild: Guild) => {
-	await deployCommands({ guildId: guild.id });
-});
+// client.on(Events.GuildCreate, async (guild: Guild) => {
+// 	await deployCommands({ guildId: guild.id });
+// });
 
 client.on(Events.GuildDelete, async (guild: Guild) => {
 	const serverId = guild.id;

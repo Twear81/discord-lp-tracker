@@ -2,6 +2,7 @@ import { PlatformId, RiotAPI, RiotAPITypes } from "@fightmegg/riot-api";
 import { AppError, ErrorTypes } from "../error/error";
 import dotenv from 'dotenv';
 import Bottleneck from "bottleneck";
+import { GameQueueType } from "../tracking/GameQueueType";
 
 dotenv.config();
 
@@ -20,7 +21,23 @@ const config: RiotAPITypes.Config = {
 		},
 	},
 };
+const configTFT: RiotAPITypes.Config = {
+	debug: false,
+	cache: {
+		cacheType: "local", // local or ioredis
+		ttls: {
+			byMethod: {
+				[RiotAPITypes.METHOD_KEY.TFT_SUMMONER.GET_BY_PUUID]: 60000, // ms
+				[RiotAPITypes.METHOD_KEY.TFT_LEAGUE.GET_ENTRIES_BY_SUMMONER]: 30000, // ms
+				[RiotAPITypes.METHOD_KEY.ACCOUNT.GET_BY_RIOT_ID]: 60000, // ms
+				[RiotAPITypes.METHOD_KEY.TFT_MATCH.GET_MATCH_BY_ID]: 30000, // ms
+				[RiotAPITypes.METHOD_KEY.TFT_MATCH.GET_MATCH_IDS_BY_PUUID]: 5000, // ms
+			},
+		},
+	},
+};
 const riotApi = new RiotAPI(process.env.RIOT_API!, config);
+const riotApiTFT = new RiotAPI(process.env.RIOT_API_TFT!, configTFT);
 
 // Bottleneck configuration for Riot's limits
 const limiter = new Bottleneck({
@@ -31,7 +48,7 @@ const limiter = new Bottleneck({
 });
 
 // Wrapper function to limit API calls
-const limitedRequest = limiter.wrap(async (fn: () => Promise<RiotAPITypes.Account.AccountDTO | RiotAPITypes.MatchV5.MatchDTO | string[] | RiotAPITypes.League.LeagueEntryDTO[]>) => {
+const limitedRequest = limiter.wrap(async (fn: () => Promise<RiotAPITypes.Account.AccountDTO | RiotAPITypes.MatchV5.MatchDTO | string[] | RiotAPITypes.League.LeagueEntryDTO[] | RiotAPITypes.TftLeague.LeagueEntryDTO[] | RiotAPITypes.TftMatch.MatchDTO>) => {
 	try {
 		return await fn();
 	} catch (error) {
@@ -44,6 +61,20 @@ export async function getSummonerByName(accountName: string, tag: string, region
 	try {
 		const platformId = getPlatformIdFromRegionString(region);
 		return await limitedRequest(() => riotApi.account.getByRiotId({
+			region: platformId,
+			gameName: accountName,
+			tagLine: tag,
+		})) as unknown as Promise<RiotAPITypes.Account.AccountDTO>;
+	} catch (error) {
+		console.error(`Error API Riot (getSummonerByName) :`, error);
+		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `No player found for ${accountName}#${tag} for region ${region}`);
+	}
+}
+
+export async function getTFTSummonerByName(accountName: string, tag: string, region: string): Promise<RiotAPITypes.Account.AccountDTO> {
+	try {
+		const platformId = getPlatformIdFromRegionString(region);
+		return await limitedRequest(() => riotApiTFT.account.getByRiotId({
 			region: platformId,
 			gameName: accountName,
 			tagLine: tag,
@@ -67,11 +98,24 @@ async function getGameDetail(gameID: string, region: string): Promise<RiotAPITyp
 	}
 }
 
-export async function getGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string): Promise<PlayerGameInfo> {
+async function getTFTGameDetail(gameID: string, region: string): Promise<RiotAPITypes.TftMatch.MatchDTO> {
+	try {
+		const platformId = getPlatformIdFromRegionString(region);
+		return await limitedRequest(() => riotApiTFT.tftMatch.getById({
+			region: platformId,
+			matchId: gameID
+		})) as unknown as Promise<RiotAPITypes.TftMatch.MatchDTO>;
+	} catch (error) {
+		console.error(`Error API Riot (getGameDetail) :`, error);
+		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No game detail found for gameID ${gameID} for region ${region}`);
+	}
+}
+
+export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string): Promise<PlayerLeagueGameInfo> {
 	try {
 		const gameDetail = await getGameDetail(gameID, region);
 		// Parse the gameDetail to get data for the specific player
-		let result: PlayerGameInfo | null = null;
+		let result: PlayerLeagueGameInfo | null = null;
 		for (const participant of gameDetail.info.participants) {
 			if (participant.puuid == puuid) {
 				result = {
@@ -82,12 +126,12 @@ export async function getGameDetailForCurrentPlayer(puuid: string, gameID: strin
 					championId: participant.championId,
 					championName: participant.championName,
 					win: participant.win,
-					isFlex: gameDetail.info.queueId == 440 ? true : false,
+					queueType: gameDetail.info.queueId == 440 ? GameQueueType.RANKED_FLEX_SR : GameQueueType.RANKED_SOLO_5x5,
 					customMessage: undefined
 				};
 
 				// Custom Message
-				result.customMessage = generateCustomMessage(participant);
+				result.customMessage = generateLeagueCustomMessage(participant);
 			}
 		}
 		if (result == null) {
@@ -96,13 +140,41 @@ export async function getGameDetailForCurrentPlayer(puuid: string, gameID: strin
 			return result;
 		}
 	} catch (error) {
-		console.error(`Error API Riot (getGameDetailForCurrentPlayer) :`, error);
+		console.error(`Error API Riot (getLeagueGameDetailForCurrentPlayer) :`, error);
 		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No game detail found for gameID ${gameID} for player ${puuid} for region ${region}`);
 	}
 }
 
+export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string): Promise<PlayerTFTGameInfo> {
+	try {
+		const tftGameDetail = await getTFTGameDetail(gameID, region);
+		// Parse the gameDetail to get data for the specific player
+		let result: PlayerTFTGameInfo | null = null;
+		for (const participant of tftGameDetail.info.participants) {
+			if (participant.puuid == puuid) {
+				result = {
+					gameEndTimestamp: tftGameDetail.info.game_datetime,
+					placement: participant.placement,
+					customMessage: undefined
+				};
 
-export async function getLastMatch(puuid: string, region: string, isFlex: boolean): Promise<string[]> {
+				// Custom Message
+				result.customMessage = generateTFTCustomMessage(participant);
+			}
+		}
+		if (result == null) {
+			throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No tft game detail found for gameID ${gameID} for player ${puuid} for region ${region}`);
+		} else {
+			return result;
+		}
+	} catch (error) {
+		console.error(`Error API Riot (getTFTGameDetailForCurrentPlayer) :`, error);
+		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No tft game detail found for gameID ${gameID} for player ${puuid} for region ${region}`);
+	}
+}
+
+
+export async function getLastRankedLeagueMatch(puuid: string, region: string, isFlex: boolean): Promise<string[]> {
 	try {
 		const platformId = getPlatformIdFromRegionString(region);
 		if (isFlex == false) {
@@ -131,6 +203,23 @@ export async function getLastMatch(puuid: string, region: string, isFlex: boolea
 	}
 }
 
+// Can't get only ranked match
+export async function getLastTFTMatch(puuid: string, region: string): Promise<string[]> {
+	try {
+		const platformId = getPlatformIdFromRegionString(region);
+		return await limitedRequest(() => riotApiTFT.tftMatch.getMatchIdsByPUUID({
+			region: platformId,
+			puuid,
+			params: {
+				count: 1
+			}
+		})) as unknown as Promise<string[]>;
+	} catch (error) {
+		console.error(`Error API Riot (getIdsByPuuid) :`, error);
+		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last tft match found for player ${puuid} for region ${region}`);
+	}
+}
+
 export async function getPlayerRankInfo(puuid: string, region: string): Promise<RiotAPITypes.League.LeagueEntryDTO[]> {
 	try {
 		const platformId = getLolRegionFromRegionString(region);
@@ -141,10 +230,32 @@ export async function getPlayerRankInfo(puuid: string, region: string): Promise<
 
 		const summonerId = summoner.id; // Encrypted summonerId
 
-		return await limitedRequest(() => riotApi.league.getEntriesBySummonerId({
+		const leagueRankedInfo = await limitedRequest(() => riotApi.league.getEntriesBySummonerId({
 			region: platformId,
 			summonerId: summonerId,
-		})) as unknown as Promise<RiotAPITypes.League.LeagueEntryDTO[]>;
+		})) as unknown as RiotAPITypes.League.LeagueEntryDTO[];
+		
+		const tftRankedInfo = await limitedRequest(() => riotApiTFT.tftLeague.getEntriesBySummonerId({
+			region: platformId,
+			summonerId: summonerId,
+		})) as unknown as RiotAPITypes.League.LeagueEntryDTO[]; // Should RiotAPITypes.TftLeague.LeagueEntryDTO[] but it looks the same
+
+		const globalRankedInfo = leagueRankedInfo.concat(tftRankedInfo);
+		return globalRankedInfo;
+	} catch (error) {
+		console.error(`Error API Riot (getIdsByPuuid) :`, error);
+		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last match found for player ${puuid} for region ${region}`);
+	}
+}
+
+export async function getTFTPlayerRankInfo(puuid: string, region: string): Promise<RiotAPITypes.TftLeague.LeagueEntryDTO[]> {
+	try {
+		const platformId = getLolRegionFromRegionString(region);
+		const tftRankedInfo = await limitedRequest(() => riotApiTFT.tftLeague.getEntriesBySummonerId({
+			region: platformId,
+			summonerId: puuid,
+		})) as unknown as RiotAPITypes.TftLeague.LeagueEntryDTO[];
+		return tftRankedInfo;
 	} catch (error) {
 		console.error(`Error API Riot (getIdsByPuuid) :`, error);
 		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last match found for player ${puuid} for region ${region}`);
@@ -167,7 +278,7 @@ function getLolRegionFromRegionString(region: string): PlatformId.EUW1 | Platfor
 	return mapping[region.toUpperCase()];
 }
 
-function generateCustomMessage(participant: RiotAPITypes.MatchV5.ParticipantDTO,): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
+function generateLeagueCustomMessage(participant: RiotAPITypes.MatchV5.ParticipantDTO): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
 	let result = undefined;
 
 	// If the player play Anivia
@@ -215,8 +326,19 @@ function generateCustomMessage(participant: RiotAPITypes.MatchV5.ParticipantDTO,
 		result = addCustomMessage(result, "💀 Maxime approuved 💀");
 	}
 
-	if ((participant.riotIdName == "JukeBOox81" || participant.riotIdName == "Baltrou") && participant.win == false) {
+	if ((participant.riotIdName.toLowerCase() == "jukeboox81" || participant.riotIdName.toLowerCase() == "baltrou") && participant.win == false) {
 		result = addCustomMessage(result, "Normal, il est jamais la 💀🐸");
+	}
+
+	return result;
+}
+
+function generateTFTCustomMessage(participant: RiotAPITypes.TftMatch.ParticipantDTO): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
+	let result = undefined;
+
+	// If the player play Anivia
+	if (participant.placement >= 7) {
+		result = addCustomMessage(result, "Full chatte hein ...");
 	}
 
 	return result;
@@ -231,7 +353,7 @@ function addCustomMessage(finalString: string | undefined, newString: string): s
 	return finalString;
 }
 
-export interface PlayerGameInfo {
+export interface PlayerLeagueGameInfo {
 	gameEndTimestamp: number;
 	assists: number;
 	deaths: number;
@@ -239,7 +361,13 @@ export interface PlayerGameInfo {
 	championId: number;
 	championName: string;
 	win: boolean;
-	isFlex: boolean;
+	queueType: GameQueueType;
+	customMessage: string | undefined;
+}
+
+export interface PlayerTFTGameInfo {
+	gameEndTimestamp: number;
+	placement: number;
 	customMessage: string | undefined;
 }
 

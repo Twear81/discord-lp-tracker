@@ -1,7 +1,8 @@
 import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
-import { addPlayer, getPlayerForSpecificServer, getServer, updatePlayerInfo, updatePlayerLastGameId } from '../database/databaseHelper';
+import { addPlayer, getPlayerForSpecificServer, getServer, updatePlayerInfoCurrentAndLastForQueueType, updatePlayerLastGameId } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
-import { getLastMatch, getPlayerRankInfo, getSummonerByName } from '../riot/riotHelper';
+import { getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, getSummonerByName, getTFTPlayerRankInfo, getTFTSummonerByName } from '../riot/riotHelper';
+import { GameQueueType, ManagedGameQueueType } from '../tracking/GameQueueType';
 
 export const data = new SlashCommandBuilder()
 	.setName('addplayer')
@@ -38,18 +39,37 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
 		const summoner = await getSummonerByName(accountname, tag, region);
 		const playerRankInfos = await getPlayerRankInfo(summoner.puuid, region);
+		const summonerTFT = await getTFTSummonerByName(accountname, tag, region);
+		const playerRankInfosTFT = await getTFTPlayerRankInfo(summoner.puuid, region);
 
-		await addPlayer(serverId, summoner.puuid, accountname, tag, region);
+		await addPlayer(serverId, summoner.puuid, summonerTFT.puuid, summoner.gameName!, summoner.tagLine!, region);
 		const currentPlayer = await getPlayerForSpecificServer(serverId, summoner.puuid);
 		for (const playerRankStat of playerRankInfos) {
-			await updatePlayerInfo(serverId, currentPlayer, playerRankStat.queueType, playerRankStat.leaguePoints, playerRankStat.rank, playerRankStat.tier);
+			if (playerRankStat.queueType in GameQueueType) {
+				await updatePlayerInfoCurrentAndLastForQueueType(serverId, currentPlayer, GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType], playerRankStat.leaguePoints, playerRankStat.rank, playerRankStat.tier);
+			} else {
+				console.warn(playerRankStat.queueType + ' was not a know queue type.');
+			}
+		}
+		// TFT
+		for (const playerRankStat of playerRankInfosTFT) {
+			if (playerRankStat.queueType in GameQueueType) {
+				await updatePlayerInfoCurrentAndLastForQueueType(serverId, currentPlayer, GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType], playerRankStat.leaguePoints || 0, playerRankStat.rank || "", playerRankStat.tier || "Unranked");
+			} else {
+				console.warn(playerRankStat.queueType + ' was not a know queue type.');
+			}
 		}
 
-		// Get it's last game
-		const matchIds = await getLastMatch(currentPlayer.puuid, currentPlayer.region, serverInfo.flextoggle);
-		const currentGameIdWithRegion = matchIds[0]; // example -> EUW1_7294524077
+		// Get its last ranked league game
+		const leagueMatchIds = await getLastRankedLeagueMatch(currentPlayer.puuid, currentPlayer.region, serverInfo.flextoggle);
+		const currentLeagueGameIdWithRegion = leagueMatchIds[0]; // example -> EUW1_7294524077
 		// Update last game inside database
-		await updatePlayerLastGameId(serverId, currentPlayer.puuid, currentGameIdWithRegion);
+		await updatePlayerLastGameId(serverId, currentPlayer.puuid, currentLeagueGameIdWithRegion, ManagedGameQueueType.LEAGUE);
+		// Get its last tft game
+		const tftMatchIds = await getLastTFTMatch(currentPlayer.puuid, currentPlayer.region);
+		const currentTFTGameIdWithRegion = tftMatchIds[0]; // example -> EUW1_7294524077
+		// Update last game inside database
+		await updatePlayerLastGameId(serverId, currentPlayer.puuid, currentTFTGameIdWithRegion, ManagedGameQueueType.TFT);
 
 		await interaction.reply({
 			content: `The player "${accountname}#${tag}" for region ${region} has been added.`,

@@ -43,9 +43,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 				.setColor(0x0099FF)
 				.setDescription(
 					`${t.description}\n\n` +
-					accountNameTagPlayerList.map((acc, index) => t.playerLine(index + 1, acc.accountnametag, acc.region)).join("\n\n")
+					accountNameTagPlayerList.map((acc, index) => t.playerLine(index + 1, `${acc.gameName}#${acc.tagLine}`, acc.region)).join("\n\n")
 				)
-				.setFooter({ text: t.total(accountNameTagPlayerList.length), iconURL: "https://cdn-icons-png.flaticon.com/512/5968/5968899.png" })
+				.setFooter({ text: t.total(accountNameTagPlayerList.length) })
 				.setTimestamp();
 
 			await interaction.reply({

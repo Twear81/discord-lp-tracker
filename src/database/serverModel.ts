@@ -18,6 +18,14 @@ export const Server = sequelize.define('Server', {
 		type: DataTypes.BOOLEAN,
 		allowNull: false,
 	},
+	tfttoggle: {
+		type: DataTypes.BOOLEAN,
+		allowNull: false,
+	},
+	tftdoubletoggle: {
+		type: DataTypes.BOOLEAN,
+		allowNull: false,
+	},
 	lang: {
 		type: DataTypes.STRING,
 		allowNull: false,

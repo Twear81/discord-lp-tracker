@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, CommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
-import { getServer, listAllPlayerForSpecificServer, PlayerInfo, sortPlayers } from '../database/databaseHelper';
+import { getServer, listAllPlayerForQueueInfoForSpecificServer, listAllPlayerForSpecificServer, PlayerForQueueInfo, PlayerInfo, sortPlayersByRank } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
+import { GameQueueType } from '../tracking/GameQueueType';
 
 export const data = new SlashCommandBuilder()
 	.setName('leaderboard')
@@ -11,17 +12,22 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 		const serverId = interaction.guildId as string;
 		const serverInfo = await getServer(serverId);
 
-		const accountNameTagPlayerList: PlayerInfo[] = await listAllPlayerForSpecificServer(serverId);
+		const playerInfoList: PlayerInfo[] = await listAllPlayerForSpecificServer(serverId);
 
-		const playerSortForSoloQ = sortPlayers(accountNameTagPlayerList, "RANKED_SOLO_5x5");
-		const playerSortForFlex = sortPlayers(accountNameTagPlayerList, "RANKED_FLEX_SR");
+		const playerSortForSoloQ: PlayerForQueueInfo[] = sortPlayersByRank(await listAllPlayerForQueueInfoForSpecificServer(serverId, GameQueueType.RANKED_SOLO_5x5));
+		const playerSortForFlex: PlayerForQueueInfo[] = sortPlayersByRank(await listAllPlayerForQueueInfoForSpecificServer(serverId, GameQueueType.RANKED_FLEX_SR));
+		const playerSortForTFT: PlayerForQueueInfo[] = sortPlayersByRank(await listAllPlayerForQueueInfoForSpecificServer(serverId, GameQueueType.RANKED_TFT));
 
-		let hasAlreadySentAMassage = false;
+		let hasAlreadySentAMessage = false;
 		if (serverInfo.flextoggle == true) {
-			await generateLeaderboardMessage(interaction, serverInfo.lang, playerSortForFlex, "RANKED_FLEX_SR", hasAlreadySentAMassage);
-			hasAlreadySentAMassage = true;
+			await generateLeaderboardMessage(interaction, serverInfo.lang, playerInfoList, playerSortForFlex, GameQueueType.RANKED_FLEX_SR, hasAlreadySentAMessage);
+			hasAlreadySentAMessage = true;
 		}
-		await generateLeaderboardMessage(interaction, serverInfo.lang, playerSortForSoloQ, "RANKED_SOLO_5x5", hasAlreadySentAMassage);
+		if (serverInfo.tfttoggle == true) {
+			await generateLeaderboardMessage(interaction, serverInfo.lang, playerInfoList, playerSortForTFT, GameQueueType.RANKED_TFT, hasAlreadySentAMessage);
+			hasAlreadySentAMessage = true;
+		}
+		await generateLeaderboardMessage(interaction, serverInfo.lang, playerInfoList, playerSortForSoloQ, GameQueueType.RANKED_SOLO_5x5, hasAlreadySentAMessage);
 		console.log('The leaderboard has been demanded');
 	} catch (error) {
 		if (error instanceof AppError) {
@@ -41,7 +47,7 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 	}
 }
 
-const generateLeaderboardMessage = async (interaction: CommandInteraction, lang: string, sortedPlayers: PlayerInfo[], queueType: string, isSecondMessage: boolean) => {
+const generateLeaderboardMessage = async (interaction: CommandInteraction, lang: string, playersInfos: PlayerInfo[], sortedPlayerForQueueInfos: PlayerForQueueInfo[], queueType: GameQueueType, isSecondMessage: boolean) => {
 	const rankEmojis: Record<string, string> = {
 		"IRON": "⬛",
 		"BRONZE": "🟫",
@@ -75,27 +81,33 @@ const generateLeaderboardMessage = async (interaction: CommandInteraction, lang:
 
 	const t = translations[lang as keyof typeof translations];
 
-	if (sortedPlayers.length === 0) {
+	if (sortedPlayerForQueueInfos.length === 0) {
 		return interaction.reply({ content: t.noPlayers, ephemeral: true });
+	}
+
+	enum QueueColor {
+		RANKED_SOLO_5x5 = 0x0099FF, // Bleu for SoloQ
+		RANKED_FLEX_SR = 0xFFD700,  // Gold for Flex
+		RANKED_TFT = 0x8A2BE2       // Purple for TFT
 	}
 
 	const messageToDisplay = new EmbedBuilder()
 		.setTitle(t.title)
-		.setColor(queueType === "RANKED_SOLO_5x5" ? 0x0099FF : 0xFFD700) // Blue for SoloQ, Gold for Flex
+		.setColor(QueueColor[queueType as keyof typeof QueueColor] || 0xFFFFFF) // default to white
 		.setDescription(
 			`${t.description}\n\n` +
-			sortedPlayers.map((player, index) =>
+			sortedPlayerForQueueInfos.map((player, index) =>
 				t.playerLine(
 					index + 1,
-					player.accountnametag,
-					player.region,
-					queueType === "RANKED_SOLO_5x5" ? player.currentSoloQRank! : player.currentFlexRank!,
-					queueType === "RANKED_SOLO_5x5" ? player.currentSoloQTier! : player.currentFlexTier!,
-					queueType === "RANKED_SOLO_5x5" ? player.currentSoloQLP! : player.currentFlexLP!
+					playersInfos.find((value: PlayerInfo) => value.id == player.playerId)!.accountnametag,
+					playersInfos.find((value: PlayerInfo) => value.id == player.playerId)!.region,
+					player.currentRank!,
+					player.currentTier!,
+					player.currentLP!
 				)
 			).join("\n\n")
 		)
-		.setFooter({ text: t.total(sortedPlayers.length) })
+		.setFooter({ text: t.total(sortedPlayerForQueueInfos.length) })
 		.setTimestamp();
 
 	if (isSecondMessage == true) {

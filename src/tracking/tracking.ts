@@ -1,8 +1,9 @@
 import { EmbedBuilder, TextChannel } from 'discord.js';
-import { getAllServer, listAllPlayerForSpecificServer, resetLastDayOfAllPlayer, updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, updatePlayerLastDate, getPlayerForSpecificServer, PlayerInfo, updatePlayerLastDayWinLose } from '../database/databaseHelper';
+import { getAllServer, listAllPlayerForSpecificServer, resetLastDayOfAllPlayer, updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, updatePlayerLastDate, PlayerInfo, updatePlayerLastDayWinLose, getPlayerForQueueInfoForSpecificServer, PlayerForQueueInfo, listAllPlayerForQueueInfoForSpecificServer } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
-import { getGameDetailForCurrentPlayer, getLastMatch, getPlayerRankInfo, PlayerGameInfo } from '../riot/riotHelper';
+import { getLeagueGameDetailForCurrentPlayer, getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, PlayerLeagueGameInfo, getTFTGameDetailForCurrentPlayer, PlayerTFTGameInfo } from '../riot/riotHelper';
 import { client } from '../index';
+import { GameQueueType, ManagedGameQueueType } from './GameQueueType';
 
 export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 	try {
@@ -12,27 +13,29 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 		for (const server of servers) {
 			const currentServerID = server.serverid;
 			const currentServerFlexTracker = server.flextoggle;
+			const currentServerTFTTracker = server.tfttoggle;
 			// Get all the players for the current server
 			const players = await listAllPlayerForSpecificServer(currentServerID);
 
+			// LEAGUE PART
 			// Get match history for each players
 			const matchRequests = players.map(async (player) => {
-				const matchIds = await getLastMatch(player.puuid, player.region, currentServerFlexTracker);
+				const matchIds = await getLastRankedLeagueMatch(player.puuid, player.region, currentServerFlexTracker);
 				return { player, matchIds };
 			});
-			const results = await Promise.all(matchRequests.filter(req => req !== null));
+			const leagueResults = await Promise.all(matchRequests.filter(req => req !== null));
 			// Check if there is a new game to notify
-			for (const result of results) {
+			for (const result of leagueResults) {
 				if (!result) continue;
 				const { player, matchIds } = result;
 				if (player.lastGameID != matchIds[0]) { // New game detected
 					// Get game details
 					const currentGameIdWithRegion = matchIds[0]; // example -> EUW1_7294524077
-					const gameDetailForThePlayer: PlayerGameInfo = await getGameDetailForCurrentPlayer(player.puuid, currentGameIdWithRegion, player.region);
+					const gameDetailForThePlayer: PlayerLeagueGameInfo = await getLeagueGameDetailForCurrentPlayer(player.puuid, currentGameIdWithRegion, player.region);
 					// Get current player rank info
 					const playerRankStats = await getPlayerRankInfo(player.puuid, player.region);
 					// Update current player rank
-					const currentQueueType = gameDetailForThePlayer.isFlex ? "RANKED_FLEX_SR" : "RANKED_SOLO_5x5";
+					const currentQueueType = gameDetailForThePlayer.queueType;
 					if (isTimestampInRecapRange(gameDetailForThePlayer.gameEndTimestamp) == true) {
 						await updatePlayerLastDayWinLose(currentServerID, player.puuid, currentQueueType, gameDetailForThePlayer.win); // Update win/lose
 					}
@@ -48,7 +51,7 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 						}
 					}
 					// Update last game inside database
-					await updatePlayerLastGameId(currentServerID, player.puuid, currentGameIdWithRegion);
+					await updatePlayerLastGameId(currentServerID, player.puuid, currentGameIdWithRegion, ManagedGameQueueType.LEAGUE);
 
 					// Send the notification to the specified channel
 					if (firstRun == true) {
@@ -56,35 +59,91 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 						console.log("first run, don't notify");
 					} else {
 						// Create the message with game detail
-						const updatePlayer = await getPlayerForSpecificServer(currentServerID, player.puuid);
+						const playerForQueueInfo = await getPlayerForQueueInfoForSpecificServer(currentServerID, player.puuid, currentQueueType);
 						const channel = (await client.channels.fetch(server.channelid)) as TextChannel;
 						if (channel != null) {
 							let rank = "";
 							let tier = "Unranked";
 							let lpGain = 0;
 							let updatedLP = 0;
-							if (gameDetailForThePlayer.isFlex == true) {
-								if (updatePlayer.currentFlexRank != null && updatePlayer.currentFlexTier != null && updatePlayer.currentFlexLP != null) {
-									rank = updatePlayer.currentFlexRank;
-									tier = updatePlayer.currentFlexTier;
-									updatedLP = updatePlayer.currentFlexLP;
-									if (updatePlayer.oldFlexRank !== null && updatePlayer.oldFlexTier !== null && updatePlayer.oldFlexLP !== null) {
-										lpGain = calculateLPDifference(updatePlayer.oldFlexRank, updatePlayer.currentFlexRank, updatePlayer.oldFlexTier, updatePlayer.currentFlexTier, updatePlayer.oldFlexLP, updatePlayer.currentFlexLP);
-									}
-								}
-							} else {
-								if (updatePlayer.currentSoloQRank != null && updatePlayer.currentSoloQTier != null && updatePlayer.currentSoloQLP != null) {
-									rank = updatePlayer.currentSoloQRank;
-									tier = updatePlayer.currentSoloQTier;
-									updatedLP = updatePlayer.currentSoloQLP;
-									if (updatePlayer.oldSoloQRank !== null && updatePlayer.oldSoloQTier !== null && updatePlayer.oldSoloQLP !== null) {
-										lpGain = calculateLPDifference(updatePlayer.oldSoloQRank, updatePlayer.currentSoloQRank, updatePlayer.oldSoloQTier, updatePlayer.currentSoloQTier, updatePlayer.oldSoloQLP, updatePlayer.currentSoloQLP);
-									}
+							if (playerForQueueInfo.currentRank != null && playerForQueueInfo.currentTier != null && playerForQueueInfo.currentLP != null) {
+								rank = playerForQueueInfo.currentRank;
+								tier = playerForQueueInfo.currentTier;
+								updatedLP = playerForQueueInfo.currentLP;
+								if (playerForQueueInfo.oldRank !== null && playerForQueueInfo.oldTier !== null && playerForQueueInfo.oldLP !== null) {
+									lpGain = calculateLPDifference(playerForQueueInfo.oldRank, playerForQueueInfo.currentRank, playerForQueueInfo.oldTier, playerForQueueInfo.currentTier, playerForQueueInfo.oldLP, playerForQueueInfo.currentLP);
 								}
 							}
-							sendGameResultMessage(channel, player.accountnametag, gameDetailForThePlayer, rank!, tier!, lpGain!, updatedLP, player.region, currentGameIdWithRegion, gameDetailForThePlayer.customMessage, server.lang);
+							sendLeagueGameResultMessage(channel, player.gameName, player.tagLine, gameDetailForThePlayer, rank, tier, lpGain, updatedLP, player.region, currentGameIdWithRegion, gameDetailForThePlayer.customMessage, server.lang);
 						} else {
 							console.error('❌ Failed send the message, can`t find the channel');
+						}
+					}
+				}
+			}
+
+			// TFT PART
+			if (currentServerTFTTracker == true) {
+				// Get match history for each players
+				const tftMatchRequests = players.map(async (player) => {
+					const matchIds = await getLastTFTMatch(player.puuid, player.region);
+					return { player, matchIds };
+				});
+				const tftResults = await Promise.all(tftMatchRequests.filter(req => req !== null));
+				// Check if there is a new game to notify
+				for (const result of tftResults) {
+					if (!result) continue;
+					const { player, matchIds } = result;
+					if (player.lastGameID != matchIds[0]) { // New game detected
+						// Get game details
+						const currentGameIdWithRegion = matchIds[0]; // example -> EUW1_7294524077
+						const tftGameDetailForThePlayer: PlayerTFTGameInfo = await getTFTGameDetailForCurrentPlayer(player.puuid, currentGameIdWithRegion, player.region);
+						// Get current player rank info
+						const playerRankStats = await getPlayerRankInfo(player.puuid, player.region);
+						// Update current player rank
+						const currentTFTQueueType = GameQueueType.RANKED_TFT;
+						if (isTimestampInRecapRange(tftGameDetailForThePlayer.gameEndTimestamp) == true) {
+							await updatePlayerLastDayWinLose(currentServerID, player.puuid, currentTFTQueueType, (tftGameDetailForThePlayer.placement <= 4) ? true : false); // Update win/lose
+						}
+						for (const playerRankStat of playerRankStats) {
+							if (playerRankStat.queueType === currentTFTQueueType) {
+								const queueType = playerRankStat.queueType;
+								const leaguePoints = playerRankStat.leaguePoints;
+								const rank = playerRankStat.rank;
+								const tier = playerRankStat.tier;
+								// Update inside database
+								const isCurrent = true;
+								await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
+							}
+						}
+						// Update last game inside database
+						await updatePlayerLastGameId(currentServerID, player.puuid, currentGameIdWithRegion, ManagedGameQueueType.TFT);
+
+						// Send the notification to the specified channel
+						if (firstRun == true) {
+							// don't notify
+							console.log("first run, don't notify");
+						} else {
+							// Create the message with game detail
+							const playerForQueueInfo = await getPlayerForQueueInfoForSpecificServer(currentServerID, player.puuid, currentTFTQueueType);
+							const channel = (await client.channels.fetch(server.channelid)) as TextChannel;
+							if (channel != null) {
+								let rank = "";
+								let tier = "Unranked";
+								let lpGain = 0;
+								let updatedLP = 0;
+								if (playerForQueueInfo.currentRank != null && playerForQueueInfo.currentTier != null && playerForQueueInfo.currentLP != null) {
+									rank = playerForQueueInfo.currentRank;
+									tier = playerForQueueInfo.currentTier;
+									updatedLP = playerForQueueInfo.currentLP;
+									if (playerForQueueInfo.oldRank !== null && playerForQueueInfo.oldTier !== null && playerForQueueInfo.oldLP !== null) {
+										lpGain = calculateLPDifference(playerForQueueInfo.oldRank, playerForQueueInfo.currentRank, playerForQueueInfo.oldTier, playerForQueueInfo.currentTier, playerForQueueInfo.oldLP, playerForQueueInfo.currentLP);
+									}
+								}
+								sendTFTGameResultMessage(channel, player.gameName, player.tagLine, tftGameDetailForThePlayer.placement, rank, tier, lpGain, updatedLP, player.region, currentGameIdWithRegion, tftGameDetailForThePlayer.customMessage, server.lang);
+							} else {
+								console.error('❌ Failed send the message, can`t find the channel');
+							}
 						}
 					}
 				}
@@ -96,7 +155,7 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 	}
 };
 
-export const sendGameResultMessage = async (channel: TextChannel, playerName: string, gameInfo: PlayerGameInfo, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
+export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName: string, tagline: string, gameInfo: PlayerLeagueGameInfo, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
 	const translations = {
 		fr: {
 			title: "[📜 Résultat de partie ]",
@@ -107,7 +166,7 @@ export const sendGameResultMessage = async (channel: TextChannel, playerName: st
 			score: "Score",
 			champion: "Champion",
 			queue: "File",
-			queueType: gameInfo.isFlex ? "Flex" : "Solo/Duo", // TODO fix
+			queueType: gameInfo.queueType == GameQueueType.RANKED_FLEX_SR ? "Flex" : "Solo/Duo", // TODO fix
 			timestamp: "Date",
 			date: new Date().toLocaleString("fr-FR", {
 				year: "numeric",
@@ -128,7 +187,7 @@ export const sendGameResultMessage = async (channel: TextChannel, playerName: st
 			score: "Score",
 			champion: "Champion",
 			queue: "Queue",
-			queueType: gameInfo.isFlex ? "Flex" : "Solo/Duo",
+			queueType: gameInfo.queueType == GameQueueType.RANKED_FLEX_SR ? "Flex" : "Solo/Duo",
 			timestamp: "Date",
 			date: new Date().toLocaleString("en-GB", {
 				year: "numeric",
@@ -148,21 +207,115 @@ export const sendGameResultMessage = async (channel: TextChannel, playerName: st
 	const matchUrl = `https://www.leagueofgraphs.com/match/${region.toLocaleLowerCase()}/${currentGameId}`;
 
 	const embed = new EmbedBuilder()
-		.setColor(gameInfo.win ? '#00FF00' : '#FF0000') // grean if win, Red if loose
+		.setColor(gameInfo.win ? '#00FF00' : '#FF0000') // green if win, Red if loose
 		.setTitle(t.title)
 		.setURL(matchUrl)
-		.setDescription(`**${gameInfo.win ? t.win : t.loss}**\n\n${playerName} vient de ${t.lpChange} ${Math.abs(lpChange)} ${t.league} ! **(${tier} ${rank} / ${updatedLP} lp)**`)
+		.setDescription(`**${gameInfo.win ? t.win : t.loss}**\n\n${gameName}#${tagline} vient de ${t.lpChange} ${Math.abs(lpChange)} ${t.league} ! **(${tier} ${rank} / ${updatedLP} lp)**`)
 		.addFields(
 			{ name: t.score, value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },
 			{ name: t.champion, value: gameInfo.championName, inline: true },
 			{ name: t.queue, value: t.queueType, inline: true },
 			{ name: '', value: customMessage ? "*" + customMessage + "*" : "" }
 		)
-		.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/14.3.1/img/champion/${gameInfo.championName}.png`)
+		.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/15.7.1/img/champion/${gameInfo.championName}.png`)
 		.setFooter({ text: `${t.timestamp}: ${t.date}` });
 
 	await channel.send({ embeds: [embed] });
 }
+
+export const sendTFTGameResultMessage = async ( channel: TextChannel, gameName: string, tagline: string, placement: number, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
+	const translations = {
+		fr: {
+			title: "[📜 Résultat TFT ]",
+			win: "Victoire",
+			loss: "Défaite",
+			placement: "Placement",
+			description: (gameName: string, tagline: string, placement: number, lpChange: number, league: string, tier: string, rank: string, updatedLP: number) =>
+			`**${placement <= 4 ? "Top 4" : "Bottom 4"}**\n\n${gameName}#${tagline} vient de ${lpChange > 0 ? "gagner" : "perdre"} ${Math.abs(lpChange)} ${league} ! **(${tier} ${rank} / ${updatedLP} lp)**`,
+			lpChange: lpChange > 0 ? "gagne" : "perd",
+			league: "point(s) de ligue",
+			queue: "Mode",
+			queueType: "TFT Classé",
+			timestamp: "Date",
+			date: new Date().toLocaleString("fr-FR", {
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+				hour: "2-digit",
+				minute: "2-digit",
+				second: "2-digit",
+				timeZone: "Europe/Paris",
+			})
+		},
+		en: {
+			title: "[📜 TFT Match Result ]",
+			win: "Victory",
+			loss: "Defeat",
+			placement: "Placement",
+			description: (gameName: string, tagline: string, placement: number, lpChange: number, league: string, tier: string, rank: string, updatedLP: number) =>
+			`**${placement <= 4 ? "Top 4" : "Bottom 4"}**\n\n${gameName}#${tagline} just ${lpChange > 0 ? "gained" : "lost"} ${Math.abs(lpChange)} ${league}! **(${tier} ${rank} / ${updatedLP} LP)**`,
+			lpChange: lpChange > 0 ? "gained" : "lost",
+			league: "league point(s)",
+			queue: "Queue",
+			queueType: "TFT Ranked",
+			timestamp: "Date",
+			date: new Date().toLocaleString("en-GB", {
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+				hour: "2-digit",
+				minute: "2-digit",
+				second: "2-digit",
+				timeZone: "Europe/London",
+			}).replace(",", " at")
+		}
+	};
+
+	const t = translations[lang as keyof typeof translations];
+
+	const currentGameId = gameIdWithRegion.split("_")[1];
+	const matchUrl = `https://www.leagueofgraphs.com/tft/match/${region.toLowerCase()}/${currentGameId}`;
+
+	const embed = new EmbedBuilder()
+		.setColor(placement === 1 ? '#FFD700' : placement <= 4 ? '#00FF00' : '#FF0000') // Or = 1er, vert = top 4, rouge sinon
+		.setTitle(t.title)
+		.setURL(matchUrl)
+		.setDescription(t.description(gameName, tagline, placement, lpChange, t.league, tier, rank, updatedLP))
+		.addFields(
+			{
+				name: t.placement,
+				value: `${getPlacementBadge(placement)} ${placement}${getOrdinalSuffix(placement, lang)}`,
+				inline: true
+			},
+			{ name: t.queue, value: t.queueType, inline: true },
+			{ name: '\u200B', value: customMessage ? "*" + customMessage + "*" : '\u200B' }
+		)
+		.setFooter({ text: `${t.timestamp}: ${t.date}` });
+
+	await channel.send({ embeds: [embed] });
+};
+
+const getOrdinalSuffix = (placement: number, lang: string): string => {
+	if (lang === "fr") {
+		return placement === 1 ? "er" : "e";
+	} else {
+		const j = placement % 10, k = placement % 100;
+		if (j === 1 && k !== 11) return "st";
+		if (j === 2 && k !== 12) return "nd";
+		if (j === 3 && k !== 13) return "rd";
+		return "th";
+	}
+};
+
+const getPlacementBadge = (place: number): string => {
+	switch (place) {
+		case 1: return "🥇";
+		case 2: return "🥈";
+		case 3: return "🥉";
+		case 4: return "🏅";
+		default: return "❌";
+	}
+};
 
 export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void> => {
 	try {
@@ -193,7 +346,7 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 				if (!result) continue;
 				const { player, playerRankInfos } = result;
 				for (const playerRankStat of playerRankInfos) {
-					const queueType = playerRankStat.queueType;
+					const queueType: GameQueueType = GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType];
 					const leaguePoints = playerRankStat.leaguePoints;
 					const rank = playerRankStat.rank;
 					const tier = playerRankStat.tier;
@@ -202,9 +355,9 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 					await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
 					isCurrent = true;
 					await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
+					// Update the date inside last day player
+					await updatePlayerLastDate(currentServerID, player.puuid, queueType, currentDate);
 				}
-				// Update the date inside last day player
-				await updatePlayerLastDate(currentServerID, player.puuid, currentDate);
 			}
 		}
 	} catch (error) {
@@ -214,28 +367,28 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 };
 
 const calculateLPDifference = (beforeRank: string, afterRank: string, beforeTier: string, afterTier: string, beforeLP: number, afterLP: number): number => {
-    if (!beforeRank || !beforeTier || beforeLP === null || !afterRank || !afterTier || afterLP === null) {
-        return 0; // If any data is null, return 0
-    }
-    const beforeAbsoluteLP = getAbsoluteLP(beforeTier, beforeRank, beforeLP);
-    const afterAbsoluteLP = getAbsoluteLP(afterTier, afterRank, afterLP);
-    
-    return afterAbsoluteLP - beforeAbsoluteLP;
+	if (!beforeRank || !beforeTier || beforeLP === null || !afterRank || !afterTier || afterLP === null) {
+		return 0; // If any data is null, return 0
+	}
+	const beforeAbsoluteLP = getAbsoluteLP(beforeTier, beforeRank, beforeLP);
+	const afterAbsoluteLP = getAbsoluteLP(afterTier, afterRank, afterLP);
+
+	return afterAbsoluteLP - beforeAbsoluteLP;
 };
 
 const getAbsoluteLP = (tier: string, rank: string, lp: number): number => {
 	const tierOrder: string[] = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"];
-    const rankOrder: string[] = ["IV", "III", "II", "I"];
+	const rankOrder: string[] = ["IV", "III", "II", "I"];
 
 	const tierIndex = tierOrder.indexOf(tier);
 	const rankIndex = rankOrder.indexOf(rank);
-	
+
 	if (tierIndex === -1 || rankIndex === -1) return 0; // Safety check for invalid values
-	
+
 	if (tierIndex >= 7) { // MASTER and above have no fixed ranks
-		return 2800 + (tierIndex - 7) * 1000 + lp; 
+		return 2800 + (tierIndex - 7) * 1000 + lp;
 	}
-	
+
 	return tierIndex * 400 + rankIndex * 100 + lp;
 };
 
@@ -253,29 +406,22 @@ export const generateRecapOfTheDay = async (): Promise<void> => {
 			if (channel != null) {
 				// Flex part
 				if (server.flextoggle == true) {
-					const flexChanges: PlayerRecapInfo[] = players.filter(player => player.lastDayFlexWin != null && player.lastDayFlexLose != null && player.lastDayFlexRank != null && player.currentFlexRank != null && player.lastDayFlexTier != null && player.currentFlexTier != null && player.lastDayFlexLP != null && player.currentFlexLP != null) // Remove entries with no win/lose or unranked (didn't play)
-						.map<PlayerRecapInfo>(player => (
-							{
-								player,
-								lpChange: calculateLPDifference(player.lastDayFlexRank!, player.currentFlexRank!, player.lastDayFlexTier!, player.currentFlexTier!, player.lastDayFlexLP!, player.currentFlexLP!)
-							}
-						))
-						.sort((a, b) => b.lpChange - a.lpChange);
-					const isFlex = true;
-					await sendRecapMessage(channel, flexChanges, isFlex, server.lang);
+					const playersFlexInfo = await listAllPlayerForQueueInfoForSpecificServer(currentServerID, GameQueueType.RANKED_FLEX_SR);
+					const flexChanges: PlayerRecapInfo[] = generatePlayerRecapInfo(players, playersFlexInfo);
+					await sendRecapMessage(channel, flexChanges, GameQueueType.RANKED_FLEX_SR, server.lang);
+				}
+
+				// TFT part
+				if (server.tfttoggle == true) {
+					const playersTFTInfo = await listAllPlayerForQueueInfoForSpecificServer(currentServerID, GameQueueType.RANKED_TFT);
+					const tftChanges: PlayerRecapInfo[] = generatePlayerRecapInfo(players, playersTFTInfo);
+					await sendRecapMessage(channel, tftChanges, GameQueueType.RANKED_TFT, server.lang);
 				}
 
 				// Soloq part
-				const soloQChanges: PlayerRecapInfo[] = players.filter(player => player.lastDaySoloQWin != null && player.lastDaySoloQLose != null && player.lastDaySoloQRank != null && player.currentSoloQRank != null && player.lastDaySoloQTier != null && player.currentSoloQTier != null && player.lastDaySoloQLP != null && player.currentSoloQLP != null) // Remove entries with no win/lose or unranked (didn't play)
-					.map<PlayerRecapInfo>(player => (
-						{
-							player,
-							lpChange: calculateLPDifference(player.lastDaySoloQRank!, player.currentSoloQRank!, player.lastDaySoloQTier!, player.currentSoloQTier!, player.lastDaySoloQLP!, player.currentSoloQLP!)
-						}
-					))
-					.sort((a, b) => b.lpChange - a.lpChange);
-				const isFlex = false;
-				await sendRecapMessage(channel, soloQChanges, isFlex, server.lang);
+				const playersSoloQInfo = await listAllPlayerForQueueInfoForSpecificServer(currentServerID, GameQueueType.RANKED_SOLO_5x5);
+				const soloQChanges: PlayerRecapInfo[] = generatePlayerRecapInfo(players, playersSoloQInfo);
+				await sendRecapMessage(channel, soloQChanges, GameQueueType.RANKED_SOLO_5x5, server.lang);
 			} else {
 				console.error('❌ Failed send the message, can`t find the channel');
 			}
@@ -287,11 +433,27 @@ export const generateRecapOfTheDay = async (): Promise<void> => {
 	}
 };
 
-const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: PlayerRecapInfo[], isFlex: boolean, lang: string): Promise<void> => {
+const generatePlayerRecapInfo = (players: PlayerInfo[], playersQueue: PlayerForQueueInfo[]): PlayerRecapInfo[] => {
+	return playersQueue.filter(playerQueue => playerQueue.lastDayWin != null && playerQueue.lastDayLose != null && playerQueue.lastDayRank != null && playerQueue.currentRank != null && playerQueue.lastDayTier != null && playerQueue.currentTier != null && playerQueue.lastDayLP != null && playerQueue.currentLP != null) // Remove entries with no win/lose or unranked (didn't play)
+		.map<PlayerRecapInfo>(playerQueueToMap => (
+			{
+				player: players.find((value: PlayerInfo) => value.id == playerQueueToMap.playerId)!,
+				playerQueue: playerQueueToMap,
+				lpChange: calculateLPDifference(playerQueueToMap.lastDayRank!, playerQueueToMap.currentRank!, playerQueueToMap.lastDayTier!, playerQueueToMap.currentTier!, playerQueueToMap.lastDayLP!, playerQueueToMap.currentLP!)
+			}
+		))
+		.sort((a, b) => b.lpChange - a.lpChange);
+}
+
+const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: PlayerRecapInfo[], queueType: GameQueueType, lang: string): Promise<void> => {
 	if (playerRecapInfos.length > 0) {
 		const translations = {
 			fr: {
-				title: isFlex ? "[📊 Résumé Quotidien Flex]" : "[📈 Résumé Quotidien SoloQ]",
+				title: {
+					[GameQueueType.RANKED_FLEX_SR]: "[📊 Résumé Quotidien Flex]",
+					[GameQueueType.RANKED_SOLO_5x5]: "[📈 Résumé Quotidien SoloQ]",
+					[GameQueueType.RANKED_TFT]: "[📜 Résumé Quotidien TFT]"
+				},
 				league: "LP",
 				wins: "Victoires",
 				losses: "Défaites",
@@ -299,7 +461,11 @@ const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: PlayerRe
 				to: "À"
 			},
 			en: {
-				title: isFlex ? "[📊 Flex Daily Recap]" : "[📈 SoloQ Daily Recap]",
+				title: {
+					[GameQueueType.RANKED_FLEX_SR]: "[📊 Flex Daily Recap]",
+					[GameQueueType.RANKED_SOLO_5x5]: "[📈 SoloQ Daily Recap]",
+					[GameQueueType.RANKED_TFT]: "[📜 TFT Daily Recap]"
+				},
 				league: "LP",
 				wins: "Wins",
 				losses: "Losses",
@@ -309,24 +475,22 @@ const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: PlayerRe
 		};
 
 		const t = translations[lang as keyof typeof translations];
+		const queueTitle = t.title[queueType as keyof typeof t.title];
 
 		const embed = new EmbedBuilder()
-			.setTitle(t.title)
-			.setColor(isFlex ? 'Purple' : 'Blue')
+			.setTitle(queueTitle)
+			.setColor(
+				queueType === GameQueueType.RANKED_FLEX_SR ? 'Purple' :
+				queueType === GameQueueType.RANKED_SOLO_5x5 ? 'Blue' :
+				'Green'
+			)
 			.setDescription(
 				playerRecapInfos.map(entry => {
-					const { accountnametag, currentSoloQTier, currentSoloQRank, currentFlexTier, currentFlexRank, lastDaySoloQTier, lastDaySoloQRank, lastDayFlexTier, lastDayFlexRank, lastDaySoloQWin, lastDaySoloQLose, lastDayFlexWin, lastDayFlexLose, lastDayFlexLP, lastDaySoloQLP, currentFlexLP, currentSoloQLP } = entry.player;
-					const tier = isFlex ? currentFlexTier : currentSoloQTier;
-					const rank = isFlex ? currentFlexRank : currentSoloQRank;
-					const lastTier = isFlex ? lastDayFlexTier : lastDaySoloQTier;
-					const lastRank = isFlex ? lastDayFlexRank : lastDaySoloQRank;
-					const wins = isFlex ? lastDayFlexWin : lastDaySoloQWin;
-					const losses = isFlex ? lastDayFlexLose : lastDaySoloQLose;
-					const lastLP = isFlex ? lastDayFlexLP : lastDaySoloQLP;
-					const currentLP = isFlex ? currentFlexLP : currentSoloQLP;
-					return `**${accountnametag} : ${entry.lpChange > 0 ? '+' : ''}${entry.lpChange} ${t.league}**  
-						🏆 ${t.wins}: **${wins}** | ❌ ${t.losses}: **${losses}** 
-						${t.from}: **${lastTier} ${lastRank} ${lastLP}** ➡️ ${t.to}: **${tier} ${rank} ${currentLP}**`;
+					const { currentTier, currentRank, lastDayTier, lastDayRank, lastDayWin, lastDayLose, lastDayLP, currentLP } = entry.playerQueue;
+					const { gameName, tagLine } = entry.player;
+					return `**${gameName}#${tagLine} : ${entry.lpChange > 0 ? '+' : ''}${entry.lpChange} ${t.league}**  
+						🏆 ${t.wins}: **${lastDayWin}** | ❌ ${t.losses}: **${lastDayLose}** 
+						${t.from}: **${lastDayTier} ${lastDayRank} ${lastDayLP}** ➡️ ${t.to}: **${currentTier} ${currentRank} ${currentLP}**`;
 				}).join('\n\n')
 			);
 
@@ -349,8 +513,8 @@ function isTimestampInRecapRange(timestamp: number): boolean {
 
 	// Manage the last day
 	if (now.getHours() < 6 || (now.getHours() === 6 && now.getMinutes() < 33)) {
-        today8AM.setDate(today8AM.getDate() - 1);
-    }
+		today8AM.setDate(today8AM.getDate() - 1);
+	}
 
 	// Check if the timestamp falls within the range
 	return timestamp >= today8AM.getTime();
@@ -358,5 +522,6 @@ function isTimestampInRecapRange(timestamp: number): boolean {
 
 interface PlayerRecapInfo {
 	player: PlayerInfo;
+	playerQueue: PlayerForQueueInfo;
 	lpChange: number;
 }

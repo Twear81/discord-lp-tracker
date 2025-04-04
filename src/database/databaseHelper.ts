@@ -1,17 +1,18 @@
-import { Player } from './playerModel';
+import { FlexQ, Player, SoloQ, SoloTFT } from './playerModel';
 import { Server } from './serverModel';
 import { AppError, ErrorTypes } from '../error/error';
 import { Model } from 'sequelize';
+import { GameQueueType, ManagedGameQueueType } from '../tracking/GameQueueType';
 
 // SERVER PART
-export const addOrUpdateServer = async (serverId: string, channelId: string, flexToggle: boolean, lang: string): Promise<void> => {
+export const addOrUpdateServer = async (serverId: string, channelId: string, flexToggle: boolean, tftToggle: boolean, lang: string): Promise<void> => {
 	try {
 		const existingServer = await Server.findOne({ where: { serverid: serverId } });
 		if (existingServer) {
-			await existingServer.update({ channelid: channelId, flextoggle: flexToggle, lang });
+			await existingServer.update({ channelid: channelId, flextoggle: flexToggle, tfttoggle: tftToggle, tftdoubletoggle: false, lang: lang });
 			console.log(`The server ${serverId} has been updated`);
 		} else {
-			await Server.create({ serverid: serverId, channelid: channelId, flextoggle: flexToggle, lang });
+			await Server.create({ serverid: serverId, channelid: channelId, flextoggle: flexToggle, tfttoggle: tftToggle, tftdoubletoggle: false, lang: lang });
 			console.log(`The server ${serverId} has been added`);
 		}
 	} catch (error) {
@@ -47,6 +48,21 @@ export const updateFlexToggleServer = async (serverId: string, flexToggle: boole
 	} catch (error) {
 		console.error(`❌ Failed to update the flex toggle for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to update the flex toggle');
+	}
+};
+
+export const updateTFTToggleServer = async (serverId: string, tftToggle: boolean): Promise<void> => {
+	try {
+		const existingServer = await Server.findOne({ where: { serverid: serverId } });
+		if (existingServer) {
+			await existingServer.update({ tfttoggle: tftToggle });
+			// console.log(`The TFT queue watch has been set to ${tftToggle} for server ${serverId}`);
+		} else {
+			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
+		}
+	} catch (error) {
+		console.error(`❌ Failed to update the tft toggle for the serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to update the tft toggle');
 	}
 };
 
@@ -101,16 +117,14 @@ export const deleteServer = async (serverId: string): Promise<void> => {
 };
 
 // PLAYER PART
-export const addPlayer = async (serverId: string, puuid: string, accountName: string, tag: string, region: string): Promise<void> => {
+export const addPlayer = async (serverId: string, puuid: string, tftpuuid: string, accountName: string, tag: string, region: string): Promise<void> => {
 	try {
-		const accountNameTag: string = `${accountName}#${tag}`;
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
-		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid, tftpuuid: tftpuuid } });
 
 		if (existingServer != null) {
 			if (existingPlayer == null) {
-				await Player.create({ serverid: serverId, puuid: puuid, accountnametag: accountNameTag, region: region });
-				// console.log(`The player ${accountNameTag} has been added to the database`);
+				await Player.create({ serverid: serverId, puuid: puuid, tftpuuid: tftpuuid, gameName: accountName, tagLine: tag, region: region });
 			} else {
 				throw new AppError(ErrorTypes.DATABASE_ALREADY_INSIDE, 'Player already exists');
 			}
@@ -125,13 +139,12 @@ export const addPlayer = async (serverId: string, puuid: string, accountName: st
 
 export const deletePlayer = async (serverId: string, accountName: string, tag: string, region: string): Promise<void> => {
 	try {
-		const accountNameTag: string = `${accountName}#${tag}`;
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
-		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, accountNameTag: accountNameTag, region: region } });
+		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId,  gameName: accountName, tagLine: tag, region: region } });
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
-				await Player.destroy({ where: { serverid: serverId, accountNameTag: accountNameTag, region: region } });
+				await Player.destroy({ where: { serverid: serverId,  gameName: accountName, tagLine: tag, region: region } });
 			} else {
 				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 			}
@@ -158,7 +171,7 @@ export const deleteAllPlayersOfServer = async (serverId: string): Promise<void> 
 	}
 };
 
-export const updatePlayerLastGameId = async (serverId: string, puuid: string, lastGameID: string): Promise<void> => {
+export const updatePlayerLastGameId = async (serverId: string, puuid: string, lastGameID: string, managedGameQueueType: ManagedGameQueueType): Promise<void> => {
 	try {
 
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
@@ -166,7 +179,13 @@ export const updatePlayerLastGameId = async (serverId: string, puuid: string, la
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
-				await existingPlayer.update({ lastGameID: lastGameID });
+				if (managedGameQueueType == ManagedGameQueueType.LEAGUE) {
+					await existingPlayer.update({ lastGameID: lastGameID });
+				} else if (managedGameQueueType == ManagedGameQueueType.TFT) {
+					await existingPlayer.update({ lastTFTGameID: lastGameID });
+				} else {
+					throw new AppError(ErrorTypes.MANAGEDGAMEQUEUE_NOT_FOUND, 'ManagedGameQueueType not found');
+				}
 			} else {
 				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 			}
@@ -179,28 +198,15 @@ export const updatePlayerLastGameId = async (serverId: string, puuid: string, la
 	}
 };
 
-export const updatePlayerCurrentOrLastDayRank = async (serverId: string, puuid: string, isCurrent: boolean, queueType: string, leaguePoints: number, rank: string, tier: string): Promise<void> => {
+export const updatePlayerCurrentOrLastDayRank = async (serverId: string, puuid: string, isCurrent: boolean, queueType: GameQueueType, leaguePoints: number, rank: string, tier: string): Promise<void> => {
 	try {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
 		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
-				if (isCurrent == true) {
-					if (queueType === "RANKED_FLEX_SR") {
-						await existingPlayer.update({ oldFlexRank: existingPlayer.dataValues.currentFlexRank, oldFlexTier: existingPlayer.dataValues.currentFlexTier, oldFlexLP: existingPlayer.dataValues.currentFlexLP });
-						await existingPlayer.update({ currentFlexRank: rank, currentFlexTier: tier, currentFlexLP: leaguePoints });
-					} else {
-						await existingPlayer.update({ oldSoloQRank: existingPlayer.dataValues.currentSoloQRank, oldSoloQTier: existingPlayer.dataValues.currentSoloQTier, oldSoloQLP: existingPlayer.dataValues.currentSoloQLP });
-						await existingPlayer.update({ currentSoloQRank: rank, currentSoloQTier: tier, currentSoloQLP: leaguePoints });
-					}
-				} else {
-					if (queueType === "RANKED_FLEX_SR") {
-						await existingPlayer.update({ lastDayFlexRank: rank, lastDayFlexTier: tier, lastDayFlexLP: leaguePoints });
-					} else {
-						await existingPlayer.update({ lastDaySoloQRank: rank, lastDaySoloQTier: tier, lastDaySoloQLP: leaguePoints });
-					}
-				}
+				const playerToUpdate = await findPlayerToUpdate(existingPlayer, queueType);
+				await updatePlayerRank(playerToUpdate, isCurrent, rank, tier, leaguePoints);
 			} else {
 				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 			}
@@ -214,14 +220,58 @@ export const updatePlayerCurrentOrLastDayRank = async (serverId: string, puuid: 
 	}
 };
 
-export const updatePlayerLastDate = async (serverId: string, puuid: string, currentDate: Date): Promise<void> => {
+const findPlayerToUpdate = async (existingPlayer: Model, queueType: GameQueueType): Promise<Model | null> => {
+	const queueModels = {
+		[GameQueueType.RANKED_FLEX_SR]: FlexQ,
+		[GameQueueType.RANKED_SOLO_5x5]: SoloQ,
+		[GameQueueType.RANKED_TFT]: SoloTFT
+	};
+	const model = queueModels[queueType];
+	if (!model) {
+		console.error(`❌ Unknown queue type: ${queueType}`);
+		return null;
+	}
+
+	const playerToUpdate = await model.findOne({ where: { playerId: existingPlayer.dataValues.id } });
+
+	if (!playerToUpdate) {
+		console.warn(`⚠️ No player data found in ${queueType} for playerId ${existingPlayer.dataValues.id}`);
+		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
+	}
+
+	return playerToUpdate;
+};
+
+const updatePlayerRank = async (playerToUpdate: Model | null, isCurrent: boolean, rank: string, tier: string, leaguePoints: number): Promise<void> => {
+	if (!playerToUpdate) return;
+
+	if (isCurrent == true) {
+		await playerToUpdate.update({
+			oldRank: playerToUpdate.dataValues.currentRank,
+			oldTier: playerToUpdate.dataValues.currentTier,
+			oldLP: playerToUpdate.dataValues.currentLP,
+			currentRank: rank,
+			currentTier: tier,
+			currentLP: leaguePoints
+		});
+	} else {
+		await playerToUpdate.update({
+			lastDayRank: rank,
+			lastDayTier: tier,
+			lastDayLP: leaguePoints
+		});
+	}
+};
+
+export const updatePlayerLastDate = async (serverId: string, puuid: string, queueType: GameQueueType, currentDate: Date): Promise<void> => {
 	try {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
 		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
-				await existingPlayer.update({ lastDayDate: currentDate });
+				const playerToUpdate = await findPlayerToUpdate(existingPlayer, queueType);
+				await updatePlayerLastDateDatabase(playerToUpdate, currentDate);
 			} else {
 				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 			}
@@ -234,32 +284,20 @@ export const updatePlayerLastDate = async (serverId: string, puuid: string, curr
 	}
 };
 
-export const updatePlayerLastDayWinLose = async (serverId: string, puuid: string, queueType: string, isWin: boolean): Promise<void> => {
+const updatePlayerLastDateDatabase = async (playerToUpdate: Model | null, currentDate: Date): Promise<void> => {
+	if (!playerToUpdate) return;
+	await playerToUpdate.update({ lastDayDate: currentDate });
+};
+
+export const updatePlayerLastDayWinLose = async (serverId: string, puuid: string, queueType: GameQueueType, isWin: boolean): Promise<void> => {
 	try {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
 		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
-				if (queueType === "RANKED_FLEX_SR") {
-					let lastDayFlexWin: number = existingPlayer.dataValues.lastDayFlexWin != null ? existingPlayer.dataValues.lastDayFlexWin : 0;
-					let lastDayFlexLose: number = existingPlayer.dataValues.lastDayFlexLose != null ? existingPlayer.dataValues.lastDayFlexLose : 0;
-					if (isWin == true) {
-						lastDayFlexWin += 1;
-					} else {
-						lastDayFlexLose += 1;
-					}
-					await existingPlayer.update({ lastDayFlexWin: lastDayFlexWin, lastDayFlexLose: lastDayFlexLose });
-				} else {
-					let lastDaySoloQWin: number = existingPlayer.dataValues.lastDaySoloQWin != null ? existingPlayer.dataValues.lastDaySoloQWin : 0;
-					let lastDaySoloQLose: number = existingPlayer.dataValues.lastDaySoloQLose != null ? existingPlayer.dataValues.lastDaySoloQLose : 0;
-					if (isWin == true) {
-						lastDaySoloQWin += 1;
-					} else {
-						lastDaySoloQLose += 1;
-					}
-					await existingPlayer.update({ lastDaySoloQWin: lastDaySoloQWin, lastDaySoloQLose: lastDaySoloQLose });
-				}
+				const playerToUpdate = await findPlayerToUpdate(existingPlayer, queueType);
+				await updatePlayerLastDayWinLoseDatabase(playerToUpdate, isWin);
 			} else {
 				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 			}
@@ -272,20 +310,31 @@ export const updatePlayerLastDayWinLose = async (serverId: string, puuid: string
 	}
 };
 
-export const updatePlayerInfo = async (serverId: string, player: PlayerInfo, queueType: string, leaguePoints: number, rank: string, tier: string): Promise<void> => {
+const updatePlayerLastDayWinLoseDatabase = async (playerToUpdate: Model | null, isWin: boolean): Promise<void> => {
+	if (!playerToUpdate) return;
+	let lastDayWin: number = playerToUpdate.dataValues.lastDayWin != null ? playerToUpdate.dataValues.lastDayWin : 0;
+	let lastDayLose: number = playerToUpdate.dataValues.lastDayLose != null ? playerToUpdate.dataValues.lastDayLose : 0;
+	if (isWin == true) {
+		lastDayWin += 1;
+	} else {
+		lastDayLose += 1;
+	}
+	await playerToUpdate.update({ lastDayWin: lastDayWin, lastDayLose: lastDayLose });
+};
+
+export const updatePlayerInfoCurrentAndLastForQueueType = async (serverId: string, player: PlayerInfo, queueType: GameQueueType, leaguePoints: number, rank: string, tier: string): Promise<void> => {
 	try {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
 		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: player.puuid } });
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
-				// Update inside database
 				let isCurrent = false;
 				await updatePlayerCurrentOrLastDayRank(serverId, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
 				isCurrent = true;
 				await updatePlayerCurrentOrLastDayRank(serverId, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
 				// Update the date inside last day player
-				await updatePlayerLastDate(serverId, player.puuid, new Date());
+				await updatePlayerLastDate(serverId, player.puuid, queueType, new Date());
 			} else {
 				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 			}
@@ -302,20 +351,21 @@ export const resetLastDayOfAllPlayer = async (): Promise<void> => {
 	try {
 		const existingPlayers: Model[] | null = await Player.findAll();
 		if (existingPlayers != null) {
-			for (const player of existingPlayers) {
-				player.update({
-					lastDaySoloQWin: null,
-					lastDaySoloQLose: null,
-					lastDaySoloQRank: null,
-					lastDaySoloQTier: null,
-					lastDaySoloQLP: null,
-					lastDayFlexWin: null,
-					lastDayFlexLose: null,
-					lastDayFlexRank: null,
-					lastDayFlexTier: null,
-					lastDayFlexLP: null,
-					lastDayDate: null,
-				})
+			for (const existingPlayer of existingPlayers) {
+				// For each on every game queue type
+				Object.values(GameQueueType).forEach(async (queueType: GameQueueType) => {
+					const playerToUpdate = await findPlayerToUpdate(existingPlayer, queueType);
+					if (!playerToUpdate) return;
+					playerToUpdate.update({
+						lastDayWin: null,
+						lastDayLose: null,
+						lastDayRank: null,
+						lastDayTier: null,
+						lastDayLP: null,
+						lastDayDate: null,
+					})
+				});
+				
 			}
 		} else {
 			throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'No players to reset');
@@ -337,12 +387,50 @@ export const listAllPlayerForSpecificServer = async (serverId: string): Promise<
 	}
 };
 
+export const listAllPlayerForQueueInfoForSpecificServer = async (serverId: string, queueType: GameQueueType): Promise<PlayerForQueueInfo[]> => {
+	try {
+		const players = await Player.findAll({ where: { serverId: serverId } });
+		const result: PlayerForQueueInfo[] = [];
+		players.forEach(async player => {
+			const playerToUpdate = await findPlayerToUpdate(player, queueType);
+			if (playerToUpdate != null) {
+				result.push(player.dataValues as PlayerForQueueInfo);
+			} else {
+				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found for listAllPlayerForQueueInfoForSpecificServer');
+			}
+		});
+		return result;
+	} catch (error) {
+		console.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list players');
+	}
+};
+
 export const getPlayerForSpecificServer = async (serverId: string, puuid: string): Promise<PlayerInfo> => {
 	try {
 		const player = await Player.findOne({ where: { serverId: serverId, puuid: puuid } });
 		if (player != null) {
 			const result: PlayerInfo = player.dataValues;
 			return result;
+		}
+		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found for getPlayerForSpecificServer');
+	} catch (error) {
+		console.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list players');
+	}
+};
+
+export const getPlayerForQueueInfoForSpecificServer = async (serverId: string, puuid: string, queueType: GameQueueType): Promise<PlayerForQueueInfo> => {
+	try {
+		const existingPlayer = await Player.findOne({ where: { serverId: serverId, puuid: puuid } });
+		if (existingPlayer != null) {
+			const playerToUpdate = await findPlayerToUpdate(existingPlayer, queueType);
+			if (playerToUpdate != null) {
+				const result: PlayerForQueueInfo = playerToUpdate.dataValues;
+				return result;
+			} else {
+				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found for getPlayerForQueueInfoForSpecificServer');
+			}
 		}
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 	} catch (error) {
@@ -358,68 +446,57 @@ const tierOrder: Record<string, number> = {
 
 const rankOrder: Record<string, number> = { "IV": 1, "III": 2, "II": 3, "I": 4 };
 
-function comparePlayers(a: PlayerInfo, b: PlayerInfo, queueType: string): number {
-	const rankKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQRank" : "currentFlexRank";
-	const tierKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQTier" : "currentFlexTier";
-	const lpKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQLP" : "currentFlexLP";
-
-	const tierA = tierOrder[a[tierKey] || "IRON"] || 0;
-	const tierB = tierOrder[b[tierKey] || "IRON"] || 0;
+function comparePlayers(a: PlayerForQueueInfo, b: PlayerForQueueInfo): number {
+	const tierA = tierOrder[a.currentTier || "IRON"] || 0;
+	const tierB = tierOrder[b.currentTier || "IRON"] || 0;
 
 	if (tierA !== tierB) return tierB - tierA;
 
-	const rankA = rankOrder[a[rankKey] || "IV"] || 0;
-	const rankB = rankOrder[b[rankKey] || "IV"] || 0;
+	const rankA = rankOrder[a.currentRank || "IV"] || 0;
+	const rankB = rankOrder[b.currentRank || "IV"] || 0;
 
 	if (rankA !== rankB) return rankB - rankA;
 
-	const lpA = a[lpKey] || 0;
-	const lpB = b[lpKey] || 0;
+	const lpA = a.currentLP || 0;
+	const lpB = b.currentLP || 0;
 
 	return lpB - lpA;
 }
 
-// Fonction pour trier un tableau de joueurs
-export const sortPlayers = (players: PlayerInfo[], queueType: string): PlayerInfo[] => {
+export const sortPlayersByRank = (players: PlayerForQueueInfo[]): PlayerForQueueInfo[] => {
 	// Don't want null info
 	const filteredPlayers = players.filter(player => {
-		const rankKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQRank" : "currentFlexRank";
-		const tierKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQTier" : "currentFlexTier";
-		const lpKey = queueType === "RANKED_SOLO_5x5" ? "currentSoloQLP" : "currentFlexLP";
-
-		return player[rankKey] !== null && player[tierKey] !== null && player[lpKey] !== null;
+		return player.currentRank !== null && player.currentTier !== null && player.currentLP !== null;
 	});
-	return filteredPlayers.sort((a, b) => comparePlayers(a, b, queueType));
+	return filteredPlayers.sort((a, b) => comparePlayers(a, b));
 }
 
 export interface PlayerInfo {
+	id: number;
 	puuid: string;
 	serverid: string;
-	accountnametag: string;
+	gameName: string;
+	tagLine: string;
 	region: string;
 	lastGameID: string | null;
-	currentSoloQRank: string | null;
-	currentSoloQTier: string | null;
-	currentSoloQLP: number | null;
-	currentFlexRank: string | null;
-	currentFlexTier: string | null;
-	currentFlexLP: number | null;
-	oldSoloQRank: string | null;
-	oldSoloQTier: string | null;
-	oldSoloQLP: number | null;
-	oldFlexRank: string | null;
-	oldFlexTier: string | null;
-	oldFlexLP: number | null;
-	lastDaySoloQWin: number | null;
-	lastDaySoloQLose: number | null;
-	lastDaySoloQRank: string | null;
-	lastDaySoloQTier: string | null;
-	lastDaySoloQLP: number | null;
-	lastDayFlexWin: number | null;
-	lastDayFlexLose: number | null;
-	lastDayFlexRank: string | null;
-	lastDayFlexTier: string | null;
-	lastDayFlexLP: number | null;
+	lastTFTGameID: string | null;
+}
+
+export interface PlayerForQueueInfo {
+	id: number;
+	playerId: number;
+	puuid: string;
+	currentRank: string | null;
+	currentTier: string | null;
+	currentLP: number | null;
+	oldRank: string | null;
+	oldTier: string | null;
+	oldLP: number | null;
+	lastDayWin: number | null;
+	lastDayLose: number | null;
+	lastDayRank: string | null;
+	lastDayTier: string | null;
+	lastDayLP: number | null;
 	lastDayDate: Date | null;
 }
 
@@ -427,5 +504,6 @@ export interface ServerInfo {
 	serverid: string;
 	channelid: string;
 	flextoggle: boolean;
+	tfttoggle: boolean;
 	lang: string;
 }

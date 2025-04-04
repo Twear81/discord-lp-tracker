@@ -2,7 +2,6 @@
 import { DataTypes } from 'sequelize';
 import sequelize from './database';
 
-// Define a Player model (can be any entity you are working with)
 export const Player = sequelize.define('Player', {
 	id: {
 		type: DataTypes.INTEGER,
@@ -13,11 +12,19 @@ export const Player = sequelize.define('Player', {
 		type: DataTypes.STRING,
 		allowNull: false,
 	},
+	tftpuuid: {
+		type: DataTypes.STRING,
+		allowNull: false,
+	},
 	serverid: {
 		type: DataTypes.STRING,
 		allowNull: false,
 	},
-	accountnametag: {
+	gameName: {
+		type: DataTypes.STRING,
+		allowNull: false,
+	},
+	tagLine: {
 		type: DataTypes.STRING,
 		allowNull: false,
 	},
@@ -30,119 +37,94 @@ export const Player = sequelize.define('Player', {
 		allowNull: true,
 		defaultValue: null,
 	},
-	currentSoloQRank: {
+	lastTFTGameID: {
 		type: DataTypes.STRING,
-		allowNull: true,
-		defaultValue: null,
-	},
-	currentSoloQTier: {
-		type: DataTypes.STRING,
-		allowNull: true,
-		defaultValue: null,
-	},
-	currentSoloQLP: {
-		type: DataTypes.NUMBER,
-		allowNull: true,
-		defaultValue: null,
-	},
-	currentFlexRank: {
-		type: DataTypes.STRING,
-		allowNull: true,
-		defaultValue: null,
-	},
-	currentFlexTier: {
-		type: DataTypes.STRING,
-		allowNull: true,
-		defaultValue: null,
-	},
-	currentFlexLP: {
-		type: DataTypes.NUMBER,
-		allowNull: true,
-		defaultValue: null,
-	},
-	oldSoloQRank: {
-		type: DataTypes.STRING,
-		allowNull: true,
-		defaultValue: null,
-	},
-	oldSoloQTier: {
-		type: DataTypes.STRING,
-		allowNull: true,
-		defaultValue: null,
-	},
-	oldSoloQLP: {
-		type: DataTypes.NUMBER,
-		allowNull: true,
-		defaultValue: null,
-	},
-	oldFlexRank: {
-		type: DataTypes.STRING,
-		allowNull: true,
-		defaultValue: null,
-	},
-	oldFlexTier: {
-		type: DataTypes.STRING,
-		allowNull: true,
-		defaultValue: null,
-	},
-	oldFlexLP: {
-		type: DataTypes.NUMBER,
-		allowNull: true,
-		defaultValue: null,
-	},
-	lastDaySoloQWin: {
-		type: DataTypes.NUMBER,
-		allowNull: true,
-		defaultValue: null,
-	},
-	lastDaySoloQLose: {
-		type: DataTypes.NUMBER,
-		allowNull: true,
-		defaultValue: null,
-	},
-	lastDaySoloQRank: {
-		type: DataTypes.STRING,
-		allowNull: true,
-		defaultValue: null,
-	},
-	lastDaySoloQTier: {
-		type: DataTypes.STRING,
-		allowNull: true,
-		defaultValue: null,
-	},
-	lastDaySoloQLP: {
-		type: DataTypes.NUMBER,
-		allowNull: true,
-		defaultValue: null,
-	},
-	lastDayFlexWin: {
-		type: DataTypes.NUMBER,
-		allowNull: true,
-		defaultValue: null,
-	},
-	lastDayFlexLose: {
-		type: DataTypes.NUMBER,
-		allowNull: true,
-		defaultValue: null,
-	},
-	lastDayFlexRank: {
-		type: DataTypes.STRING,
-		allowNull: true,
-		defaultValue: null,
-	},
-	lastDayFlexTier: {
-		type: DataTypes.STRING,
-		allowNull: true,
-		defaultValue: null,
-	},
-	lastDayFlexLP: {
-		type: DataTypes.NUMBER,
-		allowNull: true,
-		defaultValue: null,
-	},
-	lastDayDate: {
-		type: DataTypes.DATE,
 		allowNull: true,
 		defaultValue: null,
 	},
 });
+
+const defineQueueModel = (name: string) => {
+	return sequelize.define(name, {
+		id: {
+			type: DataTypes.INTEGER,
+			autoIncrement: true,
+			primaryKey: true,
+		},
+		playerId: {
+			type: DataTypes.INTEGER,
+			allowNull: false,
+			references: {
+				model: 'Players',
+				key: 'id',
+			},
+			onDelete: 'CASCADE',
+		},
+		puuid: {
+			type: DataTypes.STRING,
+			allowNull: false,
+		},
+		currentRank: {
+			type: DataTypes.STRING,
+			allowNull: true,
+		},
+		currentTier: {
+			type: DataTypes.STRING,
+			allowNull: true,
+		},
+		currentLP: {
+			type: DataTypes.INTEGER,
+			allowNull: true,
+		},
+		oldRank: {
+			type: DataTypes.STRING,
+			allowNull: true,
+		},
+		oldTier: {
+			type: DataTypes.STRING,
+			allowNull: true,
+		},
+		oldLP: {
+			type: DataTypes.INTEGER,
+			allowNull: true,
+		},
+		lastDayWin: {
+			type: DataTypes.INTEGER,
+			allowNull: true,
+		},
+		lastDayLose: {
+			type: DataTypes.INTEGER,
+			allowNull: true,
+		},
+		lastDayRank: {
+			type: DataTypes.STRING,
+			allowNull: true,
+		},
+		lastDayTier: {
+			type: DataTypes.STRING,
+			allowNull: true,
+		},
+		lastDayLP: {
+			type: DataTypes.INTEGER,
+			allowNull: true,
+		},
+		lastDayDate: {
+			type: DataTypes.DATE,
+			allowNull: true,
+			defaultValue: null,
+		},
+	});
+};
+
+export const SoloQ = defineQueueModel('SoloQ');
+export const FlexQ = defineQueueModel('FlexQ');
+export const SoloTFT = defineQueueModel('SoloTFT');
+
+// Associations
+Player.hasOne(SoloQ, { foreignKey: 'playerId', onDelete: 'CASCADE' });
+Player.hasOne(FlexQ, { foreignKey: 'playerId', onDelete: 'CASCADE' });
+Player.hasOne(SoloTFT, { foreignKey: 'playerId', onDelete: 'CASCADE' });
+
+SoloQ.belongsTo(Player, { foreignKey: 'playerId' });
+FlexQ.belongsTo(Player, { foreignKey: 'playerId' });
+SoloTFT.belongsTo(Player, { foreignKey: 'playerId' });

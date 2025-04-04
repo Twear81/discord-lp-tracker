@@ -15,6 +15,16 @@ export const data = new SlashCommandBuilder()
 			.setDescription('Whether or not the flex games are tracked')
 			.setRequired(true)
 	)
+	.addBooleanOption(option =>
+		option.setName('tfttoggle')
+			.setDescription('Whether or not the tft games are tracked')
+			.setRequired(true)
+	)
+	// .addBooleanOption(option =>
+	// 	option.setName('tftdoubletoggle')
+	// 		.setDescription('Whether or not the double tft games are tracked')
+	// 		.setRequired(true)
+	// )
 	.addStringOption(option =>
 		option.setName('lang')
 			.setDescription('The language used by the bot')
@@ -31,9 +41,11 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		const channel = interaction.options.getChannel('channel', true);
 		const channelId: string = channel.id;
 		const flexToggle: boolean = interaction.options.getBoolean('flextoggle', true);
+		const tftToggle: boolean = interaction.options.getBoolean('tfttoggle', true);
+		// const tftDoubleToggle: boolean = interaction.options.getBoolean('tftdoubletoggle', true);
 		const lang: string = interaction.options.getString('lang', true);
 
-		await addOrUpdateServer(serverId, channelId, flexToggle, lang);
+		await addOrUpdateServer(serverId, channelId, flexToggle, tftToggle, lang);
 
 		const flexMessage: string = flexToggle ? 'it will watch for flex game' : 'it will not watch for flex game';
 		await interaction.reply({
