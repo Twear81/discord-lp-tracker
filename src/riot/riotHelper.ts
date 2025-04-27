@@ -315,7 +315,7 @@ function generateLeagueCustomMessage(participant: RiotAPITypes.MatchV5.Participa
 	}
 
 	// If the player don't ward
-	if (participant.visionScore <= 10) {
+	if (participant.visionScore <= 8) {
 		result = addCustomMessage(result, "Ta mere c'est une pute si tu ward ouuuuuuuu ?");
 	}
 
@@ -324,7 +324,19 @@ function generateLeagueCustomMessage(participant: RiotAPITypes.MatchV5.Participa
 		result = addCustomMessage(result, "💀 Maxime approuved 💀");
 	}
 
-	if ((participant.riotIdName.toLowerCase() == "jukeboox81" || participant.riotIdName.toLowerCase() == "baltrou") && participant.win == false) {
+	if (participant.kills >= 9) {
+		result = addCustomMessage(result, "Un massacre !");
+	}
+
+	if (participant.totalDamageDealtToChampions >= 30000) {
+		result = addCustomMessage(result, "Ca fait la bagarre");
+	}
+
+	if (participant.gameEndedInSurrender == true) {
+		result = addCustomMessage(result, "Et ca surrend en plus ...");
+	}
+
+	if ((participant.riotIdName.toLowerCase() === "jukeboox81" || participant.riotIdName.toLowerCase() === "baltrou") && participant.win == false) {
 		result = addCustomMessage(result, "Normal, il est jamais la 💀🐸");
 	}
 
@@ -334,9 +346,16 @@ function generateLeagueCustomMessage(participant: RiotAPITypes.MatchV5.Participa
 function generateTFTCustomMessage(participant: RiotAPITypes.TftMatch.ParticipantDTO): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
 	let result = undefined;
 
-	// If the player play Anivia
 	if (participant.placement >= 7) {
 		result = addCustomMessage(result, "Full chatte hein ...");
+	}
+
+	if (participant.total_damage_to_players >= 200) {
+		result = addCustomMessage(result, "Le massacre !");
+	}
+
+	if ((participant.placement >= 7) && (participant.gold_left >= 25)) {
+		result = addCustomMessage(result, "On est mort avec de la tune en plus ???");
 	}
 
 	return result;
