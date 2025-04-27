@@ -94,7 +94,7 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 				for (const result of tftResults) {
 					if (!result) continue;
 					const { player, matchIds } = result;
-					if (matchIds.length > 0 && player.lastGameID != matchIds[0]) { // New game detected
+					if (matchIds.length > 0 && player.lastTFTGameID != matchIds[0]) { // New game detected
 						// Get game details
 						const currentGameIdWithRegion = matchIds[0]; // example -> EUW1_7294524077
 						const tftGameDetailForThePlayer: PlayerTFTGameInfo = await getTFTGameDetailForCurrentPlayer(player.tftpuuid, currentGameIdWithRegion, player.region);
