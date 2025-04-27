@@ -80,7 +80,7 @@ export async function getTFTSummonerByName(accountName: string, tag: string, reg
 			tagLine: tag,
 		})) as unknown as Promise<RiotAPITypes.Account.AccountDTO>;
 	} catch (error) {
-		console.error(`Error API Riot (getSummonerByName) :`, error);
+		console.error(`Error API Riot (getTFTSummonerByName) :`, error);
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `No player found for ${accountName}#${tag} for region ${region}`);
 	}
 }
@@ -106,7 +106,7 @@ async function getTFTGameDetail(gameID: string, region: string): Promise<RiotAPI
 			matchId: gameID
 		})) as unknown as Promise<RiotAPITypes.TftMatch.MatchDTO>;
 	} catch (error) {
-		console.error(`Error API Riot (getGameDetail) :`, error);
+		console.error(`Error API Riot (getTFTGameDetail) :`, error);
 		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No game detail found for gameID ${gameID} for region ${region}`);
 	}
 }
