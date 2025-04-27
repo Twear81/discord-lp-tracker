@@ -124,7 +124,11 @@ export const addPlayer = async (serverId: string, puuid: string, tftpuuid: strin
 
 		if (existingServer != null) {
 			if (existingPlayer == null) {
-				await Player.create({ serverid: serverId, puuid: puuid, tftpuuid: tftpuuid, gameName: accountName, tagLine: tag, region: region });
+				const player = await Player.create({ serverid: serverId, puuid: puuid, tftpuuid: tftpuuid, gameName: accountName, tagLine: tag, region: region });
+				// Create all sub table entry
+				await SoloQ.create({ playerId: player.dataValues.id, puuid: player.dataValues.puuid });
+				await FlexQ.create({ playerId: player.dataValues.id, puuid: player.dataValues.puuid });
+				await SoloTFT.create({ playerId: player.dataValues.id, puuid: player.dataValues.tftpuuid });
 			} else {
 				throw new AppError(ErrorTypes.DATABASE_ALREADY_INSIDE, 'Player already exists');
 			}
@@ -140,11 +144,11 @@ export const addPlayer = async (serverId: string, puuid: string, tftpuuid: strin
 export const deletePlayer = async (serverId: string, accountName: string, tag: string, region: string): Promise<void> => {
 	try {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
-		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId,  gameName: accountName, tagLine: tag, region: region } });
+		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, gameName: accountName, tagLine: tag, region: region } });
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
-				await Player.destroy({ where: { serverid: serverId,  gameName: accountName, tagLine: tag, region: region } });
+				await Player.destroy({ where: { serverid: serverId, gameName: accountName, tagLine: tag, region: region } });
 			} else {
 				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 			}
@@ -175,7 +179,11 @@ export const updatePlayerLastGameId = async (serverId: string, puuid: string, la
 	try {
 
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
-		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+		let existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+		if (existingPlayer == null) {
+			// TFT puuid
+			existingPlayer = await Player.findOne({ where: { serverid: serverId, tftpuuid: puuid } });
+		}
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
@@ -201,7 +209,11 @@ export const updatePlayerLastGameId = async (serverId: string, puuid: string, la
 export const updatePlayerCurrentOrLastDayRank = async (serverId: string, puuid: string, isCurrent: boolean, queueType: GameQueueType, leaguePoints: number, rank: string, tier: string): Promise<void> => {
 	try {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
-		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+		let existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+		if (existingPlayer == null) {
+			// TFT puuid
+			existingPlayer = await Player.findOne({ where: { serverid: serverId, tftpuuid: puuid } });
+		}
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
@@ -266,7 +278,11 @@ const updatePlayerRank = async (playerToUpdate: Model | null, isCurrent: boolean
 export const updatePlayerLastDate = async (serverId: string, puuid: string, queueType: GameQueueType, currentDate: Date): Promise<void> => {
 	try {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
-		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+		let existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+		if (existingPlayer == null) {
+			// TFT puuid
+			existingPlayer = await Player.findOne({ where: { serverid: serverId, tftpuuid: puuid } });
+		}
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
@@ -292,7 +308,11 @@ const updatePlayerLastDateDatabase = async (playerToUpdate: Model | null, curren
 export const updatePlayerLastDayWinLose = async (serverId: string, puuid: string, queueType: GameQueueType, isWin: boolean): Promise<void> => {
 	try {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
-		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+		let existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
+		if (existingPlayer == null) {
+			// TFT puuid
+			existingPlayer = await Player.findOne({ where: { serverid: serverId, tftpuuid: puuid } });
+		}
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
@@ -325,7 +345,11 @@ const updatePlayerLastDayWinLoseDatabase = async (playerToUpdate: Model | null, 
 export const updatePlayerInfoCurrentAndLastForQueueType = async (serverId: string, player: PlayerInfo, queueType: GameQueueType, leaguePoints: number, rank: string, tier: string): Promise<void> => {
 	try {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
-		const existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: player.puuid } });
+		let existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: player.puuid } });
+		if (existingPlayer == null) {
+			// TFT puuid
+			existingPlayer = await Player.findOne({ where: { serverid: serverId, tftpuuid: player.tftpuuid } });
+		}
 
 		if (existingServer != null) {
 			if (existingPlayer != null) {
@@ -365,7 +389,7 @@ export const resetLastDayOfAllPlayer = async (): Promise<void> => {
 						lastDayDate: null,
 					})
 				});
-				
+
 			}
 		} else {
 			throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'No players to reset');
@@ -408,7 +432,12 @@ export const listAllPlayerForQueueInfoForSpecificServer = async (serverId: strin
 
 export const getPlayerForSpecificServer = async (serverId: string, puuid: string): Promise<PlayerInfo> => {
 	try {
-		const player = await Player.findOne({ where: { serverId: serverId, puuid: puuid } });
+		let player = await Player.findOne({ where: { serverId: serverId, puuid: puuid } });
+		if (player == null) {
+			// TFT puuid
+			player = await Player.findOne({ where: { serverid: serverId, tftpuuid: puuid } });
+		}
+
 		if (player != null) {
 			const result: PlayerInfo = player.dataValues;
 			return result;
@@ -422,7 +451,12 @@ export const getPlayerForSpecificServer = async (serverId: string, puuid: string
 
 export const getPlayerForQueueInfoForSpecificServer = async (serverId: string, puuid: string, queueType: GameQueueType): Promise<PlayerForQueueInfo> => {
 	try {
-		const existingPlayer = await Player.findOne({ where: { serverId: serverId, puuid: puuid } });
+		let existingPlayer = await Player.findOne({ where: { serverId: serverId, puuid: puuid } });
+		if (existingPlayer == null) {
+			// TFT puuid
+			existingPlayer = await Player.findOne({ where: { serverid: serverId, tftpuuid: puuid } });
+		}
+
 		if (existingPlayer != null) {
 			const playerToUpdate = await findPlayerToUpdate(existingPlayer, queueType);
 			if (playerToUpdate != null) {
@@ -474,6 +508,7 @@ export const sortPlayersByRank = (players: PlayerForQueueInfo[]): PlayerForQueue
 export interface PlayerInfo {
 	id: number;
 	puuid: string;
+	tftpuuid: string;
 	serverid: string;
 	gameName: string;
 	tagLine: string;

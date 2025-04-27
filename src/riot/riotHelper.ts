@@ -198,7 +198,7 @@ export async function getLastRankedLeagueMatch(puuid: string, region: string, is
 			})) as unknown as Promise<string[]>;
 		}
 	} catch (error) {
-		console.error(`Error API Riot (getIdsByPuuid) :`, error);
+		console.error(`Error API Riot (getLastRankedLeagueMatch) :`, error);
 		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last match found for player ${puuid} for region ${region}`);
 	}
 }
@@ -215,7 +215,7 @@ export async function getLastTFTMatch(puuid: string, region: string): Promise<st
 			}
 		})) as unknown as Promise<string[]>;
 	} catch (error) {
-		console.error(`Error API Riot (getIdsByPuuid) :`, error);
+		console.error(`Error API Riot (getLastTFTMatch) :`, error);
 		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last tft match found for player ${puuid} for region ${region}`);
 	}
 }
@@ -227,23 +227,15 @@ export async function getPlayerRankInfo(puuid: string, region: string): Promise<
 			region: platformId,
 			puuid: puuid,
 		})) as unknown as RiotAPITypes.Summoner.SummonerDTO;
-
 		const summonerId = summoner.id; // Encrypted summonerId
 
 		const leagueRankedInfo = await limitedRequest(() => riotApi.league.getEntriesBySummonerId({
 			region: platformId,
 			summonerId: summonerId,
 		})) as unknown as RiotAPITypes.League.LeagueEntryDTO[];
-		
-		const tftRankedInfo = await limitedRequest(() => riotApiTFT.tftLeague.getEntriesBySummonerId({
-			region: platformId,
-			summonerId: summonerId,
-		})) as unknown as RiotAPITypes.League.LeagueEntryDTO[]; // Should RiotAPITypes.TftLeague.LeagueEntryDTO[] but it looks the same
-
-		const globalRankedInfo = leagueRankedInfo.concat(tftRankedInfo);
-		return globalRankedInfo;
+		return leagueRankedInfo;
 	} catch (error) {
-		console.error(`Error API Riot (getIdsByPuuid) :`, error);
+		console.error(`Error API Riot (getPlayerRankInfo) :`, error);
 		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last match found for player ${puuid} for region ${region}`);
 	}
 }
@@ -251,13 +243,19 @@ export async function getPlayerRankInfo(puuid: string, region: string): Promise<
 export async function getTFTPlayerRankInfo(puuid: string, region: string): Promise<RiotAPITypes.TftLeague.LeagueEntryDTO[]> {
 	try {
 		const platformId = getLolRegionFromRegionString(region);
+		const summoner = await limitedRequest(() => riotApiTFT.tftSummoner.getByPUUID({
+			region: platformId,
+			puuid: puuid,
+		})) as unknown as RiotAPITypes.Summoner.SummonerDTO;
+		const summonerId = summoner.id; // Encrypted summonerId
+
 		const tftRankedInfo = await limitedRequest(() => riotApiTFT.tftLeague.getEntriesBySummonerId({
 			region: platformId,
-			summonerId: puuid,
+			summonerId: summonerId,
 		})) as unknown as RiotAPITypes.TftLeague.LeagueEntryDTO[];
 		return tftRankedInfo;
 	} catch (error) {
-		console.error(`Error API Riot (getIdsByPuuid) :`, error);
+		console.error(`Error API Riot (getTFTPlayerRankInfo) :`, error);
 		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last match found for player ${puuid} for region ${region}`);
 	}
 }

@@ -40,7 +40,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		const summoner = await getSummonerByName(accountname, tag, region);
 		const playerRankInfos = await getPlayerRankInfo(summoner.puuid, region);
 		const summonerTFT = await getTFTSummonerByName(accountname, tag, region);
-		const playerRankInfosTFT = await getTFTPlayerRankInfo(summoner.puuid, region);
+		const playerRankInfosTFT = await getTFTPlayerRankInfo(summonerTFT.puuid, region);
 
 		await addPlayer(serverId, summoner.puuid, summonerTFT.puuid, summoner.gameName!, summoner.tagLine!, region);
 		const currentPlayer = await getPlayerForSpecificServer(serverId, summoner.puuid);
@@ -66,10 +66,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		// Update last game inside database
 		await updatePlayerLastGameId(serverId, currentPlayer.puuid, currentLeagueGameIdWithRegion, ManagedGameQueueType.LEAGUE);
 		// Get its last tft game
-		const tftMatchIds = await getLastTFTMatch(currentPlayer.puuid, currentPlayer.region);
+		const tftMatchIds = await getLastTFTMatch(currentPlayer.tftpuuid, currentPlayer.region);
 		const currentTFTGameIdWithRegion = tftMatchIds[0]; // example -> EUW1_7294524077
 		// Update last game inside database
-		await updatePlayerLastGameId(serverId, currentPlayer.puuid, currentTFTGameIdWithRegion, ManagedGameQueueType.TFT);
+		await updatePlayerLastGameId(serverId, currentPlayer.tftpuuid, currentTFTGameIdWithRegion, ManagedGameQueueType.TFT);
 
 		await interaction.reply({
 			content: `The player "${accountname}#${tag}" for region ${region} has been added.`,

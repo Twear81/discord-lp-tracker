@@ -1,7 +1,7 @@
 import { EmbedBuilder, TextChannel } from 'discord.js';
 import { getAllServer, listAllPlayerForSpecificServer, resetLastDayOfAllPlayer, updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, updatePlayerLastDate, PlayerInfo, updatePlayerLastDayWinLose, getPlayerForQueueInfoForSpecificServer, PlayerForQueueInfo, listAllPlayerForQueueInfoForSpecificServer } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
-import { getLeagueGameDetailForCurrentPlayer, getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, PlayerLeagueGameInfo, getTFTGameDetailForCurrentPlayer, PlayerTFTGameInfo } from '../riot/riotHelper';
+import { getLeagueGameDetailForCurrentPlayer, getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, PlayerLeagueGameInfo, getTFTGameDetailForCurrentPlayer, PlayerTFTGameInfo, getTFTPlayerRankInfo } from '../riot/riotHelper';
 import { client } from '../index';
 import { GameQueueType, ManagedGameQueueType } from './GameQueueType';
 
@@ -86,7 +86,7 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 			if (currentServerTFTTracker == true) {
 				// Get match history for each players
 				const tftMatchRequests = players.map(async (player) => {
-					const matchIds = await getLastTFTMatch(player.puuid, player.region);
+					const matchIds = await getLastTFTMatch(player.tftpuuid, player.region);
 					return { player, matchIds };
 				});
 				const tftResults = await Promise.all(tftMatchRequests.filter(req => req !== null));
@@ -97,13 +97,13 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 					if (player.lastGameID != matchIds[0]) { // New game detected
 						// Get game details
 						const currentGameIdWithRegion = matchIds[0]; // example -> EUW1_7294524077
-						const tftGameDetailForThePlayer: PlayerTFTGameInfo = await getTFTGameDetailForCurrentPlayer(player.puuid, currentGameIdWithRegion, player.region);
+						const tftGameDetailForThePlayer: PlayerTFTGameInfo = await getTFTGameDetailForCurrentPlayer(player.tftpuuid, currentGameIdWithRegion, player.region);
 						// Get current player rank info
-						const playerRankStats = await getPlayerRankInfo(player.puuid, player.region);
+						const playerRankStats = await getTFTPlayerRankInfo(player.tftpuuid, player.region);
 						// Update current player rank
 						const currentTFTQueueType = GameQueueType.RANKED_TFT;
 						if (isTimestampInRecapRange(tftGameDetailForThePlayer.gameEndTimestamp) == true) {
-							await updatePlayerLastDayWinLose(currentServerID, player.puuid, currentTFTQueueType, (tftGameDetailForThePlayer.placement <= 4) ? true : false); // Update win/lose
+							await updatePlayerLastDayWinLose(currentServerID, player.tftpuuid, currentTFTQueueType, (tftGameDetailForThePlayer.placement <= 4) ? true : false); // Update win/lose
 						}
 						for (const playerRankStat of playerRankStats) {
 							if (playerRankStat.queueType === currentTFTQueueType) {
@@ -113,11 +113,11 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 								const tier = playerRankStat.tier;
 								// Update inside database
 								const isCurrent = true;
-								await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
+								await updatePlayerCurrentOrLastDayRank(currentServerID, player.tftpuuid, isCurrent, queueType, leaguePoints!, rank!, tier!);
 							}
 						}
 						// Update last game inside database
-						await updatePlayerLastGameId(currentServerID, player.puuid, currentGameIdWithRegion, ManagedGameQueueType.TFT);
+						await updatePlayerLastGameId(currentServerID, player.tftpuuid, currentGameIdWithRegion, ManagedGameQueueType.TFT);
 
 						// Send the notification to the specified channel
 						if (firstRun == true) {
@@ -125,7 +125,7 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 							console.log("first run, don't notify");
 						} else {
 							// Create the message with game detail
-							const playerForQueueInfo = await getPlayerForQueueInfoForSpecificServer(currentServerID, player.puuid, currentTFTQueueType);
+							const playerForQueueInfo = await getPlayerForQueueInfoForSpecificServer(currentServerID, player.tftpuuid, currentTFTQueueType);
 							const channel = (await client.channels.fetch(server.channelid)) as TextChannel;
 							if (channel != null) {
 								let rank = "";
