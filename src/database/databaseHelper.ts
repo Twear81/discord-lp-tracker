@@ -415,14 +415,14 @@ export const listAllPlayerForQueueInfoForSpecificServer = async (serverId: strin
 	try {
 		const players = await Player.findAll({ where: { serverId: serverId } });
 		const result: PlayerForQueueInfo[] = [];
-		players.forEach(async player => {
+		for (const player of players) {
 			const playerToUpdate = await findPlayerToUpdate(player, queueType);
 			if (playerToUpdate != null) {
-				result.push(player.dataValues as PlayerForQueueInfo);
+				result.push(playerToUpdate.dataValues as PlayerForQueueInfo);
 			} else {
 				throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found for listAllPlayerForQueueInfoForSpecificServer');
 			}
-		});
+		}
 		return result;
 	} catch (error) {
 		console.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);

@@ -39,10 +39,17 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 			}
 		} else {
 			console.error('Failed to display the leaderboard:', error);
-			await interaction.reply({
-				content: 'Failed to display the leaderboard, contact the dev',
-				flags: MessageFlags.Ephemeral,
-			});
+			if (interaction.replied || interaction.deferred) {
+				await interaction.followUp({
+					content: 'Failed to display the leaderboard, contact the dev',
+					flags: MessageFlags.Ephemeral,
+				});
+			} else {
+				await interaction.reply({
+					content: 'Failed to display the leaderboard, contact the dev',
+					flags: MessageFlags.Ephemeral,
+				});
+			}
 		}
 	}
 }
@@ -60,20 +67,31 @@ const generateLeaderboardMessage = async (interaction: CommandInteraction, lang:
 		"GRANDMASTER": "🔴",
 		"CHALLENGER": "👑"
 	};
+	const titleMapFR: Record<GameQueueType, string> = {
+		[GameQueueType.RANKED_SOLO_5x5]: "🏆 Classement SoloQ",
+		[GameQueueType.RANKED_FLEX_SR]: "🏆 Classement FlexQ",
+		[GameQueueType.RANKED_TFT]: "🏆 Classement TFT",
+	};
+	const titleMapEN: Record<GameQueueType, string> = {
+		[GameQueueType.RANKED_SOLO_5x5]: "🏆 SoloQ Leaderboard",
+		[GameQueueType.RANKED_FLEX_SR]: "🏆 FlexQ Leaderboard",
+		[GameQueueType.RANKED_TFT]: "🏆 TFT Leaderboard",
+	};
+
 	const translations = {
 		fr: {
-			title: queueType === "RANKED_SOLO_5x5" ? "🏆 Classement SoloQ" : "🏆 Classement FlexQ",
+			title: titleMapFR[queueType],
 			description: "Voici les joueurs classés du plus fort au plus faible :",
-			playerLine: (index: number, name: string, tag:string, region: string, rank: string, tier: string, lp: number) =>
-				`**#${index}** **${name}**\n🌍 **Région:** ${region} |  **Rang:** ${rankEmojis[tier] || "🏅"} ${tier} ${rank} | 🔥 **LP:** ${lp}`,
+			playerLine: (index: number, name: string, tag: string, region: string, rank: string, tier: string, lp: number) =>
+				`**#${index}** **${name}#${tag}**\n🌍 **Région:** ${region} |  **Rang:** ${rankEmojis[tier] || "🏅"} ${tier} ${rank} | 🔥 **LP:** ${lp}`,
 			total: (count: number) => `Total: ${count} joueur(s) classés`,
 			noPlayers: "📭 Aucun joueur classé pour le moment !"
 		},
 		en: {
-			title: queueType === "RANKED_SOLO_5x5" ? "🏆 SoloQ Leaderboard" : "🏆 FlexQ Leaderboard",
+			title: titleMapEN[queueType],
 			description: "Here are the players ranked from strongest to weakest:",
-			playerLine: (index: number, name: string, tag:string, region: string, rank: string, tier: string, lp: number) =>
-				`**#${index}** **${name}**\n🌍 **Region:** ${region} | **Rank:** ${rankEmojis[tier] || "🏅"} ${tier} ${rank} | 🔥 **LP:** ${lp}`,
+			playerLine: (index: number, name: string, tag: string, region: string, rank: string, tier: string, lp: number) =>
+				`**#${index}** **${name}#${tag}**\n🌍 **Region:** ${region} | **Rank:** ${rankEmojis[tier] || "🏅"} ${tier} ${rank} | 🔥 **LP:** ${lp}`,
 			total: (count: number) => `Total: ${count} ranked players`,
 			noPlayers: "📭 No ranked players at the moment!"
 		}

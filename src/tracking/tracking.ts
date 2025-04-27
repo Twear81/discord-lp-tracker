@@ -351,6 +351,7 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 					const rank = playerRankStat.rank;
 					const tier = playerRankStat.tier;
 					// Update inside database
+					// TODO Faire le code qui hard reset pas si on est dans la meme journee
 					let isCurrent = false;
 					await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
 					isCurrent = true;
