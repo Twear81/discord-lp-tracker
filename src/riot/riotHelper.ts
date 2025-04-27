@@ -336,7 +336,8 @@ function generateLeagueCustomMessage(participant: RiotAPITypes.MatchV5.Participa
 		result = addCustomMessage(result, "Et ca surrend en plus ...");
 	}
 
-	if ((participant.riotIdName.toLowerCase() === "jukeboox81" || participant.riotIdName.toLowerCase() === "baltrou") && participant.win == false) {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	if (((participant as any).riotIdGameName.toLowerCase() === "jukeboox81" || (participant as any).riotIdGameName.toLowerCase() === "baltrou") && participant.win == false) {
 		result = addCustomMessage(result, "Normal, il est jamais la 💀🐸");
 	}
 
