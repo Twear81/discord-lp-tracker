@@ -223,7 +223,7 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
 	await channel.send({ embeds: [embed] });
 }
 
-export const sendTFTGameResultMessage = async ( channel: TextChannel, gameName: string, tagline: string, placement: number, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
+export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: string, tagline: string, placement: number, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
 	const translations = {
 		fr: {
 			title: "[📜 Résultat TFT ]",
@@ -231,7 +231,7 @@ export const sendTFTGameResultMessage = async ( channel: TextChannel, gameName: 
 			loss: "Défaite",
 			placement: "Placement",
 			description: (gameName: string, tagline: string, placement: number, lpChange: number, league: string, tier: string, rank: string, updatedLP: number) =>
-			`**${placement <= 4 ? "Top 4" : "Bottom 4"}**\n\n${gameName}#${tagline} vient de ${lpChange > 0 ? "gagner" : "perdre"} ${Math.abs(lpChange)} ${league} ! **(${tier} ${rank} / ${updatedLP} lp)**`,
+				`**${placement <= 4 ? "Top 4" : "Bottom 4"}**\n\n${gameName}#${tagline} vient de ${lpChange > 0 ? "gagner" : "perdre"} ${Math.abs(lpChange)} ${league} ! **(${tier} ${rank} / ${updatedLP} lp)**`,
 			lpChange: lpChange > 0 ? "gagne" : "perd",
 			league: "point(s) de ligue",
 			queue: "Mode",
@@ -253,7 +253,7 @@ export const sendTFTGameResultMessage = async ( channel: TextChannel, gameName: 
 			loss: "Defeat",
 			placement: "Placement",
 			description: (gameName: string, tagline: string, placement: number, lpChange: number, league: string, tier: string, rank: string, updatedLP: number) =>
-			`**${placement <= 4 ? "Top 4" : "Bottom 4"}**\n\n${gameName}#${tagline} just ${lpChange > 0 ? "gained" : "lost"} ${Math.abs(lpChange)} ${league}! **(${tier} ${rank} / ${updatedLP} LP)**`,
+				`**${placement <= 4 ? "Top 4" : "Bottom 4"}**\n\n${gameName}#${tagline} just ${lpChange > 0 ? "gained" : "lost"} ${Math.abs(lpChange)} ${league}! **(${tier} ${rank} / ${updatedLP} LP)**`,
 			lpChange: lpChange > 0 ? "gained" : "lost",
 			league: "league point(s)",
 			queue: "Queue",
@@ -347,17 +347,21 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 				const { player, playerRankInfos } = result;
 				for (const playerRankStat of playerRankInfos) {
 					const queueType: GameQueueType = GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType];
-					const leaguePoints = playerRankStat.leaguePoints;
-					const rank = playerRankStat.rank;
-					const tier = playerRankStat.tier;
-					// Update inside database
-					// TODO Faire le code qui hard reset pas si on est dans la meme journee
-					let isCurrent = false;
-					await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
-					isCurrent = true;
-					await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
-					// Update the date inside last day player
-					await updatePlayerLastDate(currentServerID, player.puuid, queueType, currentDate);
+					const leaguePoints: number = playerRankStat.leaguePoints;
+					const rank: string = playerRankStat.rank;
+					const tier: string = playerRankStat.tier;
+					const playerQueueInfo: PlayerForQueueInfo = await getPlayerForQueueInfoForSpecificServer(currentServerID, player.puuid, queueType);
+					// Only update rank info when we are outside the lastDay window
+					const shouldUpdate = playerQueueInfo.lastDayDate == null || !isTimestampInRecapRange(playerQueueInfo.lastDayDate.valueOf());
+					if (shouldUpdate == true) {
+						// Update current and lastDay
+						let isCurrent = false;
+						await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
+						isCurrent = true;
+						await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
+						// Update the date inside last day player
+						await updatePlayerLastDate(currentServerID, player.puuid, queueType, currentDate);
+					}
 				}
 			}
 		}
@@ -482,8 +486,8 @@ const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: PlayerRe
 			.setTitle(queueTitle)
 			.setColor(
 				queueType === GameQueueType.RANKED_FLEX_SR ? 'Purple' :
-				queueType === GameQueueType.RANKED_SOLO_5x5 ? 'Blue' :
-				'Green'
+					queueType === GameQueueType.RANKED_SOLO_5x5 ? 'Blue' :
+						'Green'
 			)
 			.setDescription(
 				playerRecapInfos.map(entry => {
@@ -510,15 +514,15 @@ function isTimestampInRecapRange(timestamp: number): boolean {
 	const now = new Date();
 
 	// Set 06:33 AM today
-	const today8AM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 33, 0, 0);
+	const today6am33 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 33, 0, 0);
 
 	// Manage the last day
 	if (now.getHours() < 6 || (now.getHours() === 6 && now.getMinutes() < 33)) {
-		today8AM.setDate(today8AM.getDate() - 1);
+		today6am33.setDate(today6am33.getDate() - 1);
 	}
 
 	// Check if the timestamp falls within the range
-	return timestamp >= today8AM.getTime();
+	return timestamp >= today6am33.getTime();
 }
 
 interface PlayerRecapInfo {
