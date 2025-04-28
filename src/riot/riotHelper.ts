@@ -155,6 +155,9 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 				result = {
 					gameEndTimestamp: tftGameDetail.info.game_datetime,
 					placement: participant.placement,
+					principalTrait: getMainTrait(participant.traits),
+					traits: participant.traits,
+					units: participant.units,
 					customMessage: undefined
 				};
 
@@ -347,8 +350,16 @@ function generateLeagueCustomMessage(participant: RiotAPITypes.MatchV5.Participa
 function generateTFTCustomMessage(participant: RiotAPITypes.TftMatch.ParticipantDTO): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
 	let result = undefined;
 
-	if (participant.placement >= 7) {
+	if (participant.placement == 1) {
+		result = addCustomMessage(result, "SIUUUU !");
+	}
+
+	if (participant.placement == 7) {
 		result = addCustomMessage(result, "Full chatte hein ...");
+	}
+
+	if (participant.placement == 8) {
+		result = addCustomMessage(result, "Arrete de chialer stp ...");
 	}
 
 	if (participant.total_damage_to_players >= 200) {
@@ -360,6 +371,24 @@ function generateTFTCustomMessage(participant: RiotAPITypes.TftMatch.Participant
 	}
 
 	return result;
+}
+
+function getMainTrait(traits: RiotAPITypes.TftMatch.TraitDTO[]): string | null {
+    if (!traits || traits.length === 0) return null;
+
+    // Filtrer les traits inutiles (par exemple les "TFT7_TrainerTrait" qui peuvent avoir num_units mais pas être vraiment joués)
+    const filteredTraits = traits.filter(trait => trait.tier_current > 0);
+
+    if (filteredTraits.length === 0) return null;
+
+    // Trier par nombre d'unités, puis par style décroissant
+    filteredTraits.sort((a, b) => {
+        if (b.num_units !== a.num_units) return b.num_units - a.num_units;
+        if ((b.style ?? 0) !== (a.style ?? 0)) return (b.style ?? 0) - (a.style ?? 0);
+        return 0;
+    });
+
+    return filteredTraits[0].name;
 }
 
 function addCustomMessage(finalString: string | undefined, newString: string): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
@@ -386,6 +415,9 @@ export interface PlayerLeagueGameInfo {
 export interface PlayerTFTGameInfo {
 	gameEndTimestamp: number;
 	placement: number;
+	principalTrait: string | null;
+	traits: RiotAPITypes.TftMatch.TraitDTO[];
+	units: RiotAPITypes.TftMatch.UnitDTO[];
 	customMessage: string | undefined;
 }
 

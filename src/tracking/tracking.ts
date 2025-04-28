@@ -140,7 +140,7 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 										lpGain = calculateLPDifference(playerForQueueInfo.oldRank, playerForQueueInfo.currentRank, playerForQueueInfo.oldTier, playerForQueueInfo.currentTier, playerForQueueInfo.oldLP, playerForQueueInfo.currentLP);
 									}
 								}
-								sendTFTGameResultMessage(channel, player.gameName, player.tagLine, tftGameDetailForThePlayer.placement, rank, tier, lpGain, updatedLP, player.region, currentGameIdWithRegion, tftGameDetailForThePlayer.customMessage, server.lang);
+								sendTFTGameResultMessage(channel, player.gameName, player.tagLine, tftGameDetailForThePlayer.placement, tftGameDetailForThePlayer.principalTrait, rank, tier, lpGain, updatedLP, player.region, currentGameIdWithRegion, tftGameDetailForThePlayer.customMessage, server.lang);
 							} else {
 								console.error('❌ Failed send the message, can`t find the channel');
 							}
@@ -223,7 +223,7 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
 	await channel.send({ embeds: [embed] });
 }
 
-export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: string, tagline: string, placement: number, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
+export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: string, tagline: string, placement: number, mainTrait: string | null, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
 	const translations = {
 		fr: {
 			title: "[📜 Résultat TFT ]",
@@ -236,6 +236,7 @@ export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: s
 			league: "point(s) de ligue",
 			queue: "Mode",
 			queueType: "TFT Classé",
+			mainTrait: "Trait Principal",
 			timestamp: "Date",
 			date: new Date().toLocaleString("fr-FR", {
 				year: "numeric",
@@ -258,6 +259,7 @@ export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: s
 			league: "league point(s)",
 			queue: "Queue",
 			queueType: "TFT Ranked",
+			mainTrait: "Main Trait",
 			timestamp: "Date",
 			date: new Date().toLocaleString("en-GB", {
 				year: "numeric",
@@ -289,8 +291,13 @@ export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: s
 			},
 			{ name: t.queue, value: t.queueType, inline: true },
 			{ name: '\u200B', value: customMessage ? "*" + customMessage + "*" : '\u200B' }
-		)
-		.setFooter({ text: `${t.timestamp}: ${t.date}` });
+		);
+
+		if (mainTrait) {
+			embed.addFields({ name: t.mainTrait, value: `**${mainTrait}**`, inline: true });
+		}
+		
+		embed.setFooter({ text: `${t.timestamp}: ${t.date}` });
 
 	await channel.send({ embeds: [embed] });
 };
