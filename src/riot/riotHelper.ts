@@ -388,7 +388,7 @@ function getMainTrait(traits: RiotAPITypes.TftMatch.TraitDTO[]): string | null {
         return 0;
     });
 
-    return filteredTraits[0].name;
+    return filteredTraits[0].name.replace(/^TFT\d+_/, ''); // enlève "TFT14_", "TFT13_", etc.
 }
 
 function addCustomMessage(finalString: string | undefined, newString: string): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
