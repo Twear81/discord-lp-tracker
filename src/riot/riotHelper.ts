@@ -158,6 +158,8 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 					principalTrait: getMainTrait(participant.traits),
 					traits: participant.traits,
 					units: participant.units,
+					win: (participant.placement <= 4) ? true : false,
+					queueType: GameQueueType.RANKED_TFT,
 					customMessage: undefined
 				};
 
@@ -418,6 +420,8 @@ export interface PlayerTFTGameInfo {
 	principalTrait: string | null;
 	traits: RiotAPITypes.TftMatch.TraitDTO[];
 	units: RiotAPITypes.TftMatch.UnitDTO[];
+	win: boolean;
+	queueType: GameQueueType;
 	customMessage: string | undefined;
 }
 

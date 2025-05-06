@@ -101,9 +101,9 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 						// Get current player rank info
 						const playerRankStats = await getTFTPlayerRankInfo(player.tftpuuid, player.region);
 						// Update current player rank
-						const currentTFTQueueType = GameQueueType.RANKED_TFT;
+						const currentTFTQueueType = tftGameDetailForThePlayer.queueType;
 						if (isTimestampInRecapRange(tftGameDetailForThePlayer.gameEndTimestamp) == true) {
-							await updatePlayerLastDayWinLose(currentServerID, player.tftpuuid, currentTFTQueueType, (tftGameDetailForThePlayer.placement <= 4) ? true : false); // Update win/lose
+							await updatePlayerLastDayWinLose(currentServerID, player.tftpuuid, currentTFTQueueType, tftGameDetailForThePlayer.win); // Update win/lose
 						}
 						for (const playerRankStat of playerRankStats) {
 							if (playerRankStat.queueType === currentTFTQueueType) {

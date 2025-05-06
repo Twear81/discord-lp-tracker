@@ -540,5 +540,6 @@ export interface ServerInfo {
 	channelid: string;
 	flextoggle: boolean;
 	tfttoggle: boolean;
+	tftdoubletoggle: boolean;
 	lang: string;
 }
