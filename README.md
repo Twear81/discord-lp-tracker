@@ -9,6 +9,9 @@ The bot uses Riot APIs:
 - `summoner`
 - `account`
 - `league`
+- `tft-summoner-v1`
+- `tft-match-v1`
+- `tft-league-v1`
 
 ### 🛠️ Technologies
 The bot is built using:
@@ -20,15 +23,19 @@ The bot is built using:
 - **@fightmegg/riot-api**
 
 ## 🚀 Features
-✅ Sends a daily recap of tracked players' ranked performance every morning  
-✅ Sends a summary after every ranked SoloQ/Flex game played by a tracked player  
-✅ Leaderboard feature   
+- ✅ Real-time match tracking (SoloQ, Flex, TFT)
+- ✅ Daily performance recap for tracked players
+- ✅ Leaderboard support
+- ✅ Toggle tracking per game mode (Flex / TFT)
+- ✅ Multilingual: English & French  
 
 ## 📌 Bot Usage Guide
 Welcome! Here are the commands to use the bot properly:
 
 ### 🔹 Initialization
 - `/init` : Initializes the bot for your server.
+- `/flextoggle` : Toggle Flex queue Tracking for your server.
+- `/tfttoggle` : Toggle TFT queue Tracking for your server.
 
 ### 🔹 Adding Players
 - `/addplayer accountname:<name> tag:<tag> region:<region>` : Adds a player to the tracking list.
@@ -50,7 +57,7 @@ Welcome! Here are the commands to use the bot properly:
 
 ## 📦 Installation
 ```bash
-git clone https://github.com/yourusername/discord-lp-tracker.git
+git clone https://github.com/@twear81/discord-lp-tracker.git
 cd discord-lp-tracker
 npm install
 ```
@@ -61,12 +68,14 @@ Set up the required environment variables:
 export DISCORD_TOKEN=your_discord_bot_token
 export DISCORD_CLIENTID=your_discord_clientid
 export RIOT_API=your_riot_api_key
+export RIOT_API_TFT=your_riot_api_tft_key
 ```
 Alternatively, you can use a `.env` file:
 ```env
 DISCORD_TOKEN=your_discord_bot_token
 DISCORD_CLIENTID=your_discord_clientid
 RIOT_API=your_riot_api_key
+RIOT_API_TFT=your_riot_api_tft_key
 ```
 Then, run the bot:
 ```bash
