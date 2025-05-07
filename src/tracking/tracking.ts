@@ -293,11 +293,11 @@ export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: s
 			{ name: '\u200B', value: customMessage ? "*" + customMessage + "*" : '\u200B' }
 		);
 
-		if (mainTrait) {
-			embed.addFields({ name: t.mainTrait, value: `**${mainTrait}**`, inline: true });
-		}
-		
-		embed.setFooter({ text: `${t.timestamp}: ${t.date}` });
+	if (mainTrait) {
+		embed.addFields({ name: t.mainTrait, value: `**${mainTrait}**`, inline: true });
+	}
+
+	embed.setFooter({ text: `${t.timestamp}: ${t.date}` });
 
 	await channel.send({ embeds: [embed] });
 };
@@ -345,29 +345,35 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 
 			// Get player rank info for each players
 			const playerRankStats = players.map(async (player) => {
-				const playerRankInfos = await getPlayerRankInfo(player.puuid, player.region);
-				return { player, playerRankInfos };
+				const [playerRankInfo, playerTFTRankInfo] = await Promise.all([
+					getPlayerRankInfo(player.puuid, player.region),
+					getTFTPlayerRankInfo(player.tftpuuid, player.region)
+				]);
+				const combinedRankInfos = [...playerRankInfo, ...playerTFTRankInfo];
+				return { player, combinedRankInfos };
 			});
 			const results = await Promise.all(playerRankStats.filter(req => req !== null));
 			for (const result of results) {
 				if (!result) continue;
-				const { player, playerRankInfos } = result;
-				for (const playerRankStat of playerRankInfos) {
-					const queueType: GameQueueType = GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType];
-					const leaguePoints: number = playerRankStat.leaguePoints;
-					const rank: string = playerRankStat.rank;
-					const tier: string = playerRankStat.tier;
-					const playerQueueInfo: PlayerForQueueInfo = await getPlayerForQueueInfoForSpecificServer(currentServerID, player.puuid, queueType);
-					// Only update rank info when we are outside the lastDay window
-					const shouldUpdate = playerQueueInfo.lastDayDate == null || !isTimestampInRecapRange(playerQueueInfo.lastDayDate.valueOf());
-					if (shouldUpdate == true) {
-						// Update current and lastDay
-						let isCurrent = false;
-						await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
-						isCurrent = true;
-						await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
-						// Update the date inside last day player
-						await updatePlayerLastDate(currentServerID, player.puuid, queueType, currentDate);
+				const { player, combinedRankInfos } = result;
+				for (const playerRankStat of combinedRankInfos) {
+					if (playerRankStat.leaguePoints != undefined && playerRankStat.rank != undefined && playerRankStat.tier != undefined) {
+						const queueType: GameQueueType = GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType];
+						const leaguePoints: number = playerRankStat.leaguePoints;
+						const rank: string = playerRankStat.rank;
+						const tier: string = playerRankStat.tier;
+						const playerQueueInfo: PlayerForQueueInfo = await getPlayerForQueueInfoForSpecificServer(currentServerID, player.puuid, queueType);
+						// Only update rank info when we are outside the lastDay window
+						const shouldUpdate = playerQueueInfo.lastDayDate == null || !isTimestampInRecapRange(playerQueueInfo.lastDayDate.valueOf());
+						if (shouldUpdate == true) {
+							// Update current and lastDay
+							let isCurrent = false;
+							await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
+							isCurrent = true;
+							await updatePlayerCurrentOrLastDayRank(currentServerID, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
+							// Update the date inside last day player
+							await updatePlayerLastDate(currentServerID, player.puuid, queueType, currentDate);
+						}
 					}
 				}
 			}
