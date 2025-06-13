@@ -181,7 +181,7 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
 
 	const currentGameId = gameIdWithRegion.split("_")[1];
 	const matchUrl = `https://www.leagueofgraphs.com/match/${region.toLowerCase()}/${currentGameId}#participant${gameInfo.participantNumber}`;
-	const dpmUrl = `https://dpm.lol/${gameName}-${tagline}`;
+	const dpmUrl = `https://dpm.lol/${encodeURI(gameName)}-${tagline}`;
 
 	const embed = new EmbedBuilder()
 		.setColor(gameInfo.win ? '#00FF00' : '#FF0000')
