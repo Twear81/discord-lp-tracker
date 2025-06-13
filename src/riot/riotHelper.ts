@@ -3,6 +3,25 @@ import { AppError, ErrorTypes } from "../error/error";
 import dotenv from 'dotenv';
 import Bottleneck from "bottleneck";
 import { GameQueueType } from "../tracking/GameQueueType";
+type PingKeys =
+	| "basicPings"
+	| "allInPings"
+	| "assistMePings"
+	| "baitPings"
+	| "enemyMissingPings"
+	| "enemyVisionPings"
+	| "holdPings"
+	| "needVisionPings"
+	| "onMyWayPings"
+	| "pushPings"
+	| "retreatPings"
+	| "visionClearedPings"
+	| "visionPings";
+
+type ParticipantWithPings = RiotAPITypes.MatchV5.ParticipantDTO & {
+	[key in PingKeys]?: number;
+};
+
 
 dotenv.config();
 
@@ -113,12 +132,22 @@ async function getTFTGameDetail(gameID: string, region: string): Promise<RiotAPI
 
 export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string): Promise<PlayerLeagueGameInfo> {
 	try {
-		const gameDetail = await getGameDetail(gameID, region);
+		const gameDetail: RiotAPITypes.MatchV5.MatchDTO = await getGameDetail(gameID, region);
 		// Parse the gameDetail to get data for the specific player
 		let result: PlayerLeagueGameInfo | null = null;
+		let participantNumber = 0;
 		for (const participant of gameDetail.info.participants) {
+			participantNumber++;
 			if (participant.puuid == puuid) {
 				result = {
+					gameDurationSeconds: gameDetail.info.gameDuration,
+					totalCS: participant.totalMinionsKilled,
+					damage: participant.totalDamageDealtToChampions,
+					visionScore: participant.visionScore,
+					pings: getTotalPings(participant),
+					scoreRating: computeNormalizedRoleScore(participant),
+					teamLuck: getTeamLuckFromMatch(gameDetail, puuid),
+					participantNumber: participantNumber,
 					gameEndTimestamp: gameDetail.info.gameEndTimestamp,
 					assists: participant.assists,
 					deaths: participant.deaths,
@@ -147,7 +176,7 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 
 export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string): Promise<PlayerTFTGameInfo> {
 	try {
-		const tftGameDetail = await getTFTGameDetail(gameID, region);
+		const tftGameDetail: RiotAPITypes.TftMatch.MatchDTO = await getTFTGameDetail(gameID, region);
 		// Parse the gameDetail to get data for the specific player
 		let result: PlayerTFTGameInfo | null = null;
 		for (const participant of tftGameDetail.info.participants) {
@@ -376,21 +405,109 @@ function generateTFTCustomMessage(participant: RiotAPITypes.TftMatch.Participant
 }
 
 function getMainTrait(traits: RiotAPITypes.TftMatch.TraitDTO[]): string | null {
-    if (!traits || traits.length === 0) return null;
+	if (!traits || traits.length === 0) return null;
 
-    // Filtrer les traits inutiles (par exemple les "TFT7_TrainerTrait" qui peuvent avoir num_units mais pas être vraiment joués)
-    const filteredTraits = traits.filter(trait => trait.tier_current > 0);
+	// Filtrer les traits inutiles (par exemple les "TFT7_TrainerTrait" qui peuvent avoir num_units mais pas être vraiment joués)
+	const filteredTraits = traits.filter(trait => trait.tier_current > 0);
 
-    if (filteredTraits.length === 0) return null;
+	if (filteredTraits.length === 0) return null;
 
-    // Trier par nombre d'unités, puis par style décroissant
-    filteredTraits.sort((a, b) => {
-        if (b.num_units !== a.num_units) return b.num_units - a.num_units;
-        if ((b.style ?? 0) !== (a.style ?? 0)) return (b.style ?? 0) - (a.style ?? 0);
-        return 0;
-    });
+	// Trier par nombre d'unités, puis par style décroissant
+	filteredTraits.sort((a, b) => {
+		if (b.num_units !== a.num_units) return b.num_units - a.num_units;
+		if ((b.style ?? 0) !== (a.style ?? 0)) return (b.style ?? 0) - (a.style ?? 0);
+		return 0;
+	});
 
-    return filteredTraits[0].name.replace(/^TFT\d+_/, ''); // enlève "TFT14_", "TFT13_", etc.
+	return filteredTraits[0].name.replace(/^TFT\d+_/, ''); // enlève "TFT14_", "TFT13_", etc.
+}
+
+function getTotalPings(participant: ParticipantWithPings): number {
+	const pingKeys: PingKeys[] = [
+		"basicPings",
+		"allInPings",
+		"assistMePings",
+		"baitPings",
+		"enemyMissingPings",
+		"enemyVisionPings",
+		"holdPings",
+		"needVisionPings",
+		"onMyWayPings",
+		"pushPings",
+		"retreatPings",
+		"visionClearedPings",
+		"visionPings",
+	];
+
+	return pingKeys.reduce((sum, key) => {
+		const value = participant[key];
+		return sum + (typeof value === "number" ? value : 0);
+	}, 0);
+}
+
+function getTeamLuckFromMatch(match: RiotAPITypes.MatchV5.MatchDTO, puuid: string): string {
+	const participant = match.info.participants.find((p: RiotAPITypes.MatchV5.ParticipantDTO) => p.puuid === puuid);
+	if (!participant) return "Unknown";
+
+	const playerTeamId = participant.teamId;
+
+	const teammates = match.info.participants.filter(
+		(p: RiotAPITypes.MatchV5.ParticipantDTO) => p.teamId === playerTeamId
+	);
+
+	const scores = teammates.map(computeNormalizedRoleScore);
+	const playerIndex = teammates.findIndex((p: RiotAPITypes.MatchV5.ParticipantDTO) => p.puuid === puuid);
+	const playerScore = scores[playerIndex];
+
+	const avgTeammatesScore =
+		(scores.reduce((a, b) => a + b, 0) - playerScore) / (scores.length - 1);
+
+	const diff = playerScore - avgTeammatesScore;
+
+	// Seuils basés sur 100
+	if (diff >= 30) return "Insane";
+	if (diff >= 20) return "Very good";
+	if (diff >= 10) return "Good";
+	if (diff >= -10) return "Average";
+	if (diff >= -20) return "Bad";
+	return "Terrible";
+}
+
+function computeNormalizedRoleScore(p: RiotAPITypes.MatchV5.ParticipantDTO): number {
+	const MAX_ROLE_SCORE = {
+		UTILITY: 800,
+		JUNGLE: 1500,
+		TOP: 1800,
+		MIDDLE: 2000,
+		BOTTOM: 2000,
+	};
+	const role = p.teamPosition || "UNKNOWN";
+	const dmg = p.challenges?.damagePerMinute ?? 0;
+	const kp = p.challenges?.killParticipation ?? 0;
+	const vision = p.visionScore ?? 0;
+	const kda = (p.kills + p.assists) / Math.max(1, p.deaths);
+
+	let rawScore: number;
+
+	switch (role) {
+		case "UTILITY":
+			rawScore = vision * 2 + kp * 100 + kda * 50;
+			break;
+		case "JUNGLE":
+			rawScore = dmg * 1.5 + kp * 80 + kda * 40;
+			break;
+		case "TOP":
+		case "MIDDLE":
+		case "BOTTOM":
+			rawScore = dmg * 2 + kp * 50 + kda * 30;
+			break;
+		default:
+			rawScore = dmg + kp * 80 + kda * 50 + vision;
+	}
+
+	const maxScore = MAX_ROLE_SCORE[role as keyof typeof MAX_ROLE_SCORE] ?? 1500;
+	const normalized = Math.min((rawScore / maxScore) * 100, 100); // Cap à 100
+	return normalized;
 }
 
 function addCustomMessage(finalString: string | undefined, newString: string): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
@@ -404,11 +521,19 @@ function addCustomMessage(finalString: string | undefined, newString: string): s
 
 export interface PlayerLeagueGameInfo {
 	gameEndTimestamp: number;
+	gameDurationSeconds: number;
+	totalCS: number;
 	assists: number;
 	deaths: number;
 	kills: number;
+	damage: number;
+	visionScore: number;
+	pings: number;
+	scoreRating: number;
+	teamLuck: string;
 	championId: number;
 	championName: string;
+	participantNumber: number;
 	win: boolean;
 	queueType: GameQueueType;
 	customMessage: string | undefined;

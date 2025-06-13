@@ -161,64 +161,57 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
 			title: "[📜 Résultat de partie ]",
 			win: "Victoire",
 			loss: "Défaite",
-			lpChange: lpChange > 0 ? "gagner" : "perdre",
-			league: "point(s) de ligue",
-			score: "Score",
-			champion: "Champion",
-			queue: "File",
-			queueType: gameInfo.queueType == GameQueueType.RANKED_FLEX_SR ? "Flex" : "Solo/Duo", // TODO fix
+			lpChange: lpChange > 0 ? "a gagné" : "a perdu",
 			timestamp: "Date",
-			date: new Date().toLocaleString("fr-FR", {
-				year: "numeric",
-				month: "long",
-				day: "numeric",
-				hour: "2-digit",
-				minute: "2-digit",
-				second: "2-digit",
-				timeZone: "Europe/Paris",
-			})
+			teamLuck: "Chance de l’équipe",
 		},
 		en: {
 			title: "[📜 Match Result ]",
 			win: "Victory",
 			loss: "Defeat",
-			lpChange: lpChange > 0 ? "gained" : "lost",
-			league: "league point(s)",
-			score: "Score",
-			champion: "Champion",
-			queue: "Queue",
-			queueType: gameInfo.queueType == GameQueueType.RANKED_FLEX_SR ? "Flex" : "Solo/Duo",
+			lpChange: lpChange > 0 ? "won" : "lost",
 			timestamp: "Date",
-			date: new Date().toLocaleString("en-GB", {
-				year: "numeric",
-				month: "long",
-				day: "numeric",
-				hour: "2-digit",
-				minute: "2-digit",
-				second: "2-digit",
-				timeZone: "Europe/London", // Change selon ton besoin
-			}).replace(",", " at")
-		}
+			teamLuck: "Team luck",
+		},
 	};
 
 	const t = translations[lang as keyof typeof translations];
+	const durationMinutes = gameInfo.gameDurationSeconds / 60;
+	const csPerMin = gameInfo.totalCS / durationMinutes;
+	const dmgPerMin = gameInfo.damage / durationMinutes;
+	const visionPerMin = gameInfo.visionScore / durationMinutes;
 
 	const currentGameId = gameIdWithRegion.split("_")[1];
-	const matchUrl = `https://www.leagueofgraphs.com/match/${region.toLocaleLowerCase()}/${currentGameId}`;
+	const matchUrl = `https://www.leagueofgraphs.com/match/${region.toLowerCase()}/${currentGameId}#participant${gameInfo.participantNumber}`;
+	const dpmUrl = `https://dpm.lol/${gameName}-${tagline}`;
 
 	const embed = new EmbedBuilder()
-		.setColor(gameInfo.win ? '#00FF00' : '#FF0000') // green if win, Red if loose
+		.setColor(gameInfo.win ? '#00FF00' : '#FF0000')
 		.setTitle(t.title)
 		.setURL(matchUrl)
-		.setDescription(`**${gameInfo.win ? t.win : t.loss}**\n\n${gameName}#${tagline} vient de ${t.lpChange} ${Math.abs(lpChange)} ${t.league} ! **(${tier} ${rank} / ${updatedLP} lp)**`)
+		.setAuthor({ name: `${gameName}#${tagline}` })
+		.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/15.7.1/img/champion/${gameInfo.championName}.png`)
+		.setDescription(`**${gameName} ${t.lpChange} ${Math.abs(lpChange)} LP (${tier} ${rank} – ${updatedLP} LP)**`)
 		.addFields(
-			{ name: t.score, value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },
-			{ name: t.champion, value: gameInfo.championName, inline: true },
-			{ name: t.queue, value: t.queueType, inline: true },
+			{ name: 'KDA', value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },
+			{ name: 'Time', value: `${Math.floor(durationMinutes)}:${(gameInfo.gameDurationSeconds % 60).toString().padStart(2, '0')}`, inline: true },
+			{ name: 'Score', value: `${gameInfo.scoreRating.toFixed(2)}`, inline: true },
+			{ name: 'CS/m', value: csPerMin.toFixed(1), inline: true },
+			{ name: 'Pings', value: `${gameInfo.pings}`, inline: true },
+			{ name: 'DMG', value: `${(gameInfo.damage / 1000).toFixed(1)}K (${Math.round(dmgPerMin)}/min)`, inline: true },
+			{ name: 'Vision score/m', value: visionPerMin.toFixed(2), inline: true },
+			{ name: t.teamLuck, value: gameInfo.teamLuck, inline: true },
 			{ name: '', value: customMessage ? "*" + customMessage + "*" : "" }
 		)
-		.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/15.7.1/img/champion/${gameInfo.championName}.png`)
-		.setFooter({ text: `${t.timestamp}: ${t.date}` });
+		.setFooter({
+			text: `${dpmUrl}\n${t.timestamp}: ${new Date().toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
+				year: 'numeric',
+				month: 'long',
+				day: 'numeric',
+				hour: '2-digit',
+				minute: '2-digit',
+			})}`,
+		});
 
 	await channel.send({ embeds: [embed] });
 }
