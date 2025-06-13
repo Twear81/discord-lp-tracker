@@ -204,13 +204,13 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
 		)
 		.addFields(
 			{
-				name: "Profile",
-				value: `[Profile](${dpmUrl})`,
+				name: '',
+				value: `[DPM](${dpmUrl})`,
 				inline: false
 			}
 		)
 		.setFooter({
-			text: `${dpmUrl}\nDate: ${new Date().toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
+			text: `Date: ${new Date().toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
 				year: 'numeric',
 				month: 'long',
 				day: 'numeric',
