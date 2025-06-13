@@ -337,7 +337,7 @@ function generateLeagueCustomMessage(participant: RiotAPITypes.MatchV5.Participa
 		result = addCustomMessage(result, "Ca fait la bagarre");
 	}
 
-	if (participant.gameEndedInSurrender == true) {
+	if (participant.gameEndedInSurrender == true && participant.win == false) {
 		result = addCustomMessage(result, "Et ca surrend en plus ...");
 	}
 
