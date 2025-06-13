@@ -130,7 +130,7 @@ async function getTFTGameDetail(gameID: string, region: string): Promise<RiotAPI
 	}
 }
 
-export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string): Promise<PlayerLeagueGameInfo> {
+export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string, lang: string): Promise<PlayerLeagueGameInfo> {
 	try {
 		const gameDetail: RiotAPITypes.MatchV5.MatchDTO = await getGameDetail(gameID, region);
 		// Parse the gameDetail to get data for the specific player
@@ -145,8 +145,8 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 					damage: participant.totalDamageDealtToChampions,
 					visionScore: participant.visionScore,
 					pings: getTotalPings(participant),
-					scoreRating: computeNormalizedRoleScore(participant),
-					teamLuck: getTeamLuckFromMatch(gameDetail, puuid),
+					scoreRating: computePlayerScore(participant, gameDetail.info.participants, gameDetail.info.gameDuration),
+					teamLevel: getTeamLevelFromMatch(gameDetail.info.participants, gameDetail.info.gameDuration, puuid, lang),
 					participantNumber: participantNumber,
 					gameEndTimestamp: gameDetail.info.gameEndTimestamp,
 					assists: participant.assists,
@@ -445,17 +445,17 @@ function getTotalPings(participant: ParticipantWithPings): number {
 	}, 0);
 }
 
-function getTeamLuckFromMatch(match: RiotAPITypes.MatchV5.MatchDTO, puuid: string): string {
-	const participant = match.info.participants.find((p: RiotAPITypes.MatchV5.ParticipantDTO) => p.puuid === puuid);
+function getTeamLevelFromMatch(participants: RiotAPITypes.MatchV5.ParticipantDTO[], gameDurationSeconds: number, puuid: string, lang: string): string {
+	const participant = participants.find((p: RiotAPITypes.MatchV5.ParticipantDTO) => p.puuid === puuid);
 	if (!participant) return "Unknown";
 
 	const playerTeamId = participant.teamId;
 
-	const teammates = match.info.participants.filter(
+	const teammates = participants.filter(
 		(p: RiotAPITypes.MatchV5.ParticipantDTO) => p.teamId === playerTeamId
 	);
 
-	const scores = teammates.map(computeNormalizedRoleScore);
+	const scores =  participants.map((p: RiotAPITypes.MatchV5.ParticipantDTO, index: number, array: RiotAPITypes.MatchV5.ParticipantDTO[]) => computePlayerScore(p, array, gameDurationSeconds));
 	const playerIndex = teammates.findIndex((p: RiotAPITypes.MatchV5.ParticipantDTO) => p.puuid === puuid);
 	const playerScore = scores[playerIndex];
 
@@ -465,52 +465,138 @@ function getTeamLuckFromMatch(match: RiotAPITypes.MatchV5.MatchDTO, puuid: strin
 	const diff = playerScore - avgTeammatesScore;
 
 	// Seuils basés sur 100
-	if (diff >= 30) return "Insane";
-	if (diff >= 20) return "Very good";
-	if (diff >= 10) return "Good";
-	if (diff >= -10) return "Average";
-	if (diff >= -20) return "Bad";
-	return "Terrible";
+	if (lang === 'fr') {
+		if (diff >= 30) return "🧠 T1";
+		if (diff >= 20) return "🔥 Très solide";
+		if (diff >= 10) return "👍 Plutôt bon";
+		if (diff >= -10) return "😐 Moyen";
+		if (diff >= -20) return "🫠 Faiblards";
+		return "🤡 Dégueulasse";
+	}
+	if (diff >= 30) return "🧠 T1";
+	if (diff >= 20) return "🔥 Really solid";
+	if (diff >= 10) return "👍 Decent";
+	if (diff >= -10) return "😐 Meh";
+	if (diff >= -20) return "🫠 Weak";
+	return "🤡 Awful";
 }
 
-function computeNormalizedRoleScore(p: RiotAPITypes.MatchV5.ParticipantDTO): number {
-	const MAX_ROLE_SCORE = {
-		UTILITY: 800,
-		JUNGLE: 1500,
-		TOP: 1800,
-		MIDDLE: 2000,
-		BOTTOM: 2000,
+function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlayers: RiotAPITypes.MatchV5.ParticipantDTO[], gameDurationSeconds: number): number {
+	const minutes = gameDurationSeconds / 60;
+	const role = player.teamPosition || "UNKNOWN";
+
+	// Pré-calculs du joueur
+	const stats = {
+		kills: player.kills,
+		deaths: player.deaths,
+		assists: player.assists,
+		csPerMin: player.totalMinionsKilled / minutes,
+		goldPerMin: player.goldEarned / minutes,
+		dmgPerMin: player.totalDamageDealtToChampions / minutes,
+		visionPerMin: player.visionScore / minutes,
+		firstBlood: player.firstBloodKill ? 1 : 0
 	};
-	const role = p.teamPosition || "UNKNOWN";
-	const dmg = p.challenges?.damagePerMinute ?? 0;
-	const kp = p.challenges?.killParticipation ?? 0;
-	const vision = p.visionScore ?? 0;
-	const kda = (p.kills + p.assists) / Math.max(1, p.deaths);
 
-	let rawScore: number;
+	// Valeurs maximales globales
+	const maxStats = {
+		kills: Math.max(...allPlayers.map(p => p.kills)),
+		deaths: Math.max(...allPlayers.map(p => p.deaths)),
+		assists: Math.max(...allPlayers.map(p => p.assists)),
+		csPerMin: Math.max(...allPlayers.map(p => p.totalMinionsKilled / minutes)),
+		goldPerMin: Math.max(...allPlayers.map(p => p.goldEarned / minutes)),
+		dmgPerMin: Math.max(...allPlayers.map(p => p.totalDamageDealtToChampions / minutes)),
+		visionPerMin: Math.max(...allPlayers.map(p => p.visionScore / minutes)),
+		firstBlood: 1
+	};
 
-	switch (role) {
-		case "UTILITY":
-			rawScore = vision * 2 + kp * 100 + kda * 50;
-			break;
-		case "JUNGLE":
-			rawScore = dmg * 1.5 + kp * 80 + kda * 40;
-			break;
-		case "TOP":
-		case "MIDDLE":
-		case "BOTTOM":
-			rawScore = dmg * 2 + kp * 50 + kda * 30;
-			break;
-		default:
-			rawScore = dmg + kp * 80 + kda * 50 + vision;
+	// Ratios (entre 0 et 1, ou 1 = parfait)
+	const ratios = {
+		kills: stats.kills / maxStats.kills,
+		deaths: maxStats.deaths === 0 ? 1 : 1 - stats.deaths / maxStats.deaths,
+		assists: stats.assists / maxStats.assists,
+		csPerMin: stats.csPerMin / maxStats.csPerMin,
+		goldPerMin: stats.goldPerMin / maxStats.goldPerMin,
+		dmgPerMin: stats.dmgPerMin / maxStats.dmgPerMin,
+		visionPerMin: stats.visionPerMin / maxStats.visionPerMin,
+		firstBlood: stats.firstBlood
+	};
+
+	// Pondération : chaque stat compte pour X points
+	type weights = {
+		kills: number,
+		deaths: number,
+		assists: number,
+		csPerMin: number,
+		goldPerMin: number,
+		dmgPerMin: number,
+		visionPerMin: number,
+		firstBlood: number
+	};
+	const roleBasedWeights: Record<string, weights> = {
+		TOP: {
+			kills: 15,
+			deaths: 15,
+			assists: 10,
+			csPerMin: 20,
+			goldPerMin: 15,
+			dmgPerMin: 15,
+			visionPerMin: 5,
+			firstBlood: 5
+		},
+		JUNGLE: {
+			kills: 15,
+			deaths: 10,
+			assists: 15,
+			csPerMin: 10,
+			goldPerMin: 15,
+			dmgPerMin: 10,
+			visionPerMin: 15,
+			firstBlood: 10
+		},
+		MIDDLE: {
+			kills: 20,
+			deaths: 10,
+			assists: 10,
+			csPerMin: 15,
+			goldPerMin: 15,
+			dmgPerMin: 20,
+			visionPerMin: 5,
+			firstBlood: 5
+		},
+		BOTTOM: {
+			kills: 20,
+			deaths: 10,
+			assists: 10,
+			csPerMin: 20,
+			goldPerMin: 15,
+			dmgPerMin: 15,
+			visionPerMin: 5,
+			firstBlood: 5
+		},
+		UTILITY: {
+			kills: 5,
+			deaths: 10,
+			assists: 25,
+			csPerMin: 0,
+			goldPerMin: 10,
+			dmgPerMin: 10,
+			visionPerMin: 30,
+			firstBlood: 10
+		}
+	};
+
+	let totalScore = 0;
+	for (const key in ratios) {
+		const ratio = (ratios as never)[key];
+		const weight: number = (roleBasedWeights[role] as never)[key];
+		totalScore += ratio * weight;
 	}
 
-	const maxScore = MAX_ROLE_SCORE[role as keyof typeof MAX_ROLE_SCORE] ?? 1500;
-	const normalized = Math.min((rawScore / maxScore) * 100, 100); // Cap à 100
-	return normalized;
+	// Round sur 100
+	return Math.round(totalScore);
 }
 
-function addCustomMessage(finalString: string | undefined, newString: string): string | undefined { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
+function addCustomMessage(finalString: string | undefined, newString: string): string { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
 	if (finalString == undefined) {
 		finalString = newString;
 	} else {
@@ -530,7 +616,7 @@ export interface PlayerLeagueGameInfo {
 	visionScore: number;
 	pings: number;
 	scoreRating: number;
-	teamLuck: string;
+	teamLevel: string;
 	championId: number;
 	championName: string;
 	participantNumber: number;

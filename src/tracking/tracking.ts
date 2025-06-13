@@ -31,7 +31,7 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 				if (matchIds.length > 0 && player.lastGameID != matchIds[0]) { // New game detected
 					// Get game details
 					const currentGameIdWithRegion = matchIds[0]; // example -> EUW1_7294524077
-					const gameDetailForThePlayer: PlayerLeagueGameInfo = await getLeagueGameDetailForCurrentPlayer(player.puuid, currentGameIdWithRegion, player.region);
+					const gameDetailForThePlayer: PlayerLeagueGameInfo = await getLeagueGameDetailForCurrentPlayer(player.puuid, currentGameIdWithRegion, player.region, server.lang);
 					// Get current player rank info
 					const playerRankStats = await getPlayerRankInfo(player.puuid, player.region);
 					// Update current player rank
@@ -162,16 +162,14 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
 			win: "Victoire",
 			loss: "Défaite",
 			lpChange: lpChange > 0 ? "a gagné" : "a perdu",
-			timestamp: "Date",
-			teamLuck: "Chance de l’équipe",
+			teamLevel: "Niveau de l’équipe",
 		},
 		en: {
 			title: "[📜 Match Result ]",
 			win: "Victory",
 			loss: "Defeat",
 			lpChange: lpChange > 0 ? "won" : "lost",
-			timestamp: "Date",
-			teamLuck: "Team luck",
+			teamLevel: "Team level",
 		},
 	};
 
@@ -200,11 +198,19 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
 			{ name: 'Pings', value: `${gameInfo.pings}`, inline: true },
 			{ name: 'DMG', value: `${(gameInfo.damage / 1000).toFixed(1)}K (${Math.round(dmgPerMin)}/min)`, inline: true },
 			{ name: 'Vision score/m', value: visionPerMin.toFixed(2), inline: true },
-			{ name: t.teamLuck, value: gameInfo.teamLuck, inline: true },
+			{ name: t.teamLevel, value: gameInfo.teamLevel, inline: true },
+			{ name: 'Queue', value: gameInfo.queueType == GameQueueType.RANKED_FLEX_SR ? "Flex" : "Solo/Duo", inline: true },
 			{ name: '', value: customMessage ? "*" + customMessage + "*" : "" }
 		)
+		.addFields(
+			{
+				name: "Profile",
+				value: `[Profile](${dpmUrl})`,
+				inline: false
+			}
+		)
 		.setFooter({
-			text: `${dpmUrl}\n${t.timestamp}: ${new Date().toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
+			text: `${dpmUrl}\nDate: ${new Date().toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
 				year: 'numeric',
 				month: 'long',
 				day: 'numeric',
