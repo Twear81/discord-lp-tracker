@@ -162,14 +162,12 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
 			win: "Victoire",
 			loss: "Défaite",
 			lpChange: lpChange > 0 ? "a gagné" : "a perdu",
-			teamLevel: "Niveau de l’équipe",
 		},
 		en: {
 			title: "[📜 Match Result ]",
 			win: "Victory",
 			loss: "Defeat",
 			lpChange: lpChange > 0 ? "won" : "lost",
-			teamLevel: "Team level",
 		},
 	};
 
@@ -198,7 +196,7 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
 			{ name: 'Pings', value: `${gameInfo.pings}`, inline: true },
 			{ name: 'DMG', value: `${(gameInfo.damage / 1000).toFixed(1)}K (${Math.round(dmgPerMin)}/min)`, inline: true },
 			{ name: 'Vision score/m', value: visionPerMin.toFixed(2), inline: true },
-			{ name: t.teamLevel, value: gameInfo.teamLevel, inline: true },
+			{ name: 'Team Rank', value: gameInfo.teamRank, inline: true },
 			{ name: 'Queue', value: gameInfo.queueType == GameQueueType.RANKED_FLEX_SR ? "Flex" : "Solo/Duo", inline: true },
 			{ name: '', value: customMessage ? "*" + customMessage + "*" : "" }
 		)

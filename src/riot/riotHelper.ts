@@ -146,7 +146,7 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 					visionScore: participant.visionScore,
 					pings: getTotalPings(participant),
 					scoreRating: computePlayerScore(participant, gameDetail.info.participants, gameDetail.info.gameDuration),
-					teamLevel: getTeamLevelFromMatch(gameDetail.info.participants, gameDetail.info.gameDuration, puuid, lang),
+					teamRank: getTeamLevelFromMatch(gameDetail.info.participants, gameDetail.info.gameDuration, puuid, lang),
 					participantNumber: participantNumber,
 					gameEndTimestamp: gameDetail.info.gameEndTimestamp,
 					assists: participant.assists,
@@ -449,36 +449,40 @@ function getTeamLevelFromMatch(participants: RiotAPITypes.MatchV5.ParticipantDTO
 	const participant = participants.find((p: RiotAPITypes.MatchV5.ParticipantDTO) => p.puuid === puuid);
 	if (!participant) return "Unknown";
 
+	const scores = participants.map((p: RiotAPITypes.MatchV5.ParticipantDTO, index: number, array: RiotAPITypes.MatchV5.ParticipantDTO[]) => computePlayerScore(p, array, gameDurationSeconds));
+
 	const playerTeamId = participant.teamId;
+	const teammateIndex: Array<number> = [];
+	for (let index = 0; index < participants.length; index++) {
+		if (participants[index].teamId === playerTeamId) {
+			teammateIndex.push(index);
+		}
+	}
+	const teammatesWithScores = teammateIndex.map(i => ({
+		participant: participants[i],
+		score: scores[i],
+	}));
 
-	const teammates = participants.filter(
-		(p: RiotAPITypes.MatchV5.ParticipantDTO) => p.teamId === playerTeamId
-	);
-
-	const scores =  participants.map((p: RiotAPITypes.MatchV5.ParticipantDTO, index: number, array: RiotAPITypes.MatchV5.ParticipantDTO[]) => computePlayerScore(p, array, gameDurationSeconds));
-	const playerIndex = teammates.findIndex((p: RiotAPITypes.MatchV5.ParticipantDTO) => p.puuid === puuid);
-	const playerScore = scores[playerIndex];
-
-	const avgTeammatesScore =
-		(scores.reduce((a, b) => a + b, 0) - playerScore) / (scores.length - 1);
-
-	const diff = playerScore - avgTeammatesScore;
+	const sortedTeammates = teammatesWithScores.sort((a, b) => b.score - a.score);
+	const currentPlayerPositionInTheTeam = sortedTeammates.findIndex(obj => obj.participant.puuid === participant.puuid);
 
 	// Seuils basés sur 100
 	if (lang === 'fr') {
-		if (diff >= 30) return "🧠 T1";
-		if (diff >= 20) return "🔥 Très solide";
-		if (diff >= 10) return "👍 Plutôt bon";
-		if (diff >= -10) return "😐 Moyen";
-		if (diff >= -20) return "🫠 Faiblards";
-		return "🤡 Dégueulasse";
+		switch (currentPlayerPositionInTheTeam) {
+			case 0: return "🥇 MVP";
+			case 1: return "🥈 Solide";
+			case 2: return "🫥 Invisible";
+			case 3: return "🐢 Traîné";
+			default: return "🤡 Ancre";
+		}
 	}
-	if (diff >= 30) return "🧠 T1";
-	if (diff >= 20) return "🔥 Really solid";
-	if (diff >= 10) return "👍 Decent";
-	if (diff >= -10) return "😐 Meh";
-	if (diff >= -20) return "🫠 Weak";
-	return "🤡 Awful";
+	switch (currentPlayerPositionInTheTeam) {
+		case 0: return "🥇 MVP";
+		case 1: return "🥈 Solid";
+		case 2: return "🫥 Invisible";
+		case 3: return "🐢 Dragged";
+		default: return "🤡 Anchor";
+	}
 }
 
 function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlayers: RiotAPITypes.MatchV5.ParticipantDTO[], gameDurationSeconds: number): number {
@@ -509,18 +513,6 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 		firstBlood: 1
 	};
 
-	// Ratios (entre 0 et 1, ou 1 = parfait)
-	const ratios = {
-		kills: stats.kills / maxStats.kills,
-		deaths: maxStats.deaths === 0 ? 1 : 1 - stats.deaths / maxStats.deaths,
-		assists: stats.assists / maxStats.assists,
-		csPerMin: stats.csPerMin / maxStats.csPerMin,
-		goldPerMin: stats.goldPerMin / maxStats.goldPerMin,
-		dmgPerMin: stats.dmgPerMin / maxStats.dmgPerMin,
-		visionPerMin: stats.visionPerMin / maxStats.visionPerMin,
-		firstBlood: stats.firstBlood
-	};
-
 	// Pondération : chaque stat compte pour X points
 	type weights = {
 		kills: number,
@@ -535,65 +527,81 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 	const roleBasedWeights: Record<string, weights> = {
 		TOP: {
 			kills: 15,
-			deaths: 15,
+			deaths: -20,
 			assists: 10,
 			csPerMin: 20,
 			goldPerMin: 15,
 			dmgPerMin: 15,
 			visionPerMin: 5,
-			firstBlood: 5
+			firstBlood: 3
 		},
 		JUNGLE: {
-			kills: 15,
-			deaths: 10,
+			kills: 10,
+			deaths: -15,
 			assists: 15,
 			csPerMin: 10,
 			goldPerMin: 15,
-			dmgPerMin: 10,
-			visionPerMin: 15,
-			firstBlood: 10
+			dmgPerMin: 17,
+			visionPerMin: 10,
+			firstBlood: 4
 		},
 		MIDDLE: {
 			kills: 20,
-			deaths: 10,
+			deaths: -20,
 			assists: 10,
 			csPerMin: 15,
-			goldPerMin: 15,
+			goldPerMin: 10,
 			dmgPerMin: 20,
-			visionPerMin: 5,
-			firstBlood: 5
+			visionPerMin: 3,
+			firstBlood: 2
 		},
 		BOTTOM: {
 			kills: 20,
-			deaths: 10,
+			deaths: -15,
 			assists: 10,
 			csPerMin: 20,
 			goldPerMin: 15,
-			dmgPerMin: 15,
-			visionPerMin: 5,
-			firstBlood: 5
+			dmgPerMin: 20,
+			visionPerMin: 1,
+			firstBlood: 2
 		},
 		UTILITY: {
 			kills: 5,
-			deaths: 10,
-			assists: 25,
-			csPerMin: 0,
+			deaths: -10,
+			assists: 30,
+			csPerMin: 1,
 			goldPerMin: 10,
 			dmgPerMin: 10,
-			visionPerMin: 30,
-			firstBlood: 10
+			visionPerMin: 40,
+			firstBlood: 2
 		}
 	};
 
-	let totalScore = 0;
-	for (const key in ratios) {
-		const ratio = (ratios as never)[key];
-		const weight: number = (roleBasedWeights[role] as never)[key];
-		totalScore += ratio * weight;
+	const currentWeights = roleBasedWeights[role];
+	let score = 0;
+	let totalWeight = 0;
+
+	for (const key in currentWeights) {
+		const weight = currentWeights[key as keyof weights];
+		const value = stats[key as keyof typeof stats];
+		const max = maxStats[key as keyof typeof maxStats];
+
+		if (key === 'deaths') {
+			// Inversion : moins = mieux
+			const deathRatio = max === 0 ? 1 : Math.max(0, 1 - (value / max) ** 1.2);
+			score += deathRatio * Math.abs(weight);
+			totalWeight += Math.abs(weight);
+		} else {
+			// Ratio avec amplification
+			const ratio = max === 0 ? 0 : Math.min(1, value / max);
+			const amplified = Math.pow(ratio, 1.5);
+			score += amplified * weight;
+			totalWeight += weight;
+		}
 	}
 
-	// Round sur 100
-	return Math.round(totalScore);
+	const normalizedScore = Math.round((score / totalWeight) * 100);
+	return normalizedScore;
 }
 
 function addCustomMessage(finalString: string | undefined, newString: string): string { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
@@ -616,7 +624,7 @@ export interface PlayerLeagueGameInfo {
 	visionScore: number;
 	pings: number;
 	scoreRating: number;
-	teamLevel: string;
+	teamRank: string;
 	championId: number;
 	championName: string;
 	participantNumber: number;
