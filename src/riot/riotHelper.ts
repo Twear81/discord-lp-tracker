@@ -487,121 +487,109 @@ function getTeamLevelFromMatch(participants: RiotAPITypes.MatchV5.ParticipantDTO
 
 function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlayers: RiotAPITypes.MatchV5.ParticipantDTO[], gameDurationSeconds: number): number {
 	const minutes = gameDurationSeconds / 60;
+	if (minutes < 5) return 0; // Ignorer les parties trop courtes (remakes)
 	const role = player.teamPosition || "UNKNOWN";
 
-	// Pré-calculs du joueur
+	const playerTeamId = player.teamId;
+	const teammates = allPlayers.filter(p => p.teamId === playerTeamId);
+	const totalTeamKills = teammates.reduce((sum, p) => sum + p.kills, 0);
+
 	const stats = {
 		kills: player.kills,
 		deaths: player.deaths,
 		assists: player.assists,
+		kp: totalTeamKills > 0 ? (player.kills + player.assists) / totalTeamKills : 0,
 		csPerMin: player.totalMinionsKilled / minutes,
 		goldPerMin: player.goldEarned / minutes,
 		dmgPerMin: player.totalDamageDealtToChampions / minutes,
 		visionPerMin: player.visionScore / minutes,
-		firstBlood: player.firstBloodKill ? 1 : 0
+		damageToObjectives: player.damageDealtToObjectives
 	};
 
-	// Valeurs maximales globales
-	const maxStats = {
-		kills: Math.max(...allPlayers.map(p => p.kills)),
-		deaths: Math.max(...allPlayers.map(p => p.deaths)),
-		assists: Math.max(...allPlayers.map(p => p.assists)),
-		csPerMin: Math.max(...allPlayers.map(p => p.totalMinionsKilled / minutes)),
-		goldPerMin: Math.max(...allPlayers.map(p => p.goldEarned / minutes)),
-		dmgPerMin: Math.max(...allPlayers.map(p => p.totalDamageDealtToChampions / minutes)),
-		visionPerMin: Math.max(...allPlayers.map(p => p.visionScore / minutes)),
-		firstBlood: 1
-	};
+	type RoleData = Record<string, number>;
+	type RoleBasedData = Record<string, RoleData>;
 
-	// Pondération : chaque stat compte pour X points
-	type weights = {
-		kills: number,
-		deaths: number,
-		assists: number,
-		csPerMin: number,
-		goldPerMin: number,
-		dmgPerMin: number,
-		visionPerMin: number,
-		firstBlood: number
+	const weightsByRole: RoleBasedData = {
+		TOP: { kills: 10, deaths: 10, assists: 5, kp: 10, csPerMin: 15, goldPerMin: 10, dmgPerMin: 15, visionPerMin: 5, damageToObjectives: 15 },
+		JUNGLE: { kills: 10, deaths: 10, assists: 10, kp: 20, csPerMin: 5, goldPerMin: 10, dmgPerMin: 10, visionPerMin: 10, damageToObjectives: 15 },
+		MIDDLE: { kills: 15, deaths: 10, assists: 5, kp: 10, csPerMin: 15, goldPerMin: 10, dmgPerMin: 20, visionPerMin: 5, damageToObjectives: 5 },
+		BOTTOM: { kills: 15, deaths: 10, assists: 5, kp: 10, csPerMin: 20, goldPerMin: 15, dmgPerMin: 20, visionPerMin: 2, damageToObjectives: 5 },
+		UTILITY: { kills: 2, deaths: 10, assists: 20, kp: 20, csPerMin: 1, goldPerMin: 5, dmgPerMin: 8, visionPerMin: 20, damageToObjectives: 2 },
+		UNKNOWN: { kills: 10, deaths: 10, assists: 10, kp: 10, csPerMin: 10, goldPerMin: 10, dmgPerMin: 10, visionPerMin: 10, damageToObjectives: 10 }
 	};
-	const roleBasedWeights: Record<string, weights> = {
+	// --- NOUVEAU : Benchmarks "cibles" PAR RÔLE pour une excellente partie ---
+	const targetStatsByRole: RoleBasedData = {
 		TOP: {
-			kills: 15,
-			deaths: -20,
-			assists: 10,
-			csPerMin: 20,
-			goldPerMin: 15,
-			dmgPerMin: 15,
-			visionPerMin: 5,
-			firstBlood: 3
+			kills: 8, deaths: 4, assists: 7, kp: 0.50,
+			csPerMin: 7.5, goldPerMin: 420, dmgPerMin: 700,
+			visionPerMin: 0.8, damageToObjectives: 12000
 		},
 		JUNGLE: {
-			kills: 10,
-			deaths: -15,
-			assists: 15,
-			csPerMin: 10,
-			goldPerMin: 15,
-			dmgPerMin: 17,
-			visionPerMin: 10,
-			firstBlood: 4
+			kills: 7, deaths: 5, assists: 12, kp: 0.70, // KP très important
+			csPerMin: 5.0, goldPerMin: 400, dmgPerMin: 600,
+			visionPerMin: 1.2, damageToObjectives: 20000 // Dégâts aux objectifs cruciaux
 		},
 		MIDDLE: {
-			kills: 20,
-			deaths: -20,
-			assists: 10,
-			csPerMin: 15,
-			goldPerMin: 10,
-			dmgPerMin: 20,
-			visionPerMin: 3,
-			firstBlood: 2
+			kills: 10, deaths: 4, assists: 8, kp: 0.60,
+			csPerMin: 8.0, goldPerMin: 450, dmgPerMin: 900, // Dégâts élevés
+			visionPerMin: 0.9, damageToObjectives: 8000
 		},
-		BOTTOM: {
-			kills: 20,
-			deaths: -15,
-			assists: 10,
-			csPerMin: 20,
-			goldPerMin: 15,
-			dmgPerMin: 20,
-			visionPerMin: 1,
-			firstBlood: 2
+		BOTTOM: { // ADC
+			kills: 11, deaths: 4, assists: 8, kp: 0.55,
+			csPerMin: 8.5, // CS très important
+			goldPerMin: 480, dmgPerMin: 1000, // Dégâts très élevés
+			visionPerMin: 0.7, damageToObjectives: 10000
 		},
-		UTILITY: {
-			kills: 5,
-			deaths: -10,
-			assists: 30,
-			csPerMin: 1,
-			goldPerMin: 10,
-			dmgPerMin: 10,
-			visionPerMin: 40,
-			firstBlood: 2
+		UTILITY: { // Support
+			kills: 2, deaths: 5, assists: 18, // Assists très importantes
+			kp: 0.65, // KP très important
+			csPerMin: 1.5, // CS peu important
+			goldPerMin: 280, dmgPerMin: 300,
+			visionPerMin: 2.0, // Vision cruciale
+			damageToObjectives: 3000
+		},
+		UNKNOWN: { // Fallback générique
+			kills: 7, deaths: 5, assists: 10, kp: 0.50,
+			csPerMin: 6.0, goldPerMin: 400, dmgPerMin: 600,
+			visionPerMin: 1.0, damageToObjectives: 8000
 		}
 	};
 
-	const currentWeights = roleBasedWeights[role];
+
+	const currentWeights = weightsByRole[role] || weightsByRole.UNKNOWN;
+	const currentTargets = targetStatsByRole[role] || targetStatsByRole.UNKNOWN;
+
 	let score = 0;
-	let totalWeight = 0;
 
-	for (const key in currentWeights) {
-		const weight = currentWeights[key as keyof weights];
-		const value = stats[key as keyof typeof stats];
-		const max = maxStats[key as keyof typeof maxStats];
+	for (const key in stats) {
+		const statName = key as keyof typeof stats;
+		const playerValue = stats[statName];
 
-		if (key === 'deaths') {
-			// Inversion : moins = mieux
-			const deathRatio = max === 0 ? 1 : Math.max(0, 1 - (value / max) ** 1.2);
-			score += deathRatio * Math.abs(weight);
-			totalWeight += Math.abs(weight);
+		// S'assurer que la cible et le poids existent pour cette stat
+		if (!currentTargets[statName] || !currentWeights[statName]) continue;
+
+		const targetValue = currentTargets[statName];
+		const weight = currentWeights[statName];
+
+		let ratio = 0;
+		if (statName === 'deaths') {
+			ratio = Math.max(0, 1 - (playerValue / (targetValue * 2)));
 		} else {
-			// Ratio avec amplification
-			const ratio = max === 0 ? 0 : Math.min(1, value / max);
-			const amplified = Math.pow(ratio, 1.5);
-			score += amplified * weight;
-			totalWeight += weight;
+			// Pour les stats par minute ou le KP, la cible est directement comparable
+			if (['csPerMin', 'goldPerMin', 'dmgPerMin', 'visionPerMin', 'kp'].includes(statName)) {
+				ratio = Math.min(1, playerValue / targetValue);
+			} else {
+				// Pour les stats brutes (kills, assists, obj, cc), on peut les normaliser par la durée de la partie
+				// pour ne pas désavantager les parties courtes.
+				const gameLengthModifier = minutes / 30; // 30 min = jeu standard. Modifier si besoin.
+				ratio = Math.min(1, playerValue / (targetValue * gameLengthModifier));
+			}
 		}
+
+		score += Math.pow(ratio, 1.2) * weight;
 	}
 
-	const normalizedScore = Math.round((score / totalWeight) * 100);
-	return normalizedScore;
+	return Math.round(score);
 }
 
 function addCustomMessage(finalString: string | undefined, newString: string): string { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
