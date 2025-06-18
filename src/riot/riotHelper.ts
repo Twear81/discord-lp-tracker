@@ -560,36 +560,57 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 	const currentTargets = targetStatsByRole[role] || targetStatsByRole.UNKNOWN;
 
 	let score = 0;
+    let deathPenalty = 0; // Initialiser la pénalité de morts
 
-	for (const key in stats) {
-		const statName = key as keyof typeof stats;
-		const playerValue = stats[statName];
+    for (const key in stats) {
+        const statName = key as keyof typeof stats;
+        const playerValue = stats[statName];
 
-		// S'assurer que la cible et le poids existent pour cette stat
-		if (!currentTargets[statName] || !currentWeights[statName]) continue;
+        if (!currentTargets[statName] || !currentWeights[statName]) continue;
 
-		const targetValue = currentTargets[statName];
-		const weight = currentWeights[statName];
+        const targetValue = currentTargets[statName];
+        const weight = currentWeights[statName];
 
-		let ratio = 0;
-		if (statName === 'deaths') {
-			ratio = Math.max(0, 1 - (playerValue / (targetValue * 2)));
-		} else {
-			// Pour les stats par minute ou le KP, la cible est directement comparable
-			if (['csPerMin', 'goldPerMin', 'dmgPerMin', 'visionPerMin', 'kp'].includes(statName)) {
-				ratio = Math.min(1, playerValue / targetValue);
-			} else {
-				// Pour les stats brutes (kills, assists, obj, cc), on peut les normaliser par la durée de la partie
-				// pour ne pas désavantager les parties courtes.
-				const gameLengthModifier = minutes / 30; // 30 min = jeu standard. Modifier si besoin.
-				ratio = Math.min(1, playerValue / (targetValue * gameLengthModifier));
-			}
-		}
+        let ratio = 0;
 
-		score += Math.pow(ratio, 1.2) * weight;
-	}
+        if (statName === 'deaths') {
+            // Calcul de la pénalité pour les morts
+            // Si le joueur a moins ou autant de morts que la cible, pas de pénalité ou une pénalité minime.
+            if (playerValue <= targetValue) {
+                // Par exemple, récompenser légèrement pour très peu de morts, ou juste ne pas pénaliser
+                ratio = 1 - (playerValue / (targetValue + 1)); // Plus de 0 morts, ratio diminue de 1
+                score += Math.pow(ratio, 1.2) * weight; // Contribue positivement si peu de morts
+            } else {
+                // Pénalité exponentielle pour chaque mort au-dessus de la cible
+                const excessDeaths = playerValue - targetValue;
+                // Ajustez le multiplicateur (ex: 5, 10) pour la sévérité.
+                // Math.pow(excessDeaths, 1.5) rend la pénalité plus dure à mesure que les morts augmentent.
+                deathPenalty += Math.pow(excessDeaths, 1.5) * (weight * 0.8); // 0.8 est un facteur de sévérité
+            }
+            continue; // Passer à la stat suivante, les décès sont traités à part
+        } else {
+            // Logique pour les autres statistiques (Kills, Assists, CS, Gold, etc.)
+            // Autoriser le ratio à dépasser 1.0 pour récompenser les performances exceptionnelles
+            if (['csPerMin', 'goldPerMin', 'dmgPerMin', 'visionPerMin', 'kp', 'kills', 'assists', 'damageToObjectives'].includes(statName)) {
+                // Pour ces stats, on ne limite plus à 1.0.
+                ratio = playerValue / targetValue;
+            } else {
+                // Pour les stats brutes qui dépendent de la durée du jeu, on normalise par minute puis on compare
+                const gameLengthModifier = minutes / 30; // Normalisation par durée de partie
+                ratio = (playerValue / gameLengthModifier) / targetValue;
+            }
 
-	return Math.round(score);
+            // Appliquer la puissance pour ajuster la sensibilité :
+            // Si ratio > 1, Math.pow(ratio, 1.2) augmentera encore le score.
+            // Si ratio < 1, Math.pow(ratio, 1.2) diminuera le score (le rendant plus sévère).
+            score += Math.pow(ratio, 1.2) * weight;
+        }
+    }
+
+    // Appliquer la pénalité de morts au score final
+    score = Math.max(0, score - deathPenalty); // S'assurer que le score ne devient pas négatif
+
+    return Math.round(score);
 }
 
 function addCustomMessage(finalString: string | undefined, newString: string): string { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
