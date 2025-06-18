@@ -560,57 +560,48 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 	const currentTargets = targetStatsByRole[role] || targetStatsByRole.UNKNOWN;
 
 	let score = 0;
-    let deathPenalty = 0; // Initialiser la pénalité de morts
+	let deathPenalty = 0; // Initialiser la pénalité de morts
 
-    for (const key in stats) {
-        const statName = key as keyof typeof stats;
-        const playerValue = stats[statName];
+	for (const key in stats) {
+		const statName = key as keyof typeof stats;
+		const playerValue = stats[statName];
 
-        if (!currentTargets[statName] || !currentWeights[statName]) continue;
+		if (!currentTargets[statName] || !currentWeights[statName]) continue;
 
-        const targetValue = currentTargets[statName];
-        const weight = currentWeights[statName];
+		const targetValue = currentTargets[statName];
+		const weight = currentWeights[statName];
 
-        let ratio = 0;
+		let ratio = 0;
 
-        if (statName === 'deaths') {
-            // Calcul de la pénalité pour les morts
-            // Si le joueur a moins ou autant de morts que la cible, pas de pénalité ou une pénalité minime.
-            if (playerValue <= targetValue) {
-                // Par exemple, récompenser légèrement pour très peu de morts, ou juste ne pas pénaliser
-                ratio = 1 - (playerValue / (targetValue + 1)); // Plus de 0 morts, ratio diminue de 1
-                score += Math.pow(ratio, 1.2) * weight; // Contribue positivement si peu de morts
-            } else {
-                // Pénalité exponentielle pour chaque mort au-dessus de la cible
-                const excessDeaths = playerValue - targetValue;
-                // Ajustez le multiplicateur (ex: 5, 10) pour la sévérité.
-                // Math.pow(excessDeaths, 1.5) rend la pénalité plus dure à mesure que les morts augmentent.
-                deathPenalty += Math.pow(excessDeaths, 1.5) * (weight * 0.8); // 0.8 est un facteur de sévérité
-            }
-            continue; // Passer à la stat suivante, les décès sont traités à part
-        } else {
-            // Logique pour les autres statistiques (Kills, Assists, CS, Gold, etc.)
-            // Autoriser le ratio à dépasser 1.0 pour récompenser les performances exceptionnelles
-            if (['csPerMin', 'goldPerMin', 'dmgPerMin', 'visionPerMin', 'kp', 'kills', 'assists', 'damageToObjectives'].includes(statName)) {
-                // Pour ces stats, on ne limite plus à 1.0.
-                ratio = playerValue / targetValue;
-            } else {
-                // Pour les stats brutes qui dépendent de la durée du jeu, on normalise par minute puis on compare
-                const gameLengthModifier = minutes / 30; // Normalisation par durée de partie
-                ratio = (playerValue / gameLengthModifier) / targetValue;
-            }
+		if (statName === 'deaths') {
+			if (playerValue <= targetValue) {
+				// Si moins de morts que la cible, on récompense/ne pénalise pas.
+				// Le ratio va de 1 (0 mort) à environ 0.5 (targetValue morts).
+				ratio = 1 / (1 + (playerValue / targetValue));
+				score += Math.pow(ratio, 1.2) * weight;
+			} else {
+				// Pénalité pour les morts au-dessus de la cible.
+				const excessDeaths = playerValue - targetValue;
+				// NOUVEAU: Réduction de l'exposant et du multiplicateur pour une pénalité plus douce.
+				// Avec un exposant de 1.4 et un multiplicateur de 0.3, on s'approche des ~45 points pour 11 morts
+				// (en supposant un targetValue de 4 ou 5 et un weight de 10).
+				deathPenalty += Math.pow(excessDeaths, 1.4) * (weight * 0.3);
+			}
+			continue;
+		} else {
+			// Pour les autres statistiques, on permet au ratio de dépasser 1.0 pour récompenser l'excellence.
+			// La puissance 1.2 est maintenue pour amplifier les bonnes et mauvaises performances.
+			ratio = playerValue / targetValue;
+			// Optionnel : Vous pouvez ajouter un plafond très élevé pour éviter des ratios démesurés en cas de stats exceptionnellement basses dans la cible.
+			// ratio = Math.min(5, playerValue / targetValue); // Exemple de plafond à 5 fois la cible
+			score += Math.pow(ratio, 1.2) * weight;
+		}
+	}
 
-            // Appliquer la puissance pour ajuster la sensibilité :
-            // Si ratio > 1, Math.pow(ratio, 1.2) augmentera encore le score.
-            // Si ratio < 1, Math.pow(ratio, 1.2) diminuera le score (le rendant plus sévère).
-            score += Math.pow(ratio, 1.2) * weight;
-        }
-    }
+	// Appliquer la pénalité de morts au score final
+	score = Math.max(0, score - deathPenalty);
 
-    // Appliquer la pénalité de morts au score final
-    score = Math.max(0, score - deathPenalty); // S'assurer que le score ne devient pas négatif
-
-    return Math.round(score);
+	return Math.round(score);
 }
 
 function addCustomMessage(finalString: string | undefined, newString: string): string { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
