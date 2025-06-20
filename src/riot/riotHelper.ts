@@ -487,7 +487,7 @@ function getTeamLevelFromMatch(participants: RiotAPITypes.MatchV5.ParticipantDTO
 
 function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlayers: RiotAPITypes.MatchV5.ParticipantDTO[], gameDurationSeconds: number): number {
 	const minutes = gameDurationSeconds / 60;
-	if (minutes < 5) return 0; // Ignorer les parties trop courtes (remakes)
+	if (minutes < 5) return 0; // Ignore too short games (remakes)
 	const role = player.teamPosition || "UNKNOWN";
 
 	const playerTeamId = player.teamId;
@@ -517,7 +517,7 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 		UTILITY: { kills: 2, deaths: 10, assists: 20, kp: 20, csPerMin: 1, goldPerMin: 5, dmgPerMin: 8, visionPerMin: 20, damageToObjectives: 2 },
 		UNKNOWN: { kills: 10, deaths: 10, assists: 10, kp: 10, csPerMin: 10, goldPerMin: 10, dmgPerMin: 10, visionPerMin: 10, damageToObjectives: 10 }
 	};
-	// --- NOUVEAU : Benchmarks "cibles" PAR RÔLE pour une excellente partie ---
+	// --- NEW: Role-based "target" benchmarks for an excellent game ---
 	const targetStatsByRole: RoleBasedData = {
 		TOP: {
 			kills: 8, deaths: 4, assists: 7, kp: 0.50,
@@ -525,42 +525,41 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 			visionPerMin: 0.8, damageToObjectives: 12000
 		},
 		JUNGLE: {
-			kills: 7, deaths: 5, assists: 12, kp: 0.70, // KP très important
-			csPerMin: 5.0, goldPerMin: 400, dmgPerMin: 600,
-			visionPerMin: 1.2, damageToObjectives: 20000 // Dégâts aux objectifs cruciaux
+			kills: 7, deaths: 4, assists: 12, kp: 0.70, // KP very important
+			csPerMin: 5.1, goldPerMin: 430, dmgPerMin: 620,
+			visionPerMin: 1.5, damageToObjectives: 23000 // Crucial objective damage
 		},
 		MIDDLE: {
 			kills: 10, deaths: 4, assists: 8, kp: 0.60,
-			csPerMin: 8.0, goldPerMin: 450, dmgPerMin: 900, // Dégâts élevés
+			csPerMin: 8.0, goldPerMin: 450, dmgPerMin: 900, // High damage
 			visionPerMin: 0.9, damageToObjectives: 8000
 		},
 		BOTTOM: { // ADC
 			kills: 11, deaths: 4, assists: 8, kp: 0.55,
-			csPerMin: 8.5, // CS très important
-			goldPerMin: 480, dmgPerMin: 1000, // Dégâts très élevés
+			csPerMin: 8.5, // CS very important
+			goldPerMin: 480, dmgPerMin: 1000, // Very high damage
 			visionPerMin: 0.7, damageToObjectives: 10000
 		},
 		UTILITY: { // Support
-			kills: 2, deaths: 5, assists: 18, // Assists très importantes
-			kp: 0.65, // KP très important
-			csPerMin: 1.5, // CS peu important
+			kills: 2, deaths: 5, assists: 18, // Very important assists
+			kp: 0.65, // KP very important
+			csPerMin: 1.5, // CS less important
 			goldPerMin: 280, dmgPerMin: 300,
-			visionPerMin: 2.0, // Vision cruciale
+			visionPerMin: 2.0, // Vision crucial
 			damageToObjectives: 3000
 		},
-		UNKNOWN: { // Fallback générique
+		UNKNOWN: { // Generic fallback
 			kills: 7, deaths: 5, assists: 10, kp: 0.50,
 			csPerMin: 6.0, goldPerMin: 400, dmgPerMin: 600,
 			visionPerMin: 1.0, damageToObjectives: 8000
 		}
 	};
 
-
 	const currentWeights = weightsByRole[role] || weightsByRole.UNKNOWN;
 	const currentTargets = targetStatsByRole[role] || targetStatsByRole.UNKNOWN;
 
 	let score = 0;
-	let deathPenalty = 0; // Initialiser la pénalité de morts
+	let deathPenalty = 0; // Initialize death penalty
 
 	for (const key in stats) {
 		const statName = key as keyof typeof stats;
@@ -575,30 +574,30 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 
 		if (statName === 'deaths') {
 			if (playerValue <= targetValue) {
-				// Si moins de morts que la cible, on récompense/ne pénalise pas.
-				// Le ratio va de 1 (0 mort) à environ 0.5 (targetValue morts).
+				// If fewer deaths than target, reward/don't penalize.
+				// Ratio goes from 1 (0 deaths) to approx. 0.5 (targetValue deaths).
 				ratio = 1 / (1 + (playerValue / targetValue));
 				score += Math.pow(ratio, 1.2) * weight;
 			} else {
-				// Pénalité pour les morts au-dessus de la cible.
+				// Penalty for deaths above target.
 				const excessDeaths = playerValue - targetValue;
-				// NOUVEAU: Réduction de l'exposant et du multiplicateur pour une pénalité plus douce.
-				// Avec un exposant de 1.4 et un multiplicateur de 0.3, on s'approche des ~45 points pour 11 morts
-				// (en supposant un targetValue de 4 ou 5 et un weight de 10).
+				// NEW: Reduced exponent and multiplier for a softer penalty.
+				// With an exponent of 1.4 and a multiplier of 0.3, it gets closer to ~45 points for 11 deaths
+				// (assuming a targetValue of 4 or 5 and a weight of 10).
 				deathPenalty += Math.pow(excessDeaths, 1.4) * (weight * 0.3);
 			}
 			continue;
 		} else {
-			// Pour les autres statistiques, on permet au ratio de dépasser 1.0 pour récompenser l'excellence.
-			// La puissance 1.2 est maintenue pour amplifier les bonnes et mauvaises performances.
+			// For other stats, allow ratio to exceed 1.0 to reward excellence.
+			// Power of 1.2 is maintained to amplify good and bad performances.
 			ratio = playerValue / targetValue;
-			// Optionnel : Vous pouvez ajouter un plafond très élevé pour éviter des ratios démesurés en cas de stats exceptionnellement basses dans la cible.
-			// ratio = Math.min(5, playerValue / targetValue); // Exemple de plafond à 5 fois la cible
+			// Optional: You can add a very high ceiling to prevent disproportionate ratios in case of exceptionally low target stats.
+			// ratio = Math.min(5, playerValue / targetValue); // Example ceiling at 5 times the target
 			score += Math.pow(ratio, 1.2) * weight;
 		}
 	}
 
-	// Appliquer la pénalité de morts au score final
+	// Apply death penalty to final score
 	score = Math.max(0, score - deathPenalty);
 
 	score = Math.min(100, score); // Ensure score never exceeds 100
