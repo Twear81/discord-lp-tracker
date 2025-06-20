@@ -601,6 +601,8 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 	// Appliquer la pénalité de morts au score final
 	score = Math.max(0, score - deathPenalty);
 
+	score = Math.min(100, score); // Ensure score never exceeds 100
+
 	return Math.round(score);
 }
 
