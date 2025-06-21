@@ -179,6 +179,7 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 		const tftGameDetail: RiotAPITypes.TftMatch.MatchDTO = await getTFTGameDetail(gameID, region);
 		// Parse the gameDetail to get data for the specific player
 		let result: PlayerTFTGameInfo | null = null;
+		const queueType = tftGameDetail.info.queue_id == 1100 ? GameQueueType.RANKED_TFT : GameQueueType.RANKED_TFT_DOUBLE_UP;
 		for (const participant of tftGameDetail.info.participants) {
 			if (participant.puuid == puuid) {
 				result = {
@@ -188,7 +189,7 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 					traits: participant.traits,
 					units: participant.units,
 					win: (participant.placement <= 4) ? true : false,
-					queueType: GameQueueType.RANKED_TFT,
+					queueType: queueType,
 					customMessage: undefined
 				};
 

@@ -98,51 +98,53 @@ export const trackPlayer = async (firstRun: boolean): Promise<void> => {
 						// Get game details
 						const currentGameIdWithRegion = matchIds[0]; // example -> EUW1_7294524077
 						const tftGameDetailForThePlayer: PlayerTFTGameInfo = await getTFTGameDetailForCurrentPlayer(player.tftpuuid, currentGameIdWithRegion, player.region);
-						// Get current player rank info
-						const playerRankStats = await getTFTPlayerRankInfo(player.tftpuuid, player.region);
-						// Update current player rank
-						const currentTFTQueueType = tftGameDetailForThePlayer.queueType;
-						if (isTimestampInRecapRange(tftGameDetailForThePlayer.gameEndTimestamp) == true) {
-							await updatePlayerLastDayWinLose(currentServerID, player.tftpuuid, currentTFTQueueType, tftGameDetailForThePlayer.win); // Update win/lose
-						}
-						for (const playerRankStat of playerRankStats) {
-							if (playerRankStat.queueType === currentTFTQueueType) {
-								const queueType = playerRankStat.queueType;
-								const leaguePoints = playerRankStat.leaguePoints;
-								const rank = playerRankStat.rank;
-								const tier = playerRankStat.tier;
-								// Update inside database
-								const isCurrent = true;
-								await updatePlayerCurrentOrLastDayRank(currentServerID, player.tftpuuid, isCurrent, queueType, leaguePoints!, rank!, tier!);
+						if (tftGameDetailForThePlayer.queueType == GameQueueType.RANKED_TFT) { // Only normal ranked
+							// Get current player rank info
+							const playerRankStats = await getTFTPlayerRankInfo(player.tftpuuid, player.region);
+							// Update current player rank
+							const currentTFTQueueType = tftGameDetailForThePlayer.queueType;
+							if (isTimestampInRecapRange(tftGameDetailForThePlayer.gameEndTimestamp) == true) {
+								await updatePlayerLastDayWinLose(currentServerID, player.tftpuuid, currentTFTQueueType, tftGameDetailForThePlayer.win); // Update win/lose
 							}
-						}
-						// Update last game inside database
-						await updatePlayerLastGameId(currentServerID, player.tftpuuid, currentGameIdWithRegion, ManagedGameQueueType.TFT);
-
-						// Send the notification to the specified channel
-						if (firstRun == true) {
-							// don't notify
-							console.log("first run, don't notify");
-						} else {
-							// Create the message with game detail
-							const playerForQueueInfo = await getPlayerForQueueInfoForSpecificServer(currentServerID, player.tftpuuid, currentTFTQueueType);
-							const channel = (await client.channels.fetch(server.channelid)) as TextChannel;
-							if (channel != null) {
-								let rank = "";
-								let tier = "Unranked";
-								let lpGain = 0;
-								let updatedLP = 0;
-								if (playerForQueueInfo.currentRank != null && playerForQueueInfo.currentTier != null && playerForQueueInfo.currentLP != null) {
-									rank = playerForQueueInfo.currentRank;
-									tier = playerForQueueInfo.currentTier;
-									updatedLP = playerForQueueInfo.currentLP;
-									if (playerForQueueInfo.oldRank !== null && playerForQueueInfo.oldTier !== null && playerForQueueInfo.oldLP !== null) {
-										lpGain = calculateLPDifference(playerForQueueInfo.oldRank, playerForQueueInfo.currentRank, playerForQueueInfo.oldTier, playerForQueueInfo.currentTier, playerForQueueInfo.oldLP, playerForQueueInfo.currentLP);
-									}
+							for (const playerRankStat of playerRankStats) {
+								if (playerRankStat.queueType === currentTFTQueueType) {
+									const queueType = playerRankStat.queueType;
+									const leaguePoints = playerRankStat.leaguePoints;
+									const rank = playerRankStat.rank;
+									const tier = playerRankStat.tier;
+									// Update inside database
+									const isCurrent = true;
+									await updatePlayerCurrentOrLastDayRank(currentServerID, player.tftpuuid, isCurrent, queueType, leaguePoints!, rank!, tier!);
 								}
-								sendTFTGameResultMessage(channel, player.gameName, player.tagLine, tftGameDetailForThePlayer.placement, tftGameDetailForThePlayer.principalTrait, rank, tier, lpGain, updatedLP, player.region, currentGameIdWithRegion, tftGameDetailForThePlayer.customMessage, server.lang);
+							}
+							// Update last game inside database
+							await updatePlayerLastGameId(currentServerID, player.tftpuuid, currentGameIdWithRegion, ManagedGameQueueType.TFT);
+
+							// Send the notification to the specified channel
+							if (firstRun == true) {
+								// don't notify
+								console.log("first run, don't notify");
 							} else {
-								console.error('❌ Failed send the message, can`t find the channel');
+								// Create the message with game detail
+								const playerForQueueInfo = await getPlayerForQueueInfoForSpecificServer(currentServerID, player.tftpuuid, currentTFTQueueType);
+								const channel = (await client.channels.fetch(server.channelid)) as TextChannel;
+								if (channel != null) {
+									let rank = "";
+									let tier = "Unranked";
+									let lpGain = 0;
+									let updatedLP = 0;
+									if (playerForQueueInfo.currentRank != null && playerForQueueInfo.currentTier != null && playerForQueueInfo.currentLP != null) {
+										rank = playerForQueueInfo.currentRank;
+										tier = playerForQueueInfo.currentTier;
+										updatedLP = playerForQueueInfo.currentLP;
+										if (playerForQueueInfo.oldRank !== null && playerForQueueInfo.oldTier !== null && playerForQueueInfo.oldLP !== null) {
+											lpGain = calculateLPDifference(playerForQueueInfo.oldRank, playerForQueueInfo.currentRank, playerForQueueInfo.oldTier, playerForQueueInfo.currentTier, playerForQueueInfo.oldLP, playerForQueueInfo.currentLP);
+										}
+									}
+									sendTFTGameResultMessage(channel, player.gameName, player.tagLine, tftGameDetailForThePlayer.placement, tftGameDetailForThePlayer.principalTrait, rank, tier, lpGain, updatedLP, player.region, currentGameIdWithRegion, tftGameDetailForThePlayer.customMessage, server.lang);
+								} else {
+									console.error('❌ Failed send the message, can`t find the channel');
+								}
 							}
 						}
 					}
