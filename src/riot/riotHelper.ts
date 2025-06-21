@@ -495,12 +495,16 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 	const teammates = allPlayers.filter(p => p.teamId === playerTeamId);
 	const totalTeamKills = teammates.reduce((sum, p) => sum + p.kills, 0);
 
+	// --- IMPORTANT: Adjust csPerMin calculation based on role ---
+    const csValue = (role === 'JUNGLE') ? player.neutralMinionsKilled : player.totalMinionsKilled;
+
+
 	const stats = {
 		kills: player.kills,
 		deaths: player.deaths,
 		assists: player.assists,
 		kp: totalTeamKills > 0 ? (player.kills + player.assists) / totalTeamKills : 0,
-		csPerMin: player.totalMinionsKilled / minutes,
+		csPerMin: csValue / minutes,
 		goldPerMin: player.goldEarned / minutes,
 		dmgPerMin: player.totalDamageDealtToChampions / minutes,
 		visionPerMin: player.visionScore / minutes,
