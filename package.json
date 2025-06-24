@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/Twear81/lp-tracker#readme",
   "dependencies": {
-    "@fightmegg/riot-api": "^0.0.20",
+    "@fightmegg/riot-api": "git+https://github.com/Twear81/riot-api.git",
     "bottleneck": "^2.19.5",
     "discord.js": "^14.17.3",
     "dotenv": "^16.4.7",

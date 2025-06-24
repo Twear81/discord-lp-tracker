@@ -359,7 +359,7 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 					if (playerRankStat.leaguePoints != undefined && playerRankStat.rank != undefined && playerRankStat.tier != undefined) {
 						let queueType: GameQueueType = GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType];
 						if (playerRankStat.queueType == "RANKED_TFT_DOUBLE_UP") { // Not supported so we treat it as a tft ranked classic
-							queueType = GameQueueType.RANKED_TFT
+							queueType = GameQueueType.RANKED_TFT;
 						}
 						const leaguePoints: number = playerRankStat.leaguePoints;
 						const rank: string = playerRankStat.rank;
