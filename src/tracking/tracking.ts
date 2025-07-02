@@ -1,7 +1,7 @@
 import { EmbedBuilder, TextChannel } from 'discord.js';
-import { getAllServer, listAllPlayerForSpecificServer, resetLastDayOfAllPlayer, updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, updatePlayerLastDate, PlayerInfo, updatePlayerLastDayWinLose, getPlayerForQueueInfoForSpecificServer, PlayerForQueueInfo, listAllPlayerForQueueInfoForSpecificServer } from '../database/databaseHelper';
+import { getAllServer, listAllPlayerForSpecificServer, resetLastDayOfAllPlayer, updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, updatePlayerLastDate, PlayerInfo, updatePlayerLastDayWinLose, getPlayerForQueueInfoForSpecificServer, PlayerForQueueInfo, listAllPlayerForQueueInfoForSpecificServer, updatePlayerGameNameAndTagLine } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
-import { getLeagueGameDetailForCurrentPlayer, getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, PlayerLeagueGameInfo, getTFTGameDetailForCurrentPlayer, PlayerTFTGameInfo, getTFTPlayerRankInfo } from '../riot/riotHelper';
+import { getLeagueGameDetailForCurrentPlayer, getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, PlayerLeagueGameInfo, getTFTGameDetailForCurrentPlayer, PlayerTFTGameInfo, getTFTPlayerRankInfo, getAccountByPUUID } from '../riot/riotHelper';
 import { client } from '../index';
 import { GameQueueType, ManagedGameQueueType } from './GameQueueType';
 
@@ -353,6 +353,13 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 			});
 			const results = await Promise.all(playerRankStats.filter(req => req !== null));
 			for (const result of results) {
+
+				// Check if the player need a name update
+				const playerAccount = await getAccountByPUUID(result.player.puuid, result.player.region);
+				if (playerAccount.gameName != undefined && playerAccount.tagLine != undefined) {
+					await updatePlayerGameNameAndTagLine(server.serverid, result.player.puuid, playerAccount.gameName, playerAccount.tagLine);
+				}
+
 				if (!result) continue;
 				const { player, combinedRankInfos } = result;
 				for (const playerRankStat of combinedRankInfos) {

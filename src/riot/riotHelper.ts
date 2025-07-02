@@ -34,6 +34,7 @@ const config: RiotAPITypes.Config = {
 				[RiotAPITypes.METHOD_KEY.SUMMONER_V4.GET_BY_PUUID]: 60000, // ms
 				[RiotAPITypes.METHOD_KEY.LEAGUE_V4.GET_ENTRIES_BY_PUUID]: 30000, // ms
 				[RiotAPITypes.METHOD_KEY.ACCOUNT_V1.GET_BY_RIOT_ID]: 60000, // ms
+				[RiotAPITypes.METHOD_KEY.ACCOUNT_V1.GET_BY_PUUID]: 60000, // ms
 				[RiotAPITypes.METHOD_KEY.MATCH_V5.GET_MATCH_BY_ID]: 30000, // ms
 				[RiotAPITypes.METHOD_KEY.MATCH_V5.GET_IDS_BY_PUUID]: 5000, // ms
 			},
@@ -49,6 +50,7 @@ const configTFT: RiotAPITypes.Config = {
 				[RiotAPITypes.METHOD_KEY.TFT_SUMMONER_V1.GET_BY_PUUID]: 60000, // ms
 				[RiotAPITypes.METHOD_KEY.TFT_LEAGUE_V1.GET_ENTRIES_BY_PUUID]: 30000, // ms
 				[RiotAPITypes.METHOD_KEY.ACCOUNT_V1.GET_BY_RIOT_ID]: 60000, // ms
+				[RiotAPITypes.METHOD_KEY.ACCOUNT_V1.GET_BY_PUUID]: 60000, // ms
 				[RiotAPITypes.METHOD_KEY.TFT_MATCH_V1.GET_MATCH_BY_ID]: 30000, // ms
 				[RiotAPITypes.METHOD_KEY.TFT_MATCH_V1.GET_MATCH_IDS_BY_PUUID]: 5000, // ms
 			},
@@ -87,6 +89,19 @@ export async function getSummonerByName(accountName: string, tag: string, region
 	} catch (error) {
 		console.error(`Error API Riot (getSummonerByName) :`, error);
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `No player found for ${accountName}#${tag} for region ${region}`);
+	}
+}
+
+export async function getAccountByPUUID(puuid: string, region: string): Promise<RiotAPITypes.Account.AccountDTO> {
+	try {
+		const platformId = getPlatformIdFromRegionString(region);
+		return await limitedRequest(() => riotApi.account.getByPUUID({
+			region: platformId,
+			puuid: puuid
+		})) as unknown as Promise<RiotAPITypes.Account.AccountDTO>;
+	} catch (error) {
+		console.error(`Error API Riot (getSummonerByName) :`, error);
+		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `No player found for puuid:${puuid} for region ${region}`);
 	}
 }
 
