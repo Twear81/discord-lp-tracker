@@ -156,7 +156,7 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 			if (participant.puuid == puuid) {
 				result = {
 					gameDurationSeconds: gameDetail.info.gameDuration,
-					totalCS: participant.totalMinionsKilled,
+					totalCS: participant.neutralMinionsKilled + participant.totalMinionsKilled,
 					damage: participant.totalDamageDealtToChampions,
 					visionScore: participant.visionScore,
 					pings: getTotalPings(participant),
@@ -498,9 +498,7 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 	const teammates = allPlayers.filter(p => p.teamId === playerTeamId);
 	const totalTeamKills = teammates.reduce((sum, p) => sum + p.kills, 0);
 
-	// --- IMPORTANT: Adjust csPerMin calculation based on role ---
-    const csValue = (role === 'JUNGLE') ? player.neutralMinionsKilled : player.totalMinionsKilled;
-
+    const csValue = player.neutralMinionsKilled + player.totalMinionsKilled;
 
 	const stats = {
 		kills: player.kills,
