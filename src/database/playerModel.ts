@@ -119,12 +119,15 @@ const defineQueueModel = (name: string) => {
 export const SoloQ = defineQueueModel('SoloQ');
 export const FlexQ = defineQueueModel('FlexQ');
 export const SoloTFT = defineQueueModel('SoloTFT');
+export const DoubleTFT = defineQueueModel('DoubleTFT');
 
 // Associations
 Player.hasOne(SoloQ, { foreignKey: 'playerId', onDelete: 'CASCADE' });
 Player.hasOne(FlexQ, { foreignKey: 'playerId', onDelete: 'CASCADE' });
 Player.hasOne(SoloTFT, { foreignKey: 'playerId', onDelete: 'CASCADE' });
+Player.hasOne(DoubleTFT, { foreignKey: 'playerId', onDelete: 'CASCADE' });
 
 SoloQ.belongsTo(Player, { foreignKey: 'playerId' });
 FlexQ.belongsTo(Player, { foreignKey: 'playerId' });
 SoloTFT.belongsTo(Player, { foreignKey: 'playerId' });
+DoubleTFT.belongsTo(Player, { foreignKey: 'playerId' });

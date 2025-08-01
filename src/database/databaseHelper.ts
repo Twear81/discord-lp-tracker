@@ -1,4 +1,4 @@
-import { FlexQ, Player, SoloQ, SoloTFT } from './playerModel';
+import { DoubleTFT, FlexQ, Player, SoloQ, SoloTFT } from './playerModel';
 import { Server } from './serverModel';
 import { AppError, ErrorTypes } from '../error/error';
 import { Model } from 'sequelize';
@@ -266,7 +266,7 @@ const findPlayerToUpdate = async (existingPlayer: Model, queueType: GameQueueTyp
 		[GameQueueType.RANKED_FLEX_SR]: FlexQ,
 		[GameQueueType.RANKED_SOLO_5x5]: SoloQ,
 		[GameQueueType.RANKED_TFT]: SoloTFT,
-		[GameQueueType.RANKED_TFT_DOUBLE_UP]: SoloTFT // TODO Fix 
+		[GameQueueType.RANKED_TFT_DOUBLE_UP]: DoubleTFT
 	};
 	const model = queueModels[queueType];
 	if (!model) {
@@ -572,4 +572,10 @@ export interface ServerInfo {
 	tfttoggle: boolean;
 	tftdoubletoggle: boolean;
 	lang: string;
+}
+
+export interface PlayerRecapInfo {
+	player: PlayerInfo;
+	playerQueue: PlayerForQueueInfo;
+	lpChange: number;
 }
