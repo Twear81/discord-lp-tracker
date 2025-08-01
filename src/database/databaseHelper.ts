@@ -129,6 +129,7 @@ export const addPlayer = async (serverId: string, puuid: string, tftpuuid: strin
 				await SoloQ.create({ playerId: player.dataValues.id, puuid: player.dataValues.puuid });
 				await FlexQ.create({ playerId: player.dataValues.id, puuid: player.dataValues.puuid });
 				await SoloTFT.create({ playerId: player.dataValues.id, puuid: player.dataValues.tftpuuid });
+				await DoubleTFT.create({ playerId: player.dataValues.id, puuid: player.dataValues.tftpuuid });
 			} else {
 				throw new AppError(ErrorTypes.DATABASE_ALREADY_INSIDE, 'Player already exists');
 			}
