@@ -148,78 +148,95 @@ async function getTFTGameDetail(gameID: string, region: string): Promise<RiotAPI
 export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string, lang: string): Promise<PlayerLeagueGameInfo> {
 	try {
 		const gameDetail: RiotAPITypes.MatchV5.MatchDTO = await getGameDetail(gameID, region);
-		// Parse the gameDetail to get data for the specific player
-		let result: PlayerLeagueGameInfo | null = null;
-		let participantNumber = 0;
-		for (const participant of gameDetail.info.participants) {
-			participantNumber++;
-			if (participant.puuid == puuid) {
-				result = {
-					gameDurationSeconds: gameDetail.info.gameDuration,
-					totalCS: participant.neutralMinionsKilled + participant.totalMinionsKilled,
-					damage: participant.totalDamageDealtToChampions,
-					visionScore: participant.visionScore,
-					pings: getTotalPings(participant),
-					scoreRating: computePlayerScore(participant, gameDetail.info.participants, gameDetail.info.gameDuration),
-					teamRank: getTeamLevelFromMatch(gameDetail.info.participants, gameDetail.info.gameDuration, puuid, lang),
-					participantNumber: participantNumber,
-					gameEndTimestamp: gameDetail.info.gameEndTimestamp,
-					assists: participant.assists,
-					deaths: participant.deaths,
-					kills: participant.kills,
-					championId: participant.championId,
-					championName: participant.championName,
-					win: participant.win,
-					queueType: gameDetail.info.queueId == 440 ? GameQueueType.RANKED_FLEX_SR : GameQueueType.RANKED_SOLO_5x5,
-					customMessage: undefined
-				};
+		const { info: { gameDuration, participants, gameEndTimestamp, queueId } } = gameDetail;
 
-				// Custom Message
-				result.customMessage = generateLeagueCustomMessage(participant);
-			}
+		// Déterminer le type de la queue
+		let queueType: GameQueueType;
+		switch (queueId) {
+			case 420:
+				queueType = GameQueueType.RANKED_SOLO_5x5;
+				break;
+			case 440:
+				queueType = GameQueueType.RANKED_FLEX_SR;
+				break;
+			default:
+				throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `Queue type not found for queueId:${queueId} for game:${gameID}`);
 		}
-		if (result == null) {
-			throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No game detail found for gameID ${gameID} for player ${puuid} for region ${region}`);
-		} else {
-			return result;
+
+		const participant = participants.find(p => p.puuid === puuid);
+		if (!participant) {
+			throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No participant found for player:${puuid} in game:${gameID}`);
 		}
+
+		const result: PlayerLeagueGameInfo = {
+			gameDurationSeconds: gameDuration,
+			totalCS: participant.neutralMinionsKilled + participant.totalMinionsKilled,
+			damage: participant.totalDamageDealtToChampions,
+			visionScore: participant.visionScore,
+			pings: getTotalPings(participant),
+			scoreRating: computePlayerScore(participant, participants, gameDuration),
+			teamRank: getTeamLevelFromMatch(participants, gameDuration, puuid, lang),
+			participantNumber: participants.findIndex(p => p.puuid === puuid) + 1,
+			gameEndTimestamp,
+			assists: participant.assists,
+			deaths: participant.deaths,
+			kills: participant.kills,
+			championId: participant.championId,
+			championName: participant.championName,
+			win: participant.win,
+			queueType,
+			customMessage: generateLeagueCustomMessage(participant)
+		};
+
+		return result;
 	} catch (error) {
-		console.error(`Error API Riot (getLeagueGameDetailForCurrentPlayer) :`, error);
-		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No game detail found for gameID ${gameID} for player ${puuid} for region ${region}`);
+		if (error instanceof AppError) {
+			throw error;
+		}
+		console.error(`Riot API Error (getLeagueGameDetailForCurrentPlayer):`, error);
+		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `Game details not found for game ${gameID}, player ${puuid}, and region ${region}`);
 	}
 }
 
 export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string): Promise<PlayerTFTGameInfo> {
 	try {
 		const tftGameDetail: RiotAPITypes.TftMatch.MatchDTO = await getTFTGameDetail(gameID, region);
-		// Parse the gameDetail to get data for the specific player
-		let result: PlayerTFTGameInfo | null = null;
-		const queueType = tftGameDetail.info.queue_id == 1100 ? GameQueueType.RANKED_TFT : GameQueueType.RANKED_TFT_DOUBLE_UP;
-		for (const participant of tftGameDetail.info.participants) {
-			if (participant.puuid == puuid) {
-				result = {
-					gameEndTimestamp: tftGameDetail.info.game_datetime,
-					placement: participant.placement,
-					principalTrait: getMainTrait(participant.traits),
-					traits: participant.traits,
-					units: participant.units,
-					win: (participant.placement <= 4) ? true : false,
-					queueType: queueType,
-					customMessage: undefined
-				};
+		const { info: { queue_id, participants, game_datetime } } = tftGameDetail;
 
-				// Custom Message
-				result.customMessage = generateTFTCustomMessage(participant);
-			}
+		let queueType: GameQueueType;
+		switch (queue_id) {
+			case 1100:
+				queueType = GameQueueType.RANKED_TFT;
+				break;
+			case 1160:
+				queueType = GameQueueType.RANKED_TFT_DOUBLE_UP;
+				break;
+			default:
+				throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `TFT Queue type not found for queueId:${queue_id} for game:${gameID}`);
 		}
-		if (result == null) {
-			throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No tft game detail found for gameID ${gameID} for player ${puuid} for region ${region}`);
-		} else {
-			return result;
+
+		const participant = participants.find(p => p.puuid === puuid);
+		if (!participant) {
+			throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No participant found for player ${puuid} in game ${gameID}`);
 		}
+
+		return {
+			gameEndTimestamp: game_datetime,
+			placement: participant.placement,
+			principalTrait: getMainTrait(participant.traits),
+			participantNumber: participants.findIndex(p => p.puuid === puuid) + 1,
+			traits: participant.traits,
+			units: participant.units,
+			win: participant.placement <= 4,
+			queueType: queueType,
+			customMessage: generateTFTCustomMessage(participant)
+		};
 	} catch (error) {
-		console.error(`Error API Riot (getTFTGameDetailForCurrentPlayer) :`, error);
-		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No tft game detail found for gameID ${gameID} for player ${puuid} for region ${region}`);
+		if (error instanceof AppError) {
+			throw error;
+		}
+		console.error(`Riot API Error (getTFTGameDetailForCurrentPlayer):`, error);
+		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `TFT Game details not found for game ${gameID}, player ${puuid}, and region ${region}`);
 	}
 }
 
@@ -227,36 +244,31 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 export async function getLastRankedLeagueMatch(puuid: string, region: string, isFlex: boolean): Promise<string[]> {
 	try {
 		const platformId = getPlatformIdFromRegionString(region);
-		if (isFlex == false) {
-			const queueID: number = 420; // 440 flex, 420 soloq
-			return await limitedRequest(() => riotApi.matchV5.getIdsByPuuid({
-				cluster: platformId,
-				puuid,
-				params: {
-					queue: queueID,
-					count: 1
-				}
-			})) as unknown as Promise<string[]>;
-		} else {
-			return await limitedRequest(() => riotApi.matchV5.getIdsByPuuid({
-				cluster: platformId,
-				puuid,
-				params: {
-					type: RiotAPITypes.MatchV5.MatchType.Ranked,
-					count: 1
-				}
-			})) as unknown as Promise<string[]>;
+
+		const params = {
+			queue: 420, // default to Ranked Solo/Duo
+			count: 1
+		};
+		if (isFlex) {
+			params.queue = 440; // Ranked Flex
 		}
+
+		return await limitedRequest(() => riotApi.matchV5.getIdsByPuuid({
+			cluster: platformId,
+			puuid,
+			params,
+		})) as unknown as Promise<string[]>;
+
 	} catch (error) {
-		console.error(`Error API Riot (getLastRankedLeagueMatch) :`, error);
+		console.error(`Riot API Error (getLastRankedLeagueMatch):`, error);
 		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last match found for player ${puuid} for region ${region}`);
 	}
 }
 
-// Can't get only ranked match
 export async function getLastTFTMatch(puuid: string, region: string): Promise<string[]> {
 	try {
 		const platformId = getPlatformIdFromRegionString(region);
+		// Can't get only ranked match
 		return await limitedRequest(() => riotApiTFT.tftMatch.getMatchIdsByPUUID({
 			region: platformId,
 			puuid,
@@ -498,7 +510,7 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 	const teammates = allPlayers.filter(p => p.teamId === playerTeamId);
 	const totalTeamKills = teammates.reduce((sum, p) => sum + p.kills, 0);
 
-    const csValue = player.neutralMinionsKilled + player.totalMinionsKilled;
+	const csValue = player.neutralMinionsKilled + player.totalMinionsKilled;
 
 	const stats = {
 		kills: player.kills,
@@ -605,9 +617,7 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 
 	// Apply death penalty to final score
 	score = Math.max(0, score - deathPenalty);
-
 	score = Math.min(100, score); // Ensure score never exceeds 100
-
 	return Math.round(score);
 }
 
@@ -644,6 +654,7 @@ export interface PlayerTFTGameInfo {
 	gameEndTimestamp: number;
 	placement: number;
 	principalTrait: string | null;
+	participantNumber: number,
 	traits: RiotAPITypes.TftMatch.TraitDTO[];
 	units: RiotAPITypes.TftMatch.UnitDTO[];
 	win: boolean;
