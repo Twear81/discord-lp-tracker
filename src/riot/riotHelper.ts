@@ -401,8 +401,16 @@ function generateTFTCustomMessage(participant: RiotAPITypes.TftMatch.Participant
 		result = addCustomMessage(result, "SIUUUUceur de meta !");
 	}
 
-	if (participant.placement == 1 && participant.puuid == "2y_cjrqPj2eEjRETZNa7ub54TTIYRK9NdYs5tOYlaDtY3RfCDakrDWZNuccHCrCe7dW2o1l6h5NSuw") {
+	if (participant.placement == 1 && participant.puuid == "2y_cjrqPj2eEjRETZNa7ub54TTIYRK9NdYs5tOYlaDtY3RfCDakrDWZNuccHCrCe7dW2o1l6h5NSuw") { // Jojo
 		result = addCustomMessage(result, "🎵 Jojo dans la place, Attention quand il passe 🎵");
+	}
+
+	if (participant.placement <= 4 && participant.puuid == "w3y940nzLy_YfzBofWMV5AmT3CjYMPQQVaJ1VGm52J7IBvipaIbXJS1GhFN8qCBetIfJuILIs93s7A") { // Adam
+		result = addCustomMessage(result, "Lache ta comp internet ^^");
+	}
+
+	if (participant.placement > 4 && participant.puuid == "w3y940nzLy_YfzBofWMV5AmT3CjYMPQQVaJ1VGm52J7IBvipaIbXJS1GhFN8qCBetIfJuILIs93s7A") { // Adam
+		result = addCustomMessage(result, "Meme avec une comp internet t'y arrives pas ^^");
 	}
 
 	if (participant.placement == 7) {
