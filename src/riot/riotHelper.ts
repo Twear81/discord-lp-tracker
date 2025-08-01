@@ -398,7 +398,11 @@ function generateTFTCustomMessage(participant: RiotAPITypes.TftMatch.Participant
 	let result = undefined;
 
 	if (participant.placement == 1) {
-		result = addCustomMessage(result, "SIUUUU !");
+		result = addCustomMessage(result, "SIUUUUceur de meta !");
+	}
+
+	if (participant.placement == 1 && participant.puuid == "2y_cjrqPj2eEjRETZNa7ub54TTIYRK9NdYs5tOYlaDtY3RfCDakrDWZNuccHCrCe7dW2o1l6h5NSuw") {
+		result = addCustomMessage(result, "🎵 Jojo dans la place, Attention quand il passe 🎵");
 	}
 
 	if (participant.placement == 7) {
@@ -407,6 +411,10 @@ function generateTFTCustomMessage(participant: RiotAPITypes.TftMatch.Participant
 
 	if (participant.placement == 8) {
 		result = addCustomMessage(result, "Arrete de chialer stp ...");
+	}
+
+	if (participant.placement == 8 && participant.puuid == "2y_cjrqPj2eEjRETZNa7ub54TTIYRK9NdYs5tOYlaDtY3RfCDakrDWZNuccHCrCe7dW2o1l6h5NSuw") { // Jojo
+		result = addCustomMessage(result, "Au moins il tente des trucs ...");
 	}
 
 	if (participant.total_damage_to_players >= 200) {
