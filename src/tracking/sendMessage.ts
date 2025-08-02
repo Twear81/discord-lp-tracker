@@ -107,7 +107,7 @@ export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: s
 
     const t = translations[lang as keyof typeof translations];
     const durationMinutes = Math.floor(tftGameInfo.gameDurationSeconds / 60);
-    const durationSeconds = tftGameInfo.gameDurationSeconds % 60;
+    const durationSeconds = Math.floor(tftGameInfo.gameDurationSeconds % 60);
     const formattedDurationSeconds = durationSeconds.toString().padStart(2, '0');
 
     const currentGameId = gameIdWithRegion.split("_")[1];
