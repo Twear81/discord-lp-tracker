@@ -1,8 +1,9 @@
 import { EmbedBuilder, TextChannel } from 'discord.js';
-import { PlayerLeagueGameInfo } from '../riot/riotHelper';
+import { PlayerLeagueGameInfo, PlayerTFTGameInfo } from '../riot/riotHelper';
 import { GameQueueType } from './GameQueueType';
 import { PlayerForQueueInfo, PlayerInfo, PlayerRecapInfo } from '../database/databaseHelper';
 import { calculateLPDifference } from './util';
+import { DDragon } from '@fightmegg/riot-api';
 
 export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName: string, tagline: string, gameInfo: PlayerLeagueGameInfo, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
     const translations = {
@@ -30,12 +31,14 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
     const matchUrl = `https://www.leagueofgraphs.com/match/${region.toLowerCase()}/${currentGameId}#participant${gameInfo.participantNumber}`;
     const dpmUrl = `https://dpm.lol/${encodeURI(gameName)}-${tagline}`;
 
+    const latestVersion = await new DDragon().versions.latest();
+
     const embed = new EmbedBuilder()
         .setColor(gameInfo.win ? '#00FF00' : '#FF0000')
         .setTitle(t.title)
         .setURL(matchUrl)
         .setAuthor({ name: `${gameName}#${tagline}` })
-        .setThumbnail(`https://ddragon.leagueoflegends.com/cdn/15.15.1/img/champion/${gameInfo.championName}.png`)
+        .setThumbnail(`https://ddragon.leagueoflegends.com/cdn/${latestVersion}/img/champion/${gameInfo.championName}.png`)
         .setDescription(`**${gameName} ${t.lpChange} ${Math.abs(lpChange)} LP (${tier} ${rank} – ${updatedLP} LP)**`)
         .addFields(
             { name: 'KDA', value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },
@@ -70,81 +73,84 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
     await channel.send({ embeds: [embed] });
 }
 
-export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: string, tagline: string, placement: number, mainTrait: string | null, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
+export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: string, tagline: string, tftGameInfo: PlayerTFTGameInfo, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
     const translations = {
         fr: {
             title: "[📜 Résultat TFT ]",
-            win: "Victoire",
-            loss: "Défaite",
+            lpChangeText: lpChange > 0 ? "a gagné" : "a perdu",
             placement: "Placement",
-            description: (gameName: string, tagline: string, placement: number, lpChange: number, league: string, tier: string, rank: string, updatedLP: number) =>
-                `**${placement <= 4 ? "Top 4" : "Bottom 4"}**\n\n${gameName}#${tagline} vient de ${lpChange > 0 ? "gagner" : "perdre"} ${Math.abs(lpChange)} ${league} ! **(${tier} ${rank} / ${updatedLP} lp)**`,
-            lpChange: lpChange > 0 ? "gagne" : "perd",
-            league: "point(s) de ligue",
+            level: "Niveau",
+            round: "Round",
+            eliminated: "Joueurs Éliminés",
+            damage: "Dégâts",
+            mainTraits: "Traits Principaux",
             queue: "Mode",
             queueType: "TFT Classé",
-            mainTrait: "Trait Principal",
-            timestamp: "Date",
-            date: new Date().toLocaleString("fr-FR", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                timeZone: "Europe/Paris",
-            })
+            time: "Durée",
+            goldLeft: "Or Restant",
         },
         en: {
-            title: "[📜 TFT Match Result ]",
-            win: "Victory",
-            loss: "Defeat",
+            title: "[📜 TFT Result ]",
+            lpChangeText: lpChange > 0 ? "gained" : "lost",
             placement: "Placement",
-            description: (gameName: string, tagline: string, placement: number, lpChange: number, league: string, tier: string, rank: string, updatedLP: number) =>
-                `**${placement <= 4 ? "Top 4" : "Bottom 4"}**\n\n${gameName}#${tagline} just ${lpChange > 0 ? "gained" : "lost"} ${Math.abs(lpChange)} ${league}! **(${tier} ${rank} / ${updatedLP} LP)**`,
-            lpChange: lpChange > 0 ? "gained" : "lost",
-            league: "league point(s)",
+            level: "Level",
+            round: "Round",
+            eliminated: "Players Eliminated",
+            damage: "Damage",
+            mainTraits: "Main Traits",
             queue: "Queue",
             queueType: "TFT Ranked",
-            mainTrait: "Main Trait",
-            timestamp: "Date",
-            date: new Date().toLocaleString("en-GB", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                timeZone: "Europe/London",
-            }).replace(",", " at")
-        }
+            time: "Duration",
+            goldLeft: "Gold Left",
+        },
     };
 
     const t = translations[lang as keyof typeof translations];
+    const durationMinutes = Math.floor(tftGameInfo.gameDurationSeconds / 60);
+    const durationSeconds = tftGameInfo.gameDurationSeconds % 60;
 
     const currentGameId = gameIdWithRegion.split("_")[1];
     const matchUrl = `https://www.leagueofgraphs.com/tft/match/${region.toLowerCase()}/${currentGameId}`;
 
     const embed = new EmbedBuilder()
-        .setColor(placement === 1 ? '#FFD700' : placement <= 4 ? '#00FF00' : '#FF0000') // Or = 1er, vert = top 4, rouge sinon
+        .setColor(tftGameInfo.placement === 1 ? '#FFD700' : tftGameInfo.placement <= 4 ? '#00FF00' : '#FF0000')
         .setTitle(t.title)
         .setURL(matchUrl)
-        .setDescription(t.description(gameName, tagline, placement, lpChange, t.league, tier, rank, updatedLP))
+        .setAuthor({ name: `${gameName}#${tagline}` })
+        .setThumbnail(tftGameInfo.littleLegendIconUrl || null)
+        .setDescription(`**${gameName} ${t.lpChangeText} ${Math.abs(lpChange)} LP (${tier} ${rank} – ${updatedLP} LP)**`)
         .addFields(
-            {
-                name: t.placement,
-                value: `${getPlacementBadge(placement)} ${placement}${getOrdinalSuffix(placement, lang)}`,
-                inline: true
-            },
-            { name: t.queue, value: t.queueType, inline: true },
-            { name: '\u200B', value: customMessage ? "*" + customMessage + "*" : '\u200B' }
+            { name: t.placement, value: `${getPlacementBadge(tftGameInfo.placement)} ${tftGameInfo.placement}${getOrdinalSuffix(tftGameInfo.placement, lang)}`, inline: true },
+            { name: t.level, value: `${tftGameInfo.level}`, inline: true },
+            { name: t.round, value: `${tftGameInfo.roundEliminated}`, inline: true },
+            { name: t.time, value: `${durationMinutes}:${durationSeconds.toString().padStart(2, '0')}`, inline: true },
+            { name: t.eliminated, value: `${tftGameInfo.playersEliminated}`, inline: true },
+            { name: t.goldLeft, value: `${tftGameInfo.goldLeft} 🪙`, inline: true },
         );
-
-    if (mainTrait) {
-        embed.addFields({ name: t.mainTrait, value: `**${mainTrait}**`, inline: true });
+        
+    if (tftGameInfo.mainTraits && tftGameInfo.mainTraits.length > 0) {
+        embed.addFields({ 
+            name: t.mainTraits, 
+            value: `**${tftGameInfo.mainTraits.join(', ')}**`, 
+            inline: true 
+        });
+    }
+    
+    embed.addFields(
+        { name: t.damage, value: `${tftGameInfo.totalDamageToPlayers}`, inline: true },
+        { name: t.queue, value: t.queueType, inline: true }
+    );
+    
+    if (customMessage) {
+        embed.addFields({ name: '\u200B', value: `${customMessage}` });
     }
 
-    embed.setFooter({ text: `${t.timestamp}: ${t.date}` });
+    embed.setFooter({
+        text: `Date: ${new Date().toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
+            year: 'numeric', month: 'long', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', timeZone: "Europe/Paris",
+        })}`,
+    });
 
     await channel.send({ embeds: [embed] });
 };

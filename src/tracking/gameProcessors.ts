@@ -1,6 +1,6 @@
 import { TextChannel } from 'discord.js';
 import { updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, PlayerInfo, updatePlayerLastDayWinLose, getPlayerForQueueInfoForSpecificServer, ServerInfo } from '../database/databaseHelper';
-import { getLeagueGameDetailForCurrentPlayer, getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, getTFTGameDetailForCurrentPlayer, getTFTPlayerRankInfo } from '../riot/riotHelper';
+import { getLeagueGameDetailForCurrentPlayer, getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, getTFTGameDetailForCurrentPlayer, getTFTPlayerRankInfo, PlayerTFTGameInfo, PlayerLeagueGameInfo } from '../riot/riotHelper';
 import { client } from '../index';
 import { GameQueueType, ManagedGameQueueType } from './GameQueueType';
 import { sendLeagueGameResultMessage, sendTFTGameResultMessage } from './sendMessage';
@@ -10,7 +10,7 @@ async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, match
     console.log(`➡️ [League] New match ${matchId} found for player ${player.gameName}#${player.tagLine} on server ${server.serverid}.`);
 
     // 1. Fetch game and rank details
-    const gameDetails = await getLeagueGameDetailForCurrentPlayer(player.puuid, matchId, player.region, server.lang);
+    const gameDetails: PlayerLeagueGameInfo = await getLeagueGameDetailForCurrentPlayer(player.puuid, matchId, player.region, server.lang);
     const playerRankStats = await getPlayerRankInfo(player.puuid, player.region);
 
     // 2. Update database
@@ -67,7 +67,7 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
     console.log(`➡️ [TFT] New match ${matchId} found for player ${player.gameName}#${player.tagLine} on server ${server.serverid}.`);
 
     // 1. Fetch game details and validate queue type
-    const gameDetails = await getTFTGameDetailForCurrentPlayer(player.tftpuuid, matchId, player.region);
+    const gameDetails: PlayerTFTGameInfo = await getTFTGameDetailForCurrentPlayer(player.tftpuuid, matchId, player.region);
     if (gameDetails.queueType !== GameQueueType.RANKED_TFT && gameDetails.queueType !== GameQueueType.RANKED_TFT_DOUBLE_UP) {
         console.log(`[TFT] Skipping non-ranked TFT match ${matchId} for player ${player.gameName}.`);
         return;
@@ -110,10 +110,9 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
         channel,
         player.gameName,
         player.tagLine,
-        gameDetails.placement,
-        gameDetails.principalTrait,
-        currentTier ?? 'Unranked',
+        gameDetails,
         currentRank ?? '',
+        currentTier ?? 'Unranked',
         lpGain,
         currentLP ?? 0,
         player.region,

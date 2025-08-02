@@ -1,8 +1,10 @@
-import { PlatformId, RiotAPI, RiotAPITypes } from "@fightmegg/riot-api";
-import { AppError, ErrorTypes } from "../error/error";
+import { PlatformId, RiotAPI, RiotAPITypes, DDragon } from "@fightmegg/riot-api";
 import dotenv from 'dotenv';
 import Bottleneck from "bottleneck";
+import { promises as fs } from "fs";
+import { AppError, ErrorTypes } from "../error/error";
 import { GameQueueType } from "../tracking/GameQueueType";
+import { TACTICIAN_FILE_PATH } from "..";
 type PingKeys =
 	| "basicPings"
 	| "allInPings"
@@ -222,8 +224,15 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 
 		return {
 			gameEndTimestamp: game_datetime,
+			gameDurationSeconds: participant.time_eliminated,
+			littleLegendIconUrl: await getLittleLegendIconUrl(participant.companion.skin_ID),
 			placement: participant.placement,
-			principalTrait: getMainTrait(participant.traits),
+			mainTraits: getMainTrait(participant.traits),
+			level: participant.level,
+			roundEliminated: getStageFromRound(participant.last_round),
+			playersEliminated: participant.players_eliminated,
+			totalDamageToPlayers: participant.total_damage_to_players,
+			goldLeft: participant.gold_left,
 			participantNumber: participants.findIndex(p => p.puuid === puuid) + 1,
 			traits: participant.traits,
 			units: participant.units,
@@ -436,22 +445,42 @@ function generateTFTCustomMessage(participant: RiotAPITypes.TftMatch.Participant
 	return result;
 }
 
-function getMainTrait(traits: RiotAPITypes.TftMatch.TraitDTO[]): string | null {
-	if (!traits || traits.length === 0) return null;
+function getMainTrait(traits: RiotAPITypes.TftMatch.TraitDTO[]): Array<string> {
+	if (!traits || traits.length === 0) {
+		return [];
+	}
 
-	// Filtrer les traits inutiles (par exemple les "TFT7_TrainerTrait" qui peuvent avoir num_units mais pas être vraiment joués)
-	const filteredTraits = traits.filter(trait => trait.tier_current > 0);
+	// 1. On filtre les traits inactifs (ceux dont le palier est 0)
+	const activeTraits: RiotAPITypes.TftMatch.TraitDTO[] = traits.filter(trait => trait.tier_current > 0);
 
-	if (filteredTraits.length === 0) return null;
+	if (activeTraits.length === 0) {
+		return [];
+	}
 
-	// Trier par nombre d'unités, puis par style décroissant
-	filteredTraits.sort((a, b) => {
-		if (b.num_units !== a.num_units) return b.num_units - a.num_units;
-		if ((b.style ?? 0) !== (a.style ?? 0)) return (b.style ?? 0) - (a.style ?? 0);
-		return 0;
+	// 2. On trie les traits pour trouver le plus fort en premier
+	activeTraits.sort((a, b) => {
+		if (b.num_units !== a.num_units) {
+			return b.num_units - a.num_units;
+		}
+		// Puis par le style en cas d'égalité (décroissant)
+		return (b.style ?? 0) - (a.style ?? 0);
 	});
 
-	return filteredTraits[0].name.replace(/^TFT\d+_/, ''); // enlève "TFT14_", "TFT13_", etc.
+	// 3. On récupère le score du meilleur trait
+	const topTrait = activeTraits[0];
+	const topScore = {
+		num_units: topTrait.num_units,
+		style: topTrait.style ?? 0
+	};
+
+	// 4. On filtre la liste pour ne garder que les traits qui ont exactement ce score
+	const resultTraits: RiotAPITypes.TftMatch.TraitDTO[] = activeTraits.filter(trait =>
+		trait.num_units === topScore.num_units &&
+		(trait.style ?? 0) === topScore.style
+	);
+
+	// 5. On retourne les noms formatés de tous les traits correspondants
+	return resultTraits.map(trait => trait.name.replace(/^TFT\d+_/, ''));
 }
 
 function getTotalPings(participant: ParticipantWithPings): number {
@@ -515,6 +544,37 @@ function getTeamLevelFromMatch(participants: RiotAPITypes.MatchV5.ParticipantDTO
 		case 3: return "🐢 Dragged";
 		default: return "🤡 Anchor";
 	}
+}
+
+export async function getLittleLegendIconUrl(skinId: number): Promise<string> {
+	// Convertit le skinId en string pour la recherche dans les données
+	const skinIdStr = skinId.toString();
+
+	let tacticianData: TacticianDataFile | undefined;
+
+	if (await fs.stat(TACTICIAN_FILE_PATH).then(() => true).catch(() => false)) {
+		const raw = await fs.readFile(TACTICIAN_FILE_PATH, "utf-8");
+		tacticianData = JSON.parse(raw);
+	}
+
+	if (!tacticianData) {
+		console.error("⚠️ tft-tactician.json not found.");;
+		return "";
+	}
+
+	// Recherche du tactician correspondant dans les données
+	const tactician = (tacticianData.data as { [key: string]: Tactician })[skinIdStr];
+
+	if (!tactician) {
+		console.error(`No companion found for skinId: ${skinId}`);
+		return "";
+	}
+
+	// Le nom complet de l'image est le nom du fichier 'full', qui est dans la plupart des cas un png
+	const baseImageName = tactician.image.full;
+	const latestVersion = await new DDragon().versions.latest();
+	const littleLegendUrl = `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/img/tft-tactician/${baseImageName}`;
+	return littleLegendUrl;
 }
 
 function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlayers: RiotAPITypes.MatchV5.ParticipantDTO[], gameDurationSeconds: number): number {
@@ -637,6 +697,25 @@ function computePlayerScore(player: RiotAPITypes.MatchV5.ParticipantDTO, allPlay
 	return Math.round(score);
 }
 
+function getStageFromRound(lastRound: number): string {
+	if (lastRound <= 0) {
+		return "N/A";
+	}
+
+	// Le premier stage est plus court (4 rounds au lieu de 7)
+	if (lastRound <= 4) {
+		return `1-${lastRound}`;
+	}
+
+	// Le reste des stages suit un schéma de 7 rounds
+	// On enlève les 4 premiers rounds pour simplifier le calcul
+	const adjustedRound = lastRound - 4;
+	const stage = Math.floor((adjustedRound - 1) / 7) + 2;
+	const roundInStage = (adjustedRound - 1) % 7 + 1;
+
+	return `${stage}-${roundInStage}`;
+}
+
 function addCustomMessage(finalString: string | undefined, newString: string): string { // matchInfo: RiotAPITypes.MatchV5.MatchInfoDTO
 	if (finalString == undefined) {
 		finalString = newString;
@@ -668,8 +747,15 @@ export interface PlayerLeagueGameInfo {
 
 export interface PlayerTFTGameInfo {
 	gameEndTimestamp: number;
+	gameDurationSeconds: number;
+	littleLegendIconUrl: string;
 	placement: number;
-	principalTrait: string | null;
+	mainTraits: Array<string>;
+	level: number;
+	roundEliminated: string;
+	playersEliminated: number;
+	totalDamageToPlayers: number;
+	goldLeft: number;
 	participantNumber: number,
 	traits: RiotAPITypes.TftMatch.TraitDTO[];
 	units: RiotAPITypes.TftMatch.UnitDTO[];
@@ -678,3 +764,26 @@ export interface PlayerTFTGameInfo {
 	customMessage: string | undefined;
 }
 
+// Interface pour les données du tactician, pour une meilleure typage
+interface TacticianImage {
+	full: string;
+	sprite: string;
+	group: string;
+	x: number;
+	y: number;
+	w: number;
+	h: number;
+}
+
+interface Tactician {
+	id: string;
+	tier: string;
+	name: string;
+	image: TacticianImage;
+}
+
+interface TacticianDataFile {
+	type: string;
+	version: string;
+	data: Record<string, Tactician>;
+}
