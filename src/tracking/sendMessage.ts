@@ -108,6 +108,7 @@ export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: s
     const t = translations[lang as keyof typeof translations];
     const durationMinutes = Math.floor(tftGameInfo.gameDurationSeconds / 60);
     const durationSeconds = tftGameInfo.gameDurationSeconds % 60;
+    const formattedDurationSeconds = durationSeconds.toString().padStart(2, '0');
 
     const currentGameId = gameIdWithRegion.split("_")[1];
     const matchUrl = `https://www.leagueofgraphs.com/tft/match/${region.toLowerCase()}/${currentGameId}`;
@@ -123,7 +124,7 @@ export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: s
             { name: t.placement, value: `${getPlacementBadge(tftGameInfo.placement)} ${tftGameInfo.placement}${getOrdinalSuffix(tftGameInfo.placement, lang)}`, inline: true },
             { name: t.level, value: `${tftGameInfo.level}`, inline: true },
             { name: t.round, value: `${tftGameInfo.roundEliminated}`, inline: true },
-            { name: t.time, value: `${durationMinutes}:${durationSeconds.toString().padStart(2, '0')}`, inline: true },
+            { name: t.time, value: `${durationMinutes}:${formattedDurationSeconds}`, inline: true },
             { name: t.eliminated, value: `${tftGameInfo.playersEliminated}`, inline: true },
             { name: t.goldLeft, value: `${tftGameInfo.goldLeft} 🪙`, inline: true },
         );
