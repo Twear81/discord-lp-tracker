@@ -254,12 +254,17 @@ export async function getLastRankedLeagueMatch(puuid: string, region: string, is
 	try {
 		const platformId = getPlatformIdFromRegionString(region);
 
-		const params = {
-			queue: 420, // default to Ranked Solo/Duo
-			count: 1
-		};
+		let params;
 		if (isFlex) {
-			params.queue = 440; // Ranked Flex
+			params = {
+				type: RiotAPITypes.MatchV5.MatchType.Ranked, // All ranked game
+				count: 1
+			};
+		} else {
+			params = {
+				queue: 420, // default to Ranked Solo/Duo
+				count: 1
+			};
 		}
 
 		return await limitedRequest(() => riotApi.matchV5.getIdsByPuuid({

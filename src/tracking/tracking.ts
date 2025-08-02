@@ -4,7 +4,7 @@ import { AppError, ErrorTypes } from '../error/error';
 import { getPlayerRankInfo, getTFTPlayerRankInfo, getAccountByPUUID } from '../riot/riotHelper';
 import { client } from '../index';
 import { GameQueueType } from './GameQueueType';
-import { leagueFlexGameProcessor, leagueGameProcessor, processGameType, tftGameProcessor } from './gameProcessors';
+import { leagueGameProcessor, processGameType, tftGameProcessor } from './gameProcessors';
 import { generatePlayerRecapInfo, sendRecapMessage } from './sendMessage';
 import { isTimestampInRecapRange } from './util';
 
@@ -23,10 +23,9 @@ export const trackPlayers = async (firstRun: boolean): Promise<void> => {
                 continue;
             }
 
+            // Add classic game processor by default because is always active
             const gameProcessors: Promise<void>[] = [processGameType(server, players, leagueGameProcessor, firstRun)];
-            if (server.flextoggle == true) {
-                gameProcessors.push(processGameType(server, players, leagueFlexGameProcessor, firstRun));
-            }
+
             if (server.tfttoggle == true) {
                 gameProcessors.push(processGameType(server, players, tftGameProcessor, firstRun));
             }
