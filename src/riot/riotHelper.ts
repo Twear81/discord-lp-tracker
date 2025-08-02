@@ -225,7 +225,7 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 		return {
 			gameEndTimestamp: game_datetime,
 			gameDurationSeconds: participant.time_eliminated,
-			littleLegendIconUrl: await getLittleLegendIconUrl(participant.companion.skin_ID),
+			littleLegendIconUrl: await getLittleLegendIconUrl(participant.companion.item_ID),
 			placement: participant.placement,
 			mainTraits: getMainTrait(participant.traits),
 			level: participant.level,
