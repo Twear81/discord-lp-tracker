@@ -35,7 +35,7 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
         .setTitle(t.title)
         .setURL(matchUrl)
         .setAuthor({ name: `${gameName}#${tagline}` })
-        .setThumbnail(`https://ddragon.leagueoflegends.com/cdn/15.7.1/img/champion/${gameInfo.championName}.png`)
+        .setThumbnail(`https://ddragon.leagueoflegends.com/cdn/15.15.1/img/champion/${gameInfo.championName}.png`)
         .setDescription(`**${gameName} ${t.lpChange} ${Math.abs(lpChange)} LP (${tier} ${rank} – ${updatedLP} LP)**`)
         .addFields(
             { name: 'KDA', value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },
