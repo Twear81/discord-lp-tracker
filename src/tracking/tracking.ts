@@ -23,11 +23,13 @@ export const trackPlayers = async (firstRun: boolean): Promise<void> => {
                 continue;
             }
 
+            const gameProcessors: Promise<void>[] = [processGameType(server, players, leagueGameProcessor, firstRun)];
+            if (server.tfttoggle == true) {
+                gameProcessors.push(processGameType(server, players, tftGameProcessor, firstRun));
+            }
+
             // Process League and TFT in parallel for the current server
-            await Promise.all([
-                processGameType(server, players, leagueGameProcessor, firstRun),
-                processGameType(server, players, tftGameProcessor, firstRun),
-            ]);
+            await Promise.all(gameProcessors);
         }
     } catch (error) {
         console.error('❌ A fatal error occurred during the trackPlayer cycle:', error);
