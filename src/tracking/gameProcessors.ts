@@ -124,11 +124,11 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
 }
 
 interface GameProcessor {
-    gameName: 'League' | 'TFT';
+    gameName: 'League' | 'League Flex' | 'TFT';
     isEnabled(server: ServerInfo): boolean;
     getPUUID(player: PlayerInfo): string;
     getLastGameId(player: PlayerInfo): string | null;
-    getLastMatches(puuid: string, region: string, options?: boolean): Promise<string[]>;
+    getLastMatches(puuid: string, region: string): Promise<string[]>;
     handleNewGame(server: ServerInfo, player: PlayerInfo, matchId: string, firstRun: boolean): Promise<void>;
 }
 
@@ -138,7 +138,16 @@ export const leagueGameProcessor: GameProcessor = {
     isEnabled: (server) => true, // Always active
     getPUUID: (player) => player.puuid,
     getLastGameId: (player) => player.lastGameID,
-    getLastMatches: (puuid, region, flexToggle) => getLastRankedLeagueMatch(puuid, region, flexToggle!),
+    getLastMatches: (puuid, region) => getLastRankedLeagueMatch(puuid, region, false),
+    handleNewGame: handleNewLeagueGame,
+};
+
+export const leagueFlexGameProcessor: GameProcessor = {
+    gameName: 'League Flex',
+    isEnabled: (server) => server.flextoggle,
+    getPUUID: (player) => player.puuid,
+    getLastGameId: (player) => player.lastGameID,
+    getLastMatches: (puuid, region) => getLastRankedLeagueMatch(puuid, region, true),
     handleNewGame: handleNewLeagueGame,
 };
 
@@ -162,7 +171,7 @@ export async function processGameType(server: ServerInfo, players: PlayerInfo[],
         if (!puuid) {
             return Promise.resolve({ player, matchIds: [] });
         }
-        return processor.getLastMatches(puuid, player.region, server.flextoggle)
+        return processor.getLastMatches(puuid, player.region)
             .then(matchIds => ({ player, matchIds }))
             .catch(error => {
                 console.error(`❌ Failed to fetch ${processor.gameName} matches for ${player.gameName}:`, error);
