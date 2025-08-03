@@ -455,37 +455,39 @@ function getMainTrait(traits: RiotAPITypes.TftMatch.TraitDTO[]): Array<string> {
 		return [];
 	}
 
-	// 1. On filtre les traits inactifs (ceux dont le palier est 0)
+	// 1. Filter out inactive traits (those with a tier of 0)
 	const activeTraits: RiotAPITypes.TftMatch.TraitDTO[] = traits.filter(trait => trait.tier_current > 0);
 
 	if (activeTraits.length === 0) {
 		return [];
 	}
 
-	// 2. On trie les traits pour trouver le plus fort en premier
+	// 2. Sort traits to find the most powerful one first
 	activeTraits.sort((a, b) => {
 		if (b.num_units !== a.num_units) {
 			return b.num_units - a.num_units;
 		}
-		// Puis par le style en cas d'égalité (décroissant)
+		// Then sort by style in case of a tie (descending)
 		return (b.style ?? 0) - (a.style ?? 0);
 	});
 
-	// 3. On récupère le score du meilleur trait
+	// 3. Get the score of the top trait
 	const topTrait = activeTraits[0];
 	const topScore = {
 		num_units: topTrait.num_units,
 		style: topTrait.style ?? 0
 	};
 
-	// 4. On filtre la liste pour ne garder que les traits qui ont exactement ce score
+	// 4. Filter the list to keep only traits that have the exact same score
 	const resultTraits: RiotAPITypes.TftMatch.TraitDTO[] = activeTraits.filter(trait =>
-		trait.num_units === topScore.num_units &&
-		(trait.style ?? 0) === topScore.style
+		trait.num_units === topScore.num_units && (trait.style ?? 0) === topScore.style
 	);
 
-	// 5. On retourne les noms formatés de tous les traits correspondants
-	return resultTraits.map(trait => trait.name.replace(/^TFT\d+_/, ''));
+	// 5. Get the names of the matching traits and remove the "TFT..." prefix
+	const formattedTraits = resultTraits.map(trait => trait.name.replace(/^TFT\d+_/, ''));
+
+	// 6. Return a maximum of 2 traits
+	return formattedTraits.slice(0, 2);
 }
 
 function getTotalPings(participant: ParticipantWithPings): number {
