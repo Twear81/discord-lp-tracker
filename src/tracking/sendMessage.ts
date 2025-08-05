@@ -143,7 +143,7 @@ export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: s
     );
 
     if (customMessage) {
-        embed.addFields({ name: '\u200B', value: `${customMessage}` });
+        embed.addFields({ name: '', value: customMessage ? "*" + customMessage + "*" : "" });
     }
 
     embed.setFooter({
