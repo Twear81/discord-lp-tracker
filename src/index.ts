@@ -48,11 +48,11 @@ client.once(Events.ClientReady, async () => {
 		}
 	});
 	// Daily recap
-	cron.schedule("33 6 * * *", async () => dailyRecapAndReset);
+	cron.schedule("33 6 * * *", async () => dailyRecapAndReset());
 
 	// Update tft-tactician json
 	updateTFTTacticianFile();
-	cron.schedule("0 10 * * *", async () => updateTFTTacticianFile);
+	cron.schedule("0 10 * * *", async () => updateTFTTacticianFile());
 });
 
 const dailyRecapAndReset = async () => {
