@@ -126,10 +126,14 @@ const updateTFTTacticianFile = async () => {
 // });
 
 client.on(Events.GuildDelete, async (guild: Guild) => {
-	const serverId = guild.id;
+	try {
+		const serverId = guild.id;
 
-	await deleteServer(serverId);
-	await deleteAllPlayersOfServer(serverId);
+		await deleteAllPlayersOfServer(serverId);
+		await deleteServer(serverId);
+	} catch (error) {
+		logger.error("❌ A fatal error occurred during server delete:", error);
+	}
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
