@@ -32,8 +32,8 @@ export const getAbsoluteLP = (tier: string, rank: string, lp: number): number =>
 	const tierOrder: string[] = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"];
 	const rankOrder: string[] = ["IV", "III", "II", "I"];
 
-	const tierIndex = tierOrder.indexOf(tier);
-	const rankIndex = rankOrder.indexOf(rank);
+	const tierIndex = tierOrder.indexOf(tier.toUpperCase());
+	const rankIndex = rankOrder.indexOf(rank.toUpperCase());
 
 	if (tierIndex === -1 || rankIndex === -1) return 0; // Safety check for invalid values
 
