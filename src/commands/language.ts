@@ -17,10 +17,9 @@ export const data = new SlashCommandBuilder()
 	);
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
+	const serverId = interaction.guildId as string;
+	const lang = interaction.options.getString('lang', true);
 	try {
-		const serverId = interaction.guildId as string;
-		const lang = interaction.options.getString('lang', true);
-
 		await updateLangServer(serverId, lang);
 
 		await interaction.reply({
@@ -29,19 +28,19 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		});
 		logger.info(`The language has been changed for serverId: ${serverId}`);
 	} catch (error) {
+		let errorMessage = 'Failed to change the language, contact the dev';
+
 		if (error instanceof AppError) {
 			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
-				await interaction.reply({
-					content: 'You have to init the bot first',
-					flags: MessageFlags.Ephemeral,
-				});
+				errorMessage = 'You have to init the bot first';
 			}
 		} else {
 			logger.error('Failed to change the language:', error);
-			await interaction.reply({
-				content: 'Failed to change the language, contact the dev',
-				flags: MessageFlags.Ephemeral,
-			});
 		}
+
+		await interaction.reply({
+			content: errorMessage,
+			flags: MessageFlags.Ephemeral,
+		});
 	}
 }

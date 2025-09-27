@@ -9,8 +9,9 @@ export const data = new SlashCommandBuilder()
 	.setDescription('Check who is the best from player watched!');
 
 export async function execute(interaction: CommandInteraction): Promise<void> {
+	const serverId = interaction.guildId as string;
 	try {
-		const serverId = interaction.guildId as string;
+		await interaction.deferReply({ ephemeral: true });
 		const serverInfo = await getServer(serverId);
 
 		const playerInfoList: PlayerInfo[] = await listAllPlayerForSpecificServer(serverId);

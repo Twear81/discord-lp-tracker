@@ -45,7 +45,9 @@ async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, match
     let lpGain = 0;
     if (currentRank != null && oldRank != null) {
         lpGain = calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
-    }
+    } else {
+		logger.warn("Can't calculateRRDifference because there is a null info");
+	}
 
     await sendLeagueGameResultMessage(
         channel,
@@ -105,7 +107,9 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
     let lpGain = 0;
     if (currentRank != null && oldRank != null) {
         lpGain = calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
-    }
+    } else {
+		logger.warn("Can't calculateRRDifference because there is a null info");
+	}
 
     await sendTFTGameResultMessage(
         channel,

@@ -1,9 +1,13 @@
-import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { addPlayer, getPlayerForSpecificServer, getServer, updatePlayerInfoCurrentAndLastForQueueType, updatePlayerLastGameId } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
 import { getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, getSummonerByName, getTFTPlayerRankInfo, getTFTSummonerByName } from '../riot/riotHelper';
 import { GameQueueType, ManagedGameQueueType } from '../tracking/GameQueueType';
 import logger from '../logger/logger';
+
+const API_ERROR_MESSAGE = 'The player was not found. Please check the name and tag.';
+const GENERIC_ERROR_MESSAGE = 'Failed to add the player, contact the dev.';
+const NOT_FOUND_ERROR = 'Not Found';
 
 export const data = new SlashCommandBuilder()
 	.setName('addplayer')
@@ -29,21 +33,27 @@ export const data = new SlashCommandBuilder()
 	);
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
+	const serverId = interaction.guildId as string;
+	logger.info(`Adding a player for serverId: ${serverId}`);
+	const accountname = interaction.options.getString('accountname')!;
+	const tag = interaction.options.getString('tag')!;
+	const region = interaction.options.getString('region')!;
 	try {
-		const serverId = interaction.guildId as string;
-		logger.info(`Adding a player for serverId: ${serverId}`);
-		const accountname = interaction.options.getString('accountname')!;
-		const tag = interaction.options.getString('tag')!;
-		const region = interaction.options.getString('region')!;
+		await interaction.deferReply({ ephemeral: true });
 
 		const serverInfo = await getServer(serverId);
 
 		const summoner = await getSummonerByName(accountname, tag, region);
-		const playerRankInfos = await getPlayerRankInfo(summoner.puuid, region);
 		const summonerTFT = await getTFTSummonerByName(accountname, tag, region);
+		if (!summoner.puuid || !summonerTFT) {
+			throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, NOT_FOUND_ERROR);
+		}
+		
+		await addPlayer(serverId, summoner.puuid, summonerTFT.puuid, summoner.gameName!, summoner.tagLine!, region);
+
+		const playerRankInfos = await getPlayerRankInfo(summoner.puuid, region);
 		const playerRankInfosTFT = await getTFTPlayerRankInfo(summonerTFT.puuid, region);
 
-		await addPlayer(serverId, summoner.puuid, summonerTFT.puuid, summoner.gameName!, summoner.tagLine!, region);
 		const currentPlayer = await getPlayerForSpecificServer(serverId, summoner.puuid);
 		for (const playerRankStat of playerRankInfos) {
 			if (playerRankStat.queueType in GameQueueType) {
@@ -72,36 +82,34 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		// Update last game inside database
 		await updatePlayerLastGameId(serverId, currentPlayer.tftpuuid, currentTFTGameIdWithRegion, ManagedGameQueueType.TFT);
 
-		await interaction.reply({
-			content: `The player "${accountname}#${tag}" for region ${region} has been added.`,
-			flags: MessageFlags.Ephemeral,
+		await interaction.editReply({
+			content: `The player "${accountname}#${tag}" for region ${region} has been added.`
 		});
 		logger.info(`The player ${accountname}#${tag} has been added for serverId: ${serverId}`);
 	} catch (error: unknown) {
+		let content: string;
+
 		if (error instanceof AppError) {
-			// Inside this block, err is known to be a ValidationError
-			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
-				await interaction.reply({
-					content: 'You have to init the bot first',
-					flags: MessageFlags.Ephemeral,
-				});
-			} else if (error.type === ErrorTypes.DATABASE_ALREADY_INSIDE) {
-				await interaction.reply({
-					content: 'Player already added',
-					flags: MessageFlags.Ephemeral,
-				});
-			} else if (error.type === ErrorTypes.PLAYER_NOT_FOUND) {
-				await interaction.reply({
-					content: 'Player not found',
-					flags: MessageFlags.Ephemeral,
-				});
+			switch (error.type) {
+				case ErrorTypes.SERVER_NOT_INITIALIZE:
+					content = 'You have to init the bot first';
+					break;
+				case ErrorTypes.DATABASE_ALREADY_INSIDE:
+					content = 'Player already added';
+					break;
+				case ErrorTypes.PLAYER_NOT_FOUND:
+					content = API_ERROR_MESSAGE;
+					break;
+				default:
+					content = GENERIC_ERROR_MESSAGE;
+					logger.error('Failed to add the player:', error);
+					break;
 			}
 		} else {
+			content = GENERIC_ERROR_MESSAGE;
 			logger.error('Failed to add the player:', error);
-			await interaction.reply({
-				content: 'Failed to add the player, contact the dev',
-				flags: MessageFlags.Ephemeral,
-			});
 		}
+
+		await interaction.editReply({ content });
 	}
 }

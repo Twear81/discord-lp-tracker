@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { deletePlayer } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
 import logger from '../logger/logger';
@@ -27,40 +27,42 @@ export const data = new SlashCommandBuilder()
 	);
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
+	const serverId = interaction.guildId as string;
+	logger.info(`Deleting a player for serverId: ${serverId}`);
+	const accountname = interaction.options.getString('accountname')!;
+	const tag = interaction.options.getString('tag')!;
+	const region = interaction.options.getString('region')!;
+
 	try {
-		const serverId = interaction.guildId as string;
-		logger.info(`Deleting a player for serverId: ${serverId}`);
-		const accountname = interaction.options.getString('accountname')!;
-		const tag = interaction.options.getString('tag')!;
-		const region = interaction.options.getString('region')!;
+		await interaction.deferReply({ ephemeral: true });
 
 		await deletePlayer(serverId, accountname, tag, region);
 
-		await interaction.reply({
-			content: `The player "${accountname}#${tag}" for region ${region} has been deleted.`,
-			flags: MessageFlags.Ephemeral,
+		await interaction.editReply({
+			content: `The player "${accountname}#${tag}" for region ${region} has been deleted.`
 		});
 		logger.info(`The player ${accountname}#${tag} has been deleted for serverId: ${serverId}`);
 	} catch (error: unknown) {
-		if (error instanceof AppError) {
-			// Inside this block, err is known to be a ValidationError
-			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
-				await interaction.reply({
-					content: 'You have to init the bot first',
-					flags: MessageFlags.Ephemeral,
-				});
-			} else if (error.type === ErrorTypes.PLAYER_NOT_FOUND) {
-				await interaction.reply({
-					content: 'Player not found',
-					flags: MessageFlags.Ephemeral,
-				});
-			}
-		} else {
-			logger.error('Failed to delete the player:', error);
-			await interaction.reply({
-				content: 'Failed to delete the player, contact the dev',
-				flags: MessageFlags.Ephemeral,
-			});
-		}
+		let content: string;
+        
+        if (error instanceof AppError) {
+            switch (error.type) {
+                case ErrorTypes.SERVER_NOT_INITIALIZE:
+                    content = 'You have to init the bot first';
+                    break;
+                case ErrorTypes.PLAYER_NOT_FOUND:
+                    content = 'Player not found';
+                    break;
+                default:
+                    content = 'Failed to delete the player, contact the dev';
+                    logger.error('Failed to delete the player:', error);
+                    break;
+            }
+        } else {
+            content = 'Failed to delete the player, contact the dev';
+            logger.error('Failed to delete the player:', error);
+        }
+
+        await interaction.editReply({ content });
 	}
 }

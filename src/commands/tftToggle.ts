@@ -13,9 +13,10 @@ export const data = new SlashCommandBuilder()
 	);
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
+	const serverId = interaction.guildId as string;
+	const tftToggle = interaction.options.getBoolean('tfttoggle')!;
 	try {
-		const serverId = interaction.guildId as string;
-		const tftToggle = interaction.options.getBoolean('tfttoggle')!;
+		await interaction.deferReply({ ephemeral: true });
 
 		await updateTFTToggleServer(serverId, tftToggle);
 
@@ -23,9 +24,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			? 'will watch for tft game'
 			: 'will not watch for tft game';
 
-		await interaction.reply({
-			content: `The bot ${tftMessage}`,
-			flags: MessageFlags.Ephemeral,
+		await interaction.editReply({
+			content: `The bot ${tftMessage}`
 		});
 		logger.info(`The tfttoggle has been changed for serverId: ${serverId}`);
 	} catch (error) {
@@ -38,9 +38,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			}
 		} else {
 			logger.error('Failed to change tft toggle:', error);
-			await interaction.reply({
-				content: 'Failed to change tft toggle, contact the dev',
-				flags: MessageFlags.Ephemeral,
+			await interaction.editReply({
+				content: 'Failed to change tft toggle, contact the dev'
 			});
 		}
 	}
