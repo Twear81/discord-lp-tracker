@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
 import { deletePlayer } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
+import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('deleteplayer')
@@ -28,7 +29,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
 	try {
 		const serverId = interaction.guildId as string;
-		console.log(`Deleting a player for serverId: ${serverId}`);
+		logger.info(`Deleting a player for serverId: ${serverId}`);
 		const accountname = interaction.options.getString('accountname')!;
 		const tag = interaction.options.getString('tag')!;
 		const region = interaction.options.getString('region')!;
@@ -39,7 +40,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			content: `The player "${accountname}#${tag}" for region ${region} has been deleted.`,
 			flags: MessageFlags.Ephemeral,
 		});
-		console.log(`The player ${accountname}#${tag} has been deleted for serverId: ${serverId}`);
+		logger.info(`The player ${accountname}#${tag} has been deleted for serverId: ${serverId}`);
 	} catch (error: unknown) {
 		if (error instanceof AppError) {
 			// Inside this block, err is known to be a ValidationError
@@ -55,7 +56,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 				});
 			}
 		} else {
-			console.error('Failed to delete the player:', error);
+			logger.error('Failed to delete the player:', error);
 			await interaction.reply({
 				content: 'Failed to delete the player, contact the dev',
 				flags: MessageFlags.Ephemeral,

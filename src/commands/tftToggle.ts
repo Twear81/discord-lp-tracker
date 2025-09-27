@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
 import { AppError, ErrorTypes } from '../error/error';
 import { updateTFTToggleServer } from '../database/databaseHelper';
+import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('tfttoggle')
@@ -26,7 +27,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			content: `The bot ${tftMessage}`,
 			flags: MessageFlags.Ephemeral,
 		});
-		console.log(`The tfttoggle has been changed for serverId: ${serverId}`);
+		logger.info(`The tfttoggle has been changed for serverId: ${serverId}`);
 	} catch (error) {
 		if (error instanceof AppError) {
 			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
@@ -36,7 +37,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 				});
 			}
 		} else {
-			console.error('Failed to change tft toggle:', error);
+			logger.error('Failed to change tft toggle:', error);
 			await interaction.reply({
 				content: 'Failed to change tft toggle, contact the dev',
 				flags: MessageFlags.Ephemeral,

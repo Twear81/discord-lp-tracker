@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { getServer, listAllPlayerForSpecificServer, PlayerInfo } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
+import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('list')
@@ -53,7 +54,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 				flags: MessageFlags.Ephemeral,
 			});
 		}
-		console.log('The list has been demanded');
+		logger.info('The list has been demanded');
 	} catch (error) {
 		if (error instanceof AppError) {
 			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
@@ -63,7 +64,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 				});
 			}
 		} else {
-			console.error('Failed to display the list:', error);
+			logger.error('Failed to display the list:', error);
 			await interaction.reply({
 				content: 'Failed to display the list, contact the dev',
 				flags: MessageFlags.Ephemeral,

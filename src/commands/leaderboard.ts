@@ -2,6 +2,7 @@ import { SlashCommandBuilder, CommandInteraction, EmbedBuilder, MessageFlags } f
 import { getServer, listAllPlayerForQueueInfoForSpecificServer, listAllPlayerForSpecificServer, PlayerForQueueInfo, PlayerInfo, sortPlayersByRank } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
 import { GameQueueType } from '../tracking/GameQueueType';
+import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('leaderboard')
@@ -28,7 +29,7 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 			hasAlreadySentAMessage = true;
 		}
 		await generateLeaderboardMessage(interaction, serverInfo.lang, playerInfoList, playerSortForSoloQ, GameQueueType.RANKED_SOLO_5x5, hasAlreadySentAMessage);
-		console.log('The leaderboard has been demanded');
+		logger.info('The leaderboard has been demanded');
 	} catch (error) {
 		if (error instanceof AppError) {
 			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
@@ -38,7 +39,7 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 				});
 			}
 		} else {
-			console.error('Failed to display the leaderboard:', error);
+			logger.error('Failed to display the leaderboard:', error);
 			if (interaction.replied || interaction.deferred) {
 				await interaction.followUp({
 					content: 'Failed to display the leaderboard, contact the dev',
@@ -71,11 +72,13 @@ const generateLeaderboardMessage = async (interaction: CommandInteraction, lang:
 		[GameQueueType.RANKED_SOLO_5x5]: "🏆 Classement SoloQ",
 		[GameQueueType.RANKED_FLEX_SR]: "🏆 Classement FlexQ",
 		[GameQueueType.RANKED_TFT]: "🏆 Classement TFT",
+		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "🏆 Classement TFT Double",
 	};
 	const titleMapEN: Record<GameQueueType, string> = {
 		[GameQueueType.RANKED_SOLO_5x5]: "🏆 SoloQ Leaderboard",
 		[GameQueueType.RANKED_FLEX_SR]: "🏆 FlexQ Leaderboard",
 		[GameQueueType.RANKED_TFT]: "🏆 TFT Leaderboard",
+		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "🏆 TFT Double Leaderboard",
 	};
 
 	const translations = {

@@ -11,6 +11,7 @@ import { deployCommands } from "./deploy-commands";
 import { initDB } from './database/init_database';
 import { generateRecapOfTheDay, initLastDayInfo, trackPlayers } from "./tracking/tracking";
 import { deleteAllPlayersOfServer, deleteServer } from "./database/databaseHelper";
+import logger from "./logger/logger";
 
 dotenv.config();
 export const client = new Client({
@@ -26,25 +27,25 @@ export const TACTICIAN_FILE_PATH = path.resolve(__dirname, "../tft-tactician.jso
 client.once(Events.ClientReady, async () => {
 	await deployCommands();
 	await initDB();
-	console.log("Discord bot is ready! 🤖");
+	logger.info("Discord bot is ready! 🤖");
 
-	console.log("Init LastDay start");
+	logger.info("Init LastDay start");
 	await initLastDayInfo(false);
-	console.log("Init LastDay end");
+	logger.info("Init LastDay end");
 
 	// First run for the tracker
-	console.log("First tracking start");
+	logger.info("First tracking start");
 	await trackPlayers(true);
-	console.log("First tracking end");
+	logger.info("First tracking end");
 
 	// Tracking each 5 min
 	cron.schedule("*/5 * * * *", async () => {
 		try {
-			console.log("Tracking start");
+			logger.info("Tracking start");
 			await trackPlayers(false);
-			console.log("Tracking end");
+			logger.info("Tracking end");
 		} catch (error) {
-			console.error("❌ An error occurred during player tracking:", error);
+			logger.error("❌ An error occurred during player tracking:", error);
 		}
 	});
 	// Daily recap
@@ -57,22 +58,22 @@ client.once(Events.ClientReady, async () => {
 
 const dailyRecapAndReset = async () => {
 	try {
-		console.log("Generate recap of the day start");
+		logger.info("Generate recap of the day start");
 		await generateRecapOfTheDay();
-		console.log("Recap generated");
+		logger.info("Recap generated");
 
 		await initLastDayInfo(true);
-		console.log("Last day info reseted");
+		logger.info("Last day info reseted");
 
-		console.log("Generate recap of the day end");
+		logger.info("Generate recap of the day end");
 	} catch (error) {
-		console.error("❌ A fatal error occurred during daily recap and reset:", error);
+		logger.error("❌ A fatal error occurred during daily recap and reset:", error);
 	}
 };
 
 const updateTFTTacticianFile = async () => {
 	try {
-		console.log("➡️ Starting the daily update of tft-tactician.json...");
+		logger.info("➡️ Starting the daily update of tft-tactician.json...");
 
 		const latestVersion = await new DDragon().versions.latest();
 		let currentVersion = null;
@@ -88,18 +89,18 @@ const updateTFTTacticianFile = async () => {
 				"code" in readErr &&
 				(readErr as NodeJS.ErrnoException).code === "ENOENT"
 			) {
-				console.log("⚠️ File does not exist, will create a new one.");
+				logger.info("⚠️ File does not exist, will create a new one.");
 			} else {
 				throw readErr;
 			}
 		}
 
 		if (latestVersion === currentVersion) {
-			console.log(`✅ tft-tactician.json is already up to date (version: ${latestVersion}). No update needed.`);
+			logger.info(`✅ tft-tactician.json is already up to date (version: ${latestVersion}). No update needed.`);
 			return;
 		}
 
-		console.log(`🆕 New version found! Updating from ${currentVersion} to ${latestVersion}.`);
+		logger.info(`🆕 New version found! Updating from ${currentVersion} to ${latestVersion}.`);
 
 		const newTacticianDataUrl = `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/data/en_US/tft-tactician.json`;
 		const response = await axios.get(newTacticianDataUrl);
@@ -110,13 +111,13 @@ const updateTFTTacticianFile = async () => {
 		};
 
 		await fs.writeFile(TACTICIAN_FILE_PATH, JSON.stringify(updatedData));
-		console.log("✅ tft-tactician.json has been successfully updated!");
+		logger.info("✅ tft-tactician.json has been successfully updated!");
 
 		// Optionnel : recharge le cache si tu fais du require à chaud
 		delete require.cache[require.resolve(TACTICIAN_FILE_PATH)];
 
 	} catch (error) {
-		console.error("❌ An error occurred during the update of tft-tactician.json:", error);
+		logger.error("❌ An error occurred during the update of tft-tactician.json:", error);
 	}
 };
 
@@ -133,7 +134,7 @@ client.on(Events.GuildDelete, async (guild: Guild) => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
 	if (!interaction.isCommand()) {
-		console.error(`No command matching ${interaction.valueOf()} was found.`);
+		logger.error(`No command matching ${interaction.valueOf()} was found.`);
 		return;
 	}
 	const { commandName } = interaction;

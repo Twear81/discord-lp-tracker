@@ -5,6 +5,8 @@ import { promises as fs } from "fs";
 import { AppError, ErrorTypes } from "../error/error";
 import { GameQueueType } from "../tracking/GameQueueType";
 import { TACTICIAN_FILE_PATH } from "..";
+import logger from "../logger/logger";
+
 type PingKeys =
 	| "basicPings"
 	| "allInPings"
@@ -75,7 +77,7 @@ const limitedRequest = limiter.wrap(async (fn: () => Promise<RiotAPITypes.Accoun
 	try {
 		return await fn();
 	} catch (error) {
-		console.error("API Error:", error);
+		logger.error("API Error:", error);
 		throw error;
 	}
 });
@@ -89,7 +91,7 @@ export async function getSummonerByName(accountName: string, tag: string, region
 			tagLine: tag,
 		})) as unknown as Promise<RiotAPITypes.Account.AccountDTO>;
 	} catch (error) {
-		console.error(`Error API Riot (getSummonerByName) :`, error);
+		logger.error(`Error API Riot (getSummonerByName) :`, error);
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `No player found for ${accountName}#${tag} for region ${region}`);
 	}
 }
@@ -102,7 +104,7 @@ export async function getAccountByPUUID(puuid: string, region: string): Promise<
 			puuid: puuid
 		})) as unknown as Promise<RiotAPITypes.Account.AccountDTO>;
 	} catch (error) {
-		console.error(`Error API Riot (getSummonerByName) :`, error);
+		logger.error(`Error API Riot (getSummonerByName) :`, error);
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `No player found for puuid:${puuid} for region ${region}`);
 	}
 }
@@ -116,7 +118,7 @@ export async function getTFTSummonerByName(accountName: string, tag: string, reg
 			tagLine: tag,
 		})) as unknown as Promise<RiotAPITypes.Account.AccountDTO>;
 	} catch (error) {
-		console.error(`Error API Riot (getTFTSummonerByName) :`, error);
+		logger.error(`Error API Riot (getTFTSummonerByName) :`, error);
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `No player found for ${accountName}#${tag} for region ${region}`);
 	}
 }
@@ -129,7 +131,7 @@ async function getGameDetail(gameID: string, region: string): Promise<RiotAPITyp
 			matchId: gameID
 		})) as unknown as Promise<RiotAPITypes.MatchV5.MatchDTO>;
 	} catch (error) {
-		console.error(`Error API Riot (getGameDetail) :`, error);
+		logger.error(`Error API Riot (getGameDetail) :`, error);
 		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No game detail found for gameID ${gameID} for region ${region}`);
 	}
 }
@@ -142,7 +144,7 @@ async function getTFTGameDetail(gameID: string, region: string): Promise<RiotAPI
 			matchId: gameID
 		})) as unknown as Promise<RiotAPITypes.TftMatch.MatchDTO>;
 	} catch (error) {
-		console.error(`Error API Riot (getTFTGameDetail) :`, error);
+		logger.error(`Error API Riot (getTFTGameDetail) :`, error);
 		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No game detail found for gameID ${gameID} for region ${region}`);
 	}
 }
@@ -195,7 +197,7 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 		if (error instanceof AppError) {
 			throw error;
 		}
-		console.error(`Riot API Error (getLeagueGameDetailForCurrentPlayer):`, error);
+		logger.error(`Riot API Error (getLeagueGameDetailForCurrentPlayer):`, error);
 		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `Game details not found for game ${gameID}, player ${puuid}, and region ${region}`);
 	}
 }
@@ -244,7 +246,7 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 		if (error instanceof AppError) {
 			throw error;
 		}
-		console.error(`Riot API Error (getTFTGameDetailForCurrentPlayer):`, error);
+		logger.error(`Riot API Error (getTFTGameDetailForCurrentPlayer):`, error);
 		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `TFT Game details not found for game ${gameID}, player ${puuid}, and region ${region}`);
 	}
 }
@@ -274,7 +276,7 @@ export async function getLastRankedLeagueMatch(puuid: string, region: string, is
 		})) as unknown as Promise<string[]>;
 
 	} catch (error) {
-		console.error(`Riot API Error (getLastRankedLeagueMatch):`, error);
+		logger.error(`Riot API Error (getLastRankedLeagueMatch):`, error);
 		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last match found for player ${puuid} for region ${region}`);
 	}
 }
@@ -291,7 +293,7 @@ export async function getLastTFTMatch(puuid: string, region: string): Promise<st
 			}
 		})) as unknown as Promise<string[]>;
 	} catch (error) {
-		console.error(`Error API Riot (getLastTFTMatch) :`, error);
+		logger.error(`Error API Riot (getLastTFTMatch) :`, error);
 		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last tft match found for player ${puuid} for region ${region}`);
 	}
 }
@@ -305,7 +307,7 @@ export async function getPlayerRankInfo(puuid: string, region: string): Promise<
 		})) as unknown as RiotAPITypes.League.LeagueEntryDTO[];
 		return leagueRankedInfo;
 	} catch (error) {
-		console.error(`Error API Riot (getPlayerRankInfo) :`, error);
+		logger.error(`Error API Riot (getPlayerRankInfo) :`, error);
 		throw new AppError(ErrorTypes.PLAYERRANKINFO_NOT_FOUND, `No PLAYERRANKINFO found for player puuid:${puuid} for region ${region}`);
 	}
 }
@@ -319,7 +321,7 @@ export async function getTFTPlayerRankInfo(puuid: string, region: string): Promi
 		})) as unknown as RiotAPITypes.TftLeague.LeagueEntryDTO[];
 		return tftRankedInfo;
 	} catch (error) {
-		console.error(`Error API Riot (getTFTPlayerRankInfo) :`, error);
+		logger.error(`Error API Riot (getTFTPlayerRankInfo) :`, error);
 		throw new AppError(ErrorTypes.PLAYERRANKINFO_NOT_FOUND, `No PLAYERRANKINFO tft found for player puuid:${puuid} for region ${region}`);
 	}
 }
@@ -565,7 +567,7 @@ export async function getLittleLegendIconUrl(skinId: number): Promise<string> {
 	}
 
 	if (!tacticianData) {
-		console.error("⚠️ tft-tactician.json not found.");;
+		logger.error("⚠️ tft-tactician.json not found.");;
 		return "";
 	}
 
@@ -573,7 +575,7 @@ export async function getLittleLegendIconUrl(skinId: number): Promise<string> {
 	const tactician = (tacticianData.data as { [key: string]: Tactician })[skinIdStr];
 
 	if (!tactician) {
-		console.error(`No companion found for skinId: ${skinId}`);
+		logger.error(`No companion found for skinId: ${skinId}`);
 		return "";
 	}
 

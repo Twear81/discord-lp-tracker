@@ -3,6 +3,7 @@ import { Server } from './serverModel';
 import { AppError, ErrorTypes } from '../error/error';
 import { Model } from 'sequelize';
 import { GameQueueType, ManagedGameQueueType } from '../tracking/GameQueueType';
+import logger from '../logger/logger';
 
 // SERVER PART
 export const addOrUpdateServer = async (serverId: string, channelId: string, flexToggle: boolean, tftToggle: boolean, lang: string): Promise<void> => {
@@ -10,13 +11,13 @@ export const addOrUpdateServer = async (serverId: string, channelId: string, fle
 		const existingServer = await Server.findOne({ where: { serverid: serverId } });
 		if (existingServer) {
 			await existingServer.update({ channelid: channelId, flextoggle: flexToggle, tfttoggle: tftToggle, tftdoubletoggle: false, lang: lang });
-			console.log(`The server ${serverId} has been updated`);
+			logger.info(`The server ${serverId} has been updated`);
 		} else {
 			await Server.create({ serverid: serverId, channelid: channelId, flextoggle: flexToggle, tfttoggle: tftToggle, tftdoubletoggle: false, lang: lang });
-			console.log(`The server ${serverId} has been added`);
+			logger.info(`The server ${serverId} has been added`);
 		}
 	} catch (error) {
-		console.error(`❌ Failed to add or update the database for the serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to add or update the database for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to add or update the lang');
 	}
 };
@@ -26,12 +27,12 @@ export const updateLangServer = async (serverId: string, lang: string): Promise<
 		const existingServer = await Server.findOne({ where: { serverid: serverId } });
 		if (existingServer) {
 			await existingServer.update({ lang });
-			// console.log(`The language has been set to ${lang} for server ${serverId}`);
+			// logger.info(`The language has been set to ${lang} for server ${serverId}`);
 		} else {
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to update the lang for the serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to update the lang for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to update the lang');
 	}
 };
@@ -41,12 +42,12 @@ export const updateFlexToggleServer = async (serverId: string, flexToggle: boole
 		const existingServer = await Server.findOne({ where: { serverid: serverId } });
 		if (existingServer) {
 			await existingServer.update({ flextoggle: flexToggle });
-			// console.log(`The flex queue watch has been set to ${flexToggle} for server ${serverId}`);
+			// logger.info(`The flex queue watch has been set to ${flexToggle} for server ${serverId}`);
 		} else {
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to update the flex toggle for the serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to update the flex toggle for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to update the flex toggle');
 	}
 };
@@ -56,12 +57,12 @@ export const updateTFTToggleServer = async (serverId: string, tftToggle: boolean
 		const existingServer = await Server.findOne({ where: { serverid: serverId } });
 		if (existingServer) {
 			await existingServer.update({ tfttoggle: tftToggle });
-			// console.log(`The TFT queue watch has been set to ${tftToggle} for server ${serverId}`);
+			// logger.info(`The TFT queue watch has been set to ${tftToggle} for server ${serverId}`);
 		} else {
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to update the tft toggle for the serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to update the tft toggle for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to update the tft toggle');
 	}
 };
@@ -71,7 +72,7 @@ export const getLangServer = async (serverId: string): Promise<string> => {
 		const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
 		return existingServer != null ? existingServer.dataValues.lang : 'en';
 	} catch (error) {
-		console.error(`❌ Failed to get the lang for the serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to get the lang for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to get the lang');
 	}
 };
@@ -82,7 +83,7 @@ export const getAllServer = async (): Promise<ServerInfo[]> => {
 		const result: ServerInfo[] = servers.map(server => server.dataValues);
 		return result;
 	} catch (error) {
-		console.error('❌ Failed to list servers :', error);
+		logger.error('❌ Failed to list servers :', error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list servers');
 	}
 };
@@ -96,7 +97,7 @@ export const getServer = async (serverId: string): Promise<ServerInfo> => {
 		}
 		throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not initialize');
 	} catch (error) {
-		console.error('❌ Failed to list servers :', error);
+		logger.error('❌ Failed to list servers :', error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list servers');
 	}
 };
@@ -111,7 +112,7 @@ export const deleteServer = async (serverId: string): Promise<void> => {
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error('❌ Failed to delete the server :', error);
+		logger.error('❌ Failed to delete the server :', error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to delete the server');
 	}
 };
@@ -137,7 +138,7 @@ export const addPlayer = async (serverId: string, puuid: string, tftpuuid: strin
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to add the player ${accountName}#${tag} for the serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to add the player ${accountName}#${tag} for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to add the player ${accountName}#${tag}`);
 	}
 };
@@ -157,7 +158,7 @@ export const deletePlayer = async (serverId: string, accountName: string, tag: s
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to delete the player ${accountName}#${tag} for the serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to delete the player ${accountName}#${tag} for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to delete the player ${accountName}#${tag} for the serverID -> ${serverId}`);
 	}
 };
@@ -171,7 +172,7 @@ export const deleteAllPlayersOfServer = async (serverId: string): Promise<void> 
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to delete all the players for the serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to delete all the players for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to delete all players for the serverID -> ${serverId}`);
 	}
 };
@@ -202,7 +203,7 @@ export const updatePlayerLastGameId = async (serverId: string, puuid: string, la
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to update lastGameID player ${puuid} for serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to update lastGameID player ${puuid} for serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to update lastGameID for player ${puuid}`);
 	}
 };
@@ -231,7 +232,7 @@ export const updatePlayerGameNameAndTagLine = async (serverId: string, puuid: st
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to update lastGameID player ${puuid} for serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to update lastGameID player ${puuid} for serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to update lastGameID for player ${puuid}`);
 	}
 };
@@ -257,7 +258,7 @@ export const updatePlayerCurrentOrLastDayRank = async (serverId: string, puuid: 
 		}
 
 	} catch (error) {
-		console.error(`❌ Failed to update lastDayRank player ${puuid} for serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to update lastDayRank player ${puuid} for serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to update lastDayRank for player ${puuid}`);
 	}
 };
@@ -271,14 +272,14 @@ const findPlayerToUpdate = async (existingPlayer: Model, queueType: GameQueueTyp
 	};
 	const model = queueModels[queueType];
 	if (!model) {
-		console.error(`❌ Unknown queue type: ${queueType}`);
+		logger.error(`❌ Unknown queue type: ${queueType}`);
 		return null;
 	}
 
 	const playerToUpdate = await model.findOne({ where: { playerId: existingPlayer.dataValues.id } });
 
 	if (!playerToUpdate) {
-		console.warn(`⚠️ No player data found in ${queueType} for playerId ${existingPlayer.dataValues.id}`);
+		logger.warn(`⚠️ No player data found in ${queueType} for playerId ${existingPlayer.dataValues.id}`);
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 	}
 
@@ -326,7 +327,7 @@ export const updatePlayerLastDate = async (serverId: string, puuid: string, queu
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to update lastDayDate player ${puuid} for serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to update lastDayDate player ${puuid} for serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to update lastDayDate for player ${puuid}`);
 	}
 };
@@ -356,7 +357,7 @@ export const updatePlayerLastDayWinLose = async (serverId: string, puuid: string
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to update lastDayDate player ${puuid} for serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to update lastDayDate player ${puuid} for serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to update lastDayDate for player ${puuid}`);
 	}
 };
@@ -397,7 +398,7 @@ export const updatePlayerInfoCurrentAndLastForQueueType = async (serverId: strin
 			throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to updatePlayerInfo player ${player.puuid} for serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to updatePlayerInfo player ${player.puuid} for serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to updatePlayerInfo for player ${player.puuid}`);
 	}
 };
@@ -426,7 +427,7 @@ export const resetLastDayOfAllPlayer = async (): Promise<void> => {
 			throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'No players to reset');
 		}
 	} catch (error) {
-		console.error(`❌ Failed to reset last day of all player :`, error);
+		logger.error(`❌ Failed to reset last day of all player :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, `Failed to reset last day of all player`);
 	}
 };
@@ -437,7 +438,7 @@ export const listAllPlayerForSpecificServer = async (serverId: string): Promise<
 		const result: PlayerInfo[] = players.map(player => player.dataValues);
 		return result;
 	} catch (error) {
-		console.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list players');
 	}
 };
@@ -456,7 +457,7 @@ export const listAllPlayerForQueueInfoForSpecificServer = async (serverId: strin
 		}
 		return result;
 	} catch (error) {
-		console.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list players');
 	}
 };
@@ -475,7 +476,7 @@ export const getPlayerForSpecificServer = async (serverId: string, puuid: string
 		}
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found for getPlayerForSpecificServer');
 	} catch (error) {
-		console.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list players');
 	}
 };
@@ -499,7 +500,7 @@ export const getPlayerForQueueInfoForSpecificServer = async (serverId: string, p
 		}
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 	} catch (error) {
-		console.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);
+		logger.error(`❌ Failed to list players for the serverID -> ${serverId} :`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list players');
 	}
 };

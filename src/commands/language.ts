@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from 'discord.js';
 import { updateLangServer } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
+import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('language')
@@ -26,7 +27,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			content: `The bot has been set to "${lang}" language.`,
 			flags: MessageFlags.Ephemeral,
 		});
-		console.log(`The language has been changed for serverId: ${serverId}`);
+		logger.info(`The language has been changed for serverId: ${serverId}`);
 	} catch (error) {
 		if (error instanceof AppError) {
 			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
@@ -36,7 +37,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 				});
 			}
 		} else {
-			console.error('Failed to change the language:', error);
+			logger.error('Failed to change the language:', error);
 			await interaction.reply({
 				content: 'Failed to change the language, contact the dev',
 				flags: MessageFlags.Ephemeral,

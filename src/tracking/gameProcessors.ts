@@ -5,9 +5,10 @@ import { client } from '../index';
 import { GameQueueType, ManagedGameQueueType } from './GameQueueType';
 import { sendLeagueGameResultMessage, sendTFTGameResultMessage } from './sendMessage';
 import { calculateLPDifference, isTimestampInRecapRange } from './util';
+import logger from '../logger/logger';
 
 async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, matchId: string, firstRun: boolean): Promise<void> {
-    console.log(`➡️ [League] New match ${matchId} found for player ${player.gameName}#${player.tagLine} on server ${server.serverid}.`);
+    logger.info(`➡️ [League] New match ${matchId} found for player ${player.gameName}#${player.tagLine} on server ${server.serverid}.`);
 
     // 1. Fetch game and rank details
     const gameDetails: PlayerLeagueGameInfo = await getLeagueGameDetailForCurrentPlayer(player.puuid, matchId, player.region, server.lang);
@@ -24,17 +25,17 @@ async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, match
     }
 
     await updatePlayerLastGameId(server.serverid, player.puuid, matchId, ManagedGameQueueType.LEAGUE);
-    console.log(`[League] DB updated for player ${player.gameName} with match ${matchId}.`);
+    logger.info(`[League] DB updated for player ${player.gameName} with match ${matchId}.`);
 
     // 3. Send notification if not the first run
     if (firstRun) {
-        console.log(`[League] First run: skipping notification for ${player.gameName}.`);
+        logger.info(`[League] First run: skipping notification for ${player.gameName}.`);
         return;
     }
 
     const channel = await client.channels.fetch(server.channelid) as TextChannel;
     if (!channel) {
-        console.error(`❌ [League] Failed to find channel with ID ${server.channelid} for server ${server.serverid}.`);
+        logger.error(`❌ [League] Failed to find channel with ID ${server.channelid} for server ${server.serverid}.`);
         return;
     }
 
@@ -60,16 +61,16 @@ async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, match
         gameDetails.customMessage,
         server.lang
     );
-    console.log(`✅ [League] Notification sent to channel ${channel.id} for player ${player.gameName}.`);
+    logger.info(`✅ [League] Notification sent to channel ${channel.id} for player ${player.gameName}.`);
 }
 
 async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId: string, firstRun: boolean): Promise<void> {
-    console.log(`➡️ [TFT] New match ${matchId} found for player ${player.gameName}#${player.tagLine} on server ${server.serverid}.`);
+    logger.info(`➡️ [TFT] New match ${matchId} found for player ${player.gameName}#${player.tagLine} on server ${server.serverid}.`);
 
     // 1. Fetch game details and validate queue type
     const gameDetails: PlayerTFTGameInfo = await getTFTGameDetailForCurrentPlayer(player.tftpuuid, matchId, player.region);
     if (gameDetails.queueType !== GameQueueType.RANKED_TFT && gameDetails.queueType !== GameQueueType.RANKED_TFT_DOUBLE_UP) {
-        console.log(`[TFT] Skipping non-ranked TFT match ${matchId} for player ${player.gameName}.`);
+        logger.info(`[TFT] Skipping non-ranked TFT match ${matchId} for player ${player.gameName}.`);
         return;
     }
 
@@ -85,17 +86,17 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
     }
 
     await updatePlayerLastGameId(server.serverid, player.tftpuuid, matchId, ManagedGameQueueType.TFT);
-    console.log(`[TFT] DB updated for player ${player.gameName} with match ${matchId}.`);
+    logger.info(`[TFT] DB updated for player ${player.gameName} with match ${matchId}.`);
 
     // 3. Send notification
     if (firstRun) {
-        console.log(`[TFT] First run: skipping notification for ${player.gameName}.`);
+        logger.info(`[TFT] First run: skipping notification for ${player.gameName}.`);
         return;
     }
 
     const channel = await client.channels.fetch(server.channelid) as TextChannel;
     if (!channel) {
-        console.error(`❌ [TFT] Failed to find channel with ID ${server.channelid} for server ${server.serverid}.`);
+        logger.error(`❌ [TFT] Failed to find channel with ID ${server.channelid} for server ${server.serverid}.`);
         return;
     }
 
@@ -120,7 +121,7 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
         gameDetails.customMessage,
         server.lang
     );
-    console.log(`✅ [TFT] Notification sent to channel ${channel.id} for player ${player.gameName}.`);
+    logger.info(`✅ [TFT] Notification sent to channel ${channel.id} for player ${player.gameName}.`);
 }
 
 interface GameProcessor {
@@ -155,7 +156,7 @@ export async function processGameType(server: ServerInfo, players: PlayerInfo[],
     if (!processor.isEnabled(server)) {
         return;
     }
-    console.log(`ℹ️ Starting ${processor.gameName} tracking for server ${server.serverid}...`);
+    logger.info(`ℹ️ Starting ${processor.gameName} tracking for server ${server.serverid}...`);
 
     const matchRequests = players.map(player => {
         const puuid = processor.getPUUID(player);
@@ -165,7 +166,7 @@ export async function processGameType(server: ServerInfo, players: PlayerInfo[],
         return processor.getLastMatches(puuid, player.region, server.flextoggle)
             .then(matchIds => ({ player, matchIds }))
             .catch(error => {
-                console.error(`❌ Failed to fetch ${processor.gameName} matches for ${player.gameName}:`, error);
+                logger.error(`❌ Failed to fetch ${processor.gameName} matches for ${player.gameName}:`, error);
                 return { player, matchIds: [] }; // Return empty result to not block others
             });
     });
@@ -183,7 +184,7 @@ export async function processGameType(server: ServerInfo, players: PlayerInfo[],
             try {
                 await processor.handleNewGame(server, player, latestMatchId, firstRun);
             } catch (error) {
-                console.error(`❌❌ Critical error processing ${processor.gameName} match ${latestMatchId} for player ${player.gameName}:`, error);
+                logger.error(`❌❌ Critical error processing ${processor.gameName} match ${latestMatchId} for player ${player.gameName}:`, error);
             }
         }
     }

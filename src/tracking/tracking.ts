@@ -7,19 +7,20 @@ import { GameQueueType } from './GameQueueType';
 import { leagueGameProcessor, processGameType, tftGameProcessor } from './gameProcessors';
 import { generatePlayerRecapInfo, sendRecapMessage } from './sendMessage';
 import { isTimestampInRecapRange } from './util';
+import logger from '../logger/logger';
 
 export const trackPlayers = async (firstRun: boolean): Promise<void> => {
-	console.log('------------------------------------');
-    console.log(`🚀 Starting player tracking cycle. First run: ${firstRun}`);
+	logger.info('------------------------------------');
+    logger.info(`🚀 Starting player tracking cycle. First run: ${firstRun}`);
     
     try {
         const servers = await getAllServer();
-        console.log(`Found ${servers.length} servers to process.`);
+        logger.info(`Found ${servers.length} servers to process.`);
 
         for (const server of servers) {
             const players = await listAllPlayerForSpecificServer(server.serverid);
             if (players.length === 0) {
-                console.log(`No players to track on server ${server.serverid}.`);
+                logger.info(`No players to track on server ${server.serverid}.`);
                 continue;
             }
 
@@ -34,20 +35,20 @@ export const trackPlayers = async (firstRun: boolean): Promise<void> => {
             await Promise.all(gameProcessors);
         }
     } catch (error) {
-        console.error('❌ A fatal error occurred during the trackPlayer cycle:', error);
+        logger.error('❌ A fatal error occurred during the trackPlayer cycle:', error);
         throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to track players');
     }
 	
-    console.log('✅ Player tracking cycle finished.');
-    console.log('------------------------------------');
+    logger.info('✅ Player tracking cycle finished.');
+    logger.info('------------------------------------');
 };
 
 export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void> => {
-	console.log('🔄 Starting initLastDayInfo cycle...');
+	logger.info('🔄 Starting initLastDayInfo cycle...');
     try {
         if (haveToResetLastDay) {
             await resetLastDayOfAllPlayer();
-            console.log('✅ All players last day info has been reset.');
+            logger.info('✅ All players last day info has been reset.');
         }
 
         const servers = await getAllServer();
@@ -58,22 +59,22 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
             const playerUpdates = players.map(async (player) => {
                 const [playerAccount, leagueRanks, tftRanks] = await Promise.all([
                     getAccountByPUUID(player.puuid, player.region).catch(e => {
-                        console.error(`❌ Failed to get account for ${player.puuid}:`, e);
+                        logger.error(`❌ Failed to get account for ${player.puuid}:`, e);
                         return null;
                     }),
                     getPlayerRankInfo(player.puuid, player.region).catch(e => {
-                        console.error(`❌ Failed to get LoL ranks for ${player.gameName}:`, e);
+                        logger.error(`❌ Failed to get LoL ranks for ${player.gameName}:`, e);
                         return [];
                     }),
                     getTFTPlayerRankInfo(player.tftpuuid, player.region).catch(e => {
-                        console.error(`❌ Failed to get TFT ranks for ${player.gameName}:`, e);
+                        logger.error(`❌ Failed to get TFT ranks for ${player.gameName}:`, e);
                         return [];
                     }),
                 ]);
 
                 // Update name and tagline if necessary
                 if (playerAccount && (playerAccount.gameName !== player.gameName || playerAccount.tagLine !== player.tagLine)) {
-                    console.log(`✏️ Updating name for ${player.gameName}#${player.tagLine}...`);
+                    logger.info(`✏️ Updating name for ${player.gameName}#${player.tagLine}...`);
                     await updatePlayerGameNameAndTagLine(server.serverid, player.puuid, playerAccount.gameName!, playerAccount.tagLine!);
                 }
                 
@@ -102,15 +103,15 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 
         await Promise.all(serverPromises);
 
-        console.log('✅ initLastDayInfo cycle finished successfully.');
+        logger.info('✅ initLastDayInfo cycle finished successfully.');
     } catch (error) {
-        console.error('❌ A fatal error occurred during initLastDayInfo:', error);
+        logger.error('❌ A fatal error occurred during initLastDayInfo:', error);
         throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to initialize last day info');
     }
 };
 
 export const generateRecapOfTheDay = async (): Promise<void> => {
-	console.log('📝 Starting daily recap generation...');
+	logger.info('📝 Starting daily recap generation...');
     try {
         const servers = await getAllServer();
         const recapPromises = servers.map(async (server) => {
@@ -118,13 +119,13 @@ export const generateRecapOfTheDay = async (): Promise<void> => {
             const channel = await client.channels.fetch(server.channelid) as TextChannel;
             
             if (!channel) {
-                console.error(`❌ Failed to find channel with ID ${server.channelid} for server ${currentServerID}. Skipping recap.`);
+                logger.error(`❌ Failed to find channel with ID ${server.channelid} for server ${currentServerID}. Skipping recap.`);
                 return;
             }
 
             const players = await listAllPlayerForSpecificServer(currentServerID);
             if (players.length === 0) {
-                console.log(`No players to send recap for on server ${currentServerID}.`);
+                logger.info(`No players to send recap for on server ${currentServerID}.`);
                 return;
             }
             
@@ -138,7 +139,7 @@ export const generateRecapOfTheDay = async (): Promise<void> => {
                 if (recapInfo.length > 0) {
                     await sendRecapMessage(channel, recapInfo, queueType, server.lang);
                 } else {
-                    console.log(`No players with games found for ${GameQueueType[queueType]} on server ${currentServerID}.`);
+                    logger.info(`No players with games found for ${GameQueueType[queueType]} on server ${currentServerID}.`);
                 }
             };
             
@@ -153,9 +154,9 @@ export const generateRecapOfTheDay = async (): Promise<void> => {
         
         await Promise.all(recapPromises);
         
-        console.log('✅ Daily recap generation finished successfully.');
+        logger.info('✅ Daily recap generation finished successfully.');
     } catch (error) {
-        console.error('❌ A fatal error occurred during recap generation:', error);
+        logger.error('❌ A fatal error occurred during recap generation:', error);
         throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to generate the recap');
     }
 };

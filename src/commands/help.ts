@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { getLangServer } from '../database/databaseHelper';
+import logger from '../logger/logger';
 
 const languages = {
 	fr: {
@@ -59,9 +60,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			embeds: [helpEmbed],
 			flags: MessageFlags.Ephemeral,
 		});
-		console.log('The help has been called');
+		logger.info('The help has been called');
 	} catch (error) {
-		console.error('Failed to display the help:', error);
+		logger.error('Failed to display the help:', error);
 		await interaction.reply({
 			content: 'Failed to display the help, contact the dev',
 			flags: MessageFlags.Ephemeral,

@@ -4,6 +4,7 @@ import { GameQueueType } from './GameQueueType';
 import { PlayerForQueueInfo, PlayerInfo, PlayerRecapInfo } from '../database/databaseHelper';
 import { calculateLPDifference } from './util';
 import { DDragon } from '@fightmegg/riot-api';
+import logger from '../logger/logger';
 
 export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName: string, tagline: string, gameInfo: PlayerLeagueGameInfo, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
     const translations = {
@@ -209,7 +210,7 @@ export const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: P
 
         await channel.send({ embeds: [embed] });
     } else {
-        console.log("No player did a game during this last 24 hours.");
+        logger.info("No player did a game during this last 24 hours.");
     }
 };
 

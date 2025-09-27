@@ -1,5 +1,6 @@
 import { ChannelType, SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from 'discord.js';
 import { addOrUpdateServer } from '../database/databaseHelper';
+import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('init')
@@ -52,9 +53,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			content: `The bot has been setup in ${channel.name}/${channelId}, ${flexMessage} and has been set to "${lang}" language.`,
 			flags: MessageFlags.Ephemeral,
 		});
-		console.log(`Bot has been setup for serverId: ${serverId}`);
+		logger.info(`Bot has been setup for serverId: ${serverId}`);
 	} catch (error) {
-		console.error('Failed to init :', error);
+		logger.error('Failed to init :', error);
 		await interaction.reply({
 			content: 'Failed to init, contact the dev',
 			flags: MessageFlags.Ephemeral,

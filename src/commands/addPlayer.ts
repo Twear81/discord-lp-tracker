@@ -3,6 +3,7 @@ import { addPlayer, getPlayerForSpecificServer, getServer, updatePlayerInfoCurre
 import { AppError, ErrorTypes } from '../error/error';
 import { getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, getSummonerByName, getTFTPlayerRankInfo, getTFTSummonerByName } from '../riot/riotHelper';
 import { GameQueueType, ManagedGameQueueType } from '../tracking/GameQueueType';
+import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('addplayer')
@@ -30,7 +31,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
 	try {
 		const serverId = interaction.guildId as string;
-		console.log(`Adding a player for serverId: ${serverId}`);
+		logger.info(`Adding a player for serverId: ${serverId}`);
 		const accountname = interaction.options.getString('accountname')!;
 		const tag = interaction.options.getString('tag')!;
 		const region = interaction.options.getString('region')!;
@@ -48,7 +49,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			if (playerRankStat.queueType in GameQueueType) {
 				await updatePlayerInfoCurrentAndLastForQueueType(serverId, currentPlayer, GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType], playerRankStat.leaguePoints, playerRankStat.rank, playerRankStat.tier);
 			} else {
-				console.warn(playerRankStat.queueType + ' was not a know queue type.');
+				logger.warn(playerRankStat.queueType + ' was not a know queue type.');
 			}
 		}
 		// TFT
@@ -56,7 +57,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			if (playerRankStat.queueType in GameQueueType) {
 				await updatePlayerInfoCurrentAndLastForQueueType(serverId, currentPlayer, GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType], playerRankStat.leaguePoints || 0, playerRankStat.rank || "", playerRankStat.tier || "Unranked");
 			} else {
-				console.warn(playerRankStat.queueType + ' was not a know queue type.');
+				logger.warn(playerRankStat.queueType + ' was not a know queue type.');
 			}
 		}
 
@@ -75,7 +76,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			content: `The player "${accountname}#${tag}" for region ${region} has been added.`,
 			flags: MessageFlags.Ephemeral,
 		});
-		console.log(`The player ${accountname}#${tag} has been added for serverId: ${serverId}`);
+		logger.info(`The player ${accountname}#${tag} has been added for serverId: ${serverId}`);
 	} catch (error: unknown) {
 		if (error instanceof AppError) {
 			// Inside this block, err is known to be a ValidationError
@@ -96,7 +97,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 				});
 			}
 		} else {
-			console.error('Failed to add the player:', error);
+			logger.error('Failed to add the player:', error);
 			await interaction.reply({
 				content: 'Failed to add the player, contact the dev',
 				flags: MessageFlags.Ephemeral,
