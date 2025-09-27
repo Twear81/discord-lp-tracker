@@ -6,6 +6,7 @@ import { GameQueueType, ManagedGameQueueType } from './GameQueueType';
 import { sendLeagueGameResultMessage, sendTFTGameResultMessage } from './sendMessage';
 import { calculateLPDifference, isTimestampInRecapRange } from './util';
 import logger from '../logger/logger';
+import { AppError, ErrorTypes } from '../error/error';
 
 async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, matchId: string, firstRun: boolean): Promise<void> {
     logger.info(`➡️ [League] New match ${matchId} found for player ${player.gameName}#${player.tagLine} on server ${server.serverid}.`);
@@ -46,8 +47,8 @@ async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, match
     if (currentRank != null && oldRank != null) {
         lpGain = calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
     } else {
-		logger.warn("Can't calculateRRDifference because there is a null info");
-	}
+        logger.warn("Can't calculateRRDifference because there is a null info");
+    }
 
     await sendLeagueGameResultMessage(
         channel,
@@ -70,10 +71,16 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
     logger.info(`➡️ [TFT] New match ${matchId} found for player ${player.gameName}#${player.tagLine} on server ${server.serverid}.`);
 
     // 1. Fetch game details and validate queue type
-    const gameDetails: PlayerTFTGameInfo = await getTFTGameDetailForCurrentPlayer(player.tftpuuid, matchId, player.region);
-    if (gameDetails.queueType !== GameQueueType.RANKED_TFT && gameDetails.queueType !== GameQueueType.RANKED_TFT_DOUBLE_UP) {
-        logger.info(`[TFT] Skipping non-ranked TFT match ${matchId} for player ${player.gameName}.`);
-        return;
+    let gameDetails: PlayerTFTGameInfo;
+
+    try {
+        gameDetails = await getTFTGameDetailForCurrentPlayer(player.tftpuuid, matchId, player.region);
+    } catch (error) {
+        if (error instanceof AppError && error.type === ErrorTypes.GAMEDETAIL_NOT_FOUND && error.message.includes("TFT Queue type not found")) {
+            logger.info(`[TFT] Skipping non-tracked queue match ${matchId} for player ${player.gameName} (Queue ID not recognized).`);
+            return;
+        }
+        throw error;
     }
 
     // 2. Update database
@@ -108,8 +115,8 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
     if (currentRank != null && oldRank != null) {
         lpGain = calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
     } else {
-		logger.warn("Can't calculateRRDifference because there is a null info");
-	}
+        logger.warn("Can't calculateRRDifference because there is a null info");
+    }
 
     await sendTFTGameResultMessage(
         channel,

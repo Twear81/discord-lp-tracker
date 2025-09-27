@@ -203,52 +203,44 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 }
 
 export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string): Promise<PlayerTFTGameInfo> {
-	try {
-		const tftGameDetail: RiotAPITypes.TftMatch.MatchDTO = await getTFTGameDetail(gameID, region);
-		const { info: { queue_id, participants, game_datetime } } = tftGameDetail;
+	const tftGameDetail: RiotAPITypes.TftMatch.MatchDTO = await getTFTGameDetail(gameID, region);
+	const { info: { queue_id, participants, game_datetime } } = tftGameDetail;
 
-		let queueType: GameQueueType;
-		switch (queue_id) {
-			case 1100:
-				queueType = GameQueueType.RANKED_TFT;
-				break;
-			case 1160:
-				queueType = GameQueueType.RANKED_TFT_DOUBLE_UP;
-				break;
-			default:
-				throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `TFT Queue type not found for queueId:${queue_id} for game:${gameID}`);
-		}
-
-		const participant = participants.find(p => p.puuid === puuid);
-		if (!participant) {
-			throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No participant found for player ${puuid} in game ${gameID}`);
-		}
-
-		return {
-			gameEndTimestamp: game_datetime,
-			gameDurationSeconds: participant.time_eliminated,
-			littleLegendIconUrl: await getLittleLegendIconUrl(participant.companion.item_ID),
-			placement: participant.placement,
-			mainTraits: getMainTrait(participant.traits),
-			level: participant.level,
-			roundEliminated: getStageFromRound(participant.last_round),
-			playersEliminated: participant.players_eliminated,
-			totalDamageToPlayers: participant.total_damage_to_players,
-			goldLeft: participant.gold_left,
-			participantNumber: participants.findIndex(p => p.puuid === puuid) + 1,
-			traits: participant.traits,
-			units: participant.units,
-			win: participant.placement <= 4,
-			queueType: queueType,
-			customMessage: generateTFTCustomMessage(participant)
-		};
-	} catch (error) {
-		if (error instanceof AppError) {
-			throw error;
-		}
-		logger.error(`Riot API Error (getTFTGameDetailForCurrentPlayer):`, error);
-		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `TFT Game details not found for game ${gameID}, player ${puuid}, and region ${region}`);
+	let queueType: GameQueueType;
+	switch (queue_id) {
+		case 1100:
+			queueType = GameQueueType.RANKED_TFT;
+			break;
+		case 1160:
+			queueType = GameQueueType.RANKED_TFT_DOUBLE_UP;
+			break;
+		default:
+			throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `TFT Queue type not found for queueId:${queue_id} for game:${gameID}`);
 	}
+
+	const participant = participants.find(p => p.puuid === puuid);
+	if (!participant) {
+		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No participant found for player ${puuid} in game ${gameID}`);
+	}
+
+	return {
+		gameEndTimestamp: game_datetime,
+		gameDurationSeconds: participant.time_eliminated,
+		littleLegendIconUrl: await getLittleLegendIconUrl(participant.companion.item_ID),
+		placement: participant.placement,
+		mainTraits: getMainTrait(participant.traits),
+		level: participant.level,
+		roundEliminated: getStageFromRound(participant.last_round),
+		playersEliminated: participant.players_eliminated,
+		totalDamageToPlayers: participant.total_damage_to_players,
+		goldLeft: participant.gold_left,
+		participantNumber: participants.findIndex(p => p.puuid === puuid) + 1,
+		traits: participant.traits,
+		units: participant.units,
+		win: participant.placement <= 4,
+		queueType: queueType,
+		customMessage: generateTFTCustomMessage(participant)
+	};
 }
 
 
