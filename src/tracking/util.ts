@@ -14,8 +14,10 @@ export function isTimestampInRecapRange(timestamp: number): boolean {
 		today6am33.setDate(today6am33.getDate() - 1);
 	}
 
+	const todayTimestamp = today6am33.getTime();
+
 	// Check if the timestamp falls within the range
-	return timestamp >= today6am33.getTime();
+	return timestamp >= todayTimestamp;
 }
 
 export const calculateLPDifference = (beforeRank: string, afterRank: string, beforeTier: string, afterTier: string, beforeLP: number, afterLP: number): number => {

@@ -100,6 +100,8 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 								await updatePlayerCurrentOrLastDayRank(server.serverid, player.puuid, true, queueType, rankInfo.leaguePoints, rankInfo.rank, rankInfo.tier);
 								await updatePlayerLastDate(server.serverid, player.puuid, queueType, new Date());
 							}
+						} else {
+							logger.warn(`❌ Missing rank ou queue data for player ${player.puuid}.`);
 						}
 					}));
 				} catch (e) {
