@@ -309,27 +309,27 @@ const updatePlayerLastDayWinLoseDatabase = async (playerToUpdate: Model | null, 
 	await playerToUpdate.update({ lastDayWin: lastDayWin, lastDayLose: lastDayLose });
 };
 
-export const updatePlayerInfoCurrentAndLastForQueueType = async (serverId: string, player: PlayerInfo, queueType: GameQueueType, leaguePoints: number, rank: string, tier: string): Promise<void> => {
+export const updatePlayerInfoCurrentAndLastForQueueType = async (serverId: string, puuid: string, queueType: GameQueueType, leaguePoints: number, rank: string, tier: string): Promise<void> => {
 	const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
 	if (existingServer == null) {
 		throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
 	}
 
-	let existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: player.puuid } });
+	let existingPlayer: Model | null = await Player.findOne({ where: { serverid: serverId, puuid: puuid } });
 	if (existingPlayer == null) {
 		// TFT puuid
-		existingPlayer = await Player.findOne({ where: { serverid: serverId, tftpuuid: player.tftpuuid } });
+		existingPlayer = await Player.findOne({ where: { serverid: serverId, tftpuuid: puuid } });
 	}
 	if (existingPlayer == null) {
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 	}
 
 	let isCurrent = false;
-	await updatePlayerCurrentOrLastDayRank(serverId, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
+	await updatePlayerCurrentOrLastDayRank(serverId, puuid, isCurrent, queueType, leaguePoints, rank, tier);
 	isCurrent = true;
-	await updatePlayerCurrentOrLastDayRank(serverId, player.puuid, isCurrent, queueType, leaguePoints, rank, tier);
+	await updatePlayerCurrentOrLastDayRank(serverId, puuid, isCurrent, queueType, leaguePoints, rank, tier);
 	// Update the date inside last day player
-	await updatePlayerLastDate(serverId, player.puuid, queueType, new Date());
+	await updatePlayerLastDate(serverId, puuid, queueType, new Date());
 };
 
 export const resetLastDayOfAllPlayer = async (): Promise<void> => {
@@ -350,6 +350,7 @@ export const resetLastDayOfAllPlayer = async (): Promise<void> => {
 				lastDayLP: null,
 				lastDayDate: null,
 			})
+			logger.info(`Reseted Queue ${queueType} for ${existingPlayer.dataValues.puuid }`);
 		});
 	}
 };

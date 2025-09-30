@@ -57,7 +57,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		const currentPlayer = await getPlayerForSpecificServer(serverId, summoner.puuid);
 		for (const playerRankStat of playerRankInfos) {
 			if (playerRankStat.queueType in GameQueueType) {
-				await updatePlayerInfoCurrentAndLastForQueueType(serverId, currentPlayer, GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType], playerRankStat.leaguePoints, playerRankStat.rank, playerRankStat.tier);
+				await updatePlayerInfoCurrentAndLastForQueueType(serverId, currentPlayer.puuid, GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType], playerRankStat.leaguePoints, playerRankStat.rank, playerRankStat.tier);
 			} else {
 				logger.warn(playerRankStat.queueType + ' was not a know queue type.');
 			}
@@ -65,7 +65,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		// TFT
 		for (const playerRankStat of playerRankInfosTFT) {
 			if (playerRankStat.queueType in GameQueueType) {
-				await updatePlayerInfoCurrentAndLastForQueueType(serverId, currentPlayer, GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType], playerRankStat.leaguePoints || 0, playerRankStat.rank || "", playerRankStat.tier || "Unranked");
+				await updatePlayerInfoCurrentAndLastForQueueType(serverId, currentPlayer.tftpuuid, GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType], playerRankStat.leaguePoints || 0, playerRankStat.rank || "", playerRankStat.tier || "Unranked");
 			} else {
 				logger.warn(playerRankStat.queueType + ' was not a know queue type.');
 			}
