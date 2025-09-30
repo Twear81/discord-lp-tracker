@@ -1,5 +1,5 @@
 import { TextChannel } from 'discord.js';
-import { getAllServer, listAllPlayerForSpecificServer, resetLastDayOfAllPlayer, updatePlayerCurrentOrLastDayRank, updatePlayerLastDate, getPlayerForQueueInfoForSpecificServer, listAllPlayerForQueueInfoForSpecificServer, updatePlayerGameNameAndTagLine } from '../database/databaseHelper';
+import { getAllServer, listAllPlayerForSpecificServer, resetLastDayOfAllPlayer, getPlayerForQueueInfoForSpecificServer, listAllPlayerForQueueInfoForSpecificServer, updatePlayerGameNameAndTagLine, updatePlayerInfoCurrentAndLastForQueueType } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
 import { getPlayerRankInfo, getTFTPlayerRankInfo, getAccountByPUUID } from '../riot/riotHelper';
 import { client } from '../index';
@@ -52,26 +52,16 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 		}
 
 		const servers = await getAllServer();
-		const serverPromises = servers.map(async (server) => {
+
+		for (const server of servers) {
 			const players = await listAllPlayerForSpecificServer(server.serverid);
 			if (players.length === 0) return;
 
 			for (const player of players) {
 				try {
-					const [playerAccount, leagueRanks, tftRanks] = await Promise.all([
-						getAccountByPUUID(player.puuid, player.region).catch(e => {
-							logger.error(`❌ Failed to get account for ${player.puuid}:`, e);
-							return null;
-						}),
-						getPlayerRankInfo(player.puuid, player.region).catch(e => {
-							logger.error(`❌ Failed to get LoL ranks for ${player.gameName}:`, e);
-							return [];
-						}),
-						getTFTPlayerRankInfo(player.tftpuuid, player.region).catch(e => {
-							logger.error(`❌ Failed to get TFT ranks for ${player.gameName}:`, e);
-							return [];
-						}),
-					]);
+					const playerAccount = await getAccountByPUUID(player.puuid, player.region);
+					const leagueRanks = await getPlayerRankInfo(player.puuid, player.region);
+					const tftRanks = await getTFTPlayerRankInfo(player.tftpuuid, player.region);
 
 					if (!playerAccount || !leagueRanks || !tftRanks) {
 						logger.error(`❌ Missing data for player ${player.puuid}.`);
@@ -87,7 +77,7 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 					// Process both League and TFT ranks
 					const combinedRanks = [...leagueRanks, ...tftRanks];
 
-					return Promise.all(combinedRanks.map(async (rankInfo) => {
+					for (const rankInfo of combinedRanks) {
 						if (rankInfo.queueType in GameQueueType && rankInfo.leaguePoints !== undefined && rankInfo.rank !== undefined && rankInfo.tier !== undefined) {
 							const queueType = GameQueueType[rankInfo.queueType as keyof typeof GameQueueType];
 							const playerQueueInfo = await getPlayerForQueueInfoForSpecificServer(server.serverid, player.puuid, queueType);
@@ -101,14 +91,12 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 						} else {
 							logger.warn(`❌ Missing rank ou queue data for player ${player.puuid}.`);
 						}
-					}));
+					}
 				} catch (e) {
 					logger.error(`❌  A fatal error occurred during initLastDayInfo for player: ${player.puuid} :`, e);
 				}
 			}
-		});
-
-		await Promise.all(serverPromises);
+		}
 
 		logger.info('✅ initLastDayInfo cycle finished successfully.');
 	} catch (error) {
@@ -121,7 +109,7 @@ export const generateRecapOfTheDay = async (): Promise<void> => {
 	logger.info('📝 Starting daily recap generation...');
 	try {
 		const servers = await getAllServer();
-		const recapPromises = servers.map(async (server) => {
+		for (const server of servers) {
 			const currentServerID = server.serverid;
 			const channel = await client.channels.fetch(server.channelid) as TextChannel;
 
@@ -157,9 +145,7 @@ export const generateRecapOfTheDay = async (): Promise<void> => {
 				processQueue(GameQueueType.RANKED_TFT, server.tfttoggle),
 				processQueue(GameQueueType.RANKED_TFT_DOUBLE_UP, server.tfttoggle)
 			]);
-		});
-
-		await Promise.all(recapPromises);
+		}
 
 		logger.info('✅ Daily recap generation finished successfully.');
 	} catch (error) {

@@ -72,15 +72,13 @@ const limiter = new Bottleneck({
 	reservoirRefreshInterval: 120000, // Every 2 minutes
 });
 
+type RiotAPICall = RiotAPITypes.Account.AccountDTO | RiotAPITypes.MatchV5.MatchDTO | string[] | RiotAPITypes.League.LeagueEntryDTO[] | RiotAPITypes.TftLeague.LeagueEntryDTO[] | RiotAPITypes.TftMatch.MatchDTO;
+
 // Wrapper function to limit API calls
-const limitedRequest = limiter.wrap(async (fn: () => Promise<RiotAPITypes.Account.AccountDTO | RiotAPITypes.MatchV5.MatchDTO | string[] | RiotAPITypes.League.LeagueEntryDTO[] | RiotAPITypes.TftLeague.LeagueEntryDTO[] | RiotAPITypes.TftMatch.MatchDTO>) => {
-	try {
-		return await fn();
-	} catch (error) {
-		logger.error("API Error:", error);
-		throw error;
-	}
-});
+async function limitedRequest<T extends RiotAPICall>(apiCallFn: () => Promise<T>): Promise<T> {
+	const response = await limiter.schedule(() => apiCallFn());
+	return response as T;
+}
 
 export async function getSummonerByName(accountName: string, tag: string, region: string): Promise<RiotAPITypes.Account.AccountDTO> {
 	try {
@@ -293,11 +291,10 @@ export async function getLastTFTMatch(puuid: string, region: string): Promise<st
 export async function getPlayerRankInfo(puuid: string, region: string): Promise<RiotAPITypes.League.LeagueEntryDTO[]> {
 	try {
 		const platformId = getLolRegionFromRegionString(region);
-		const leagueRankedInfo = await limitedRequest(() => riotApi.league.getEntriesByPUUID({
+		return await limitedRequest(() => riotApi.league.getEntriesByPUUID({
 			region: platformId,
 			encryptedPUUID: puuid,
 		})) as unknown as RiotAPITypes.League.LeagueEntryDTO[];
-		return leagueRankedInfo;
 	} catch (error) {
 		logger.error(`Error API Riot (getPlayerRankInfo) :`, error);
 		throw new AppError(ErrorTypes.PLAYERRANKINFO_NOT_FOUND, `No PLAYERRANKINFO found for player puuid:${puuid} for region ${region}`);
@@ -307,11 +304,10 @@ export async function getPlayerRankInfo(puuid: string, region: string): Promise<
 export async function getTFTPlayerRankInfo(puuid: string, region: string): Promise<RiotAPITypes.TftLeague.LeagueEntryDTO[]> {
 	try {
 		const platformId = getLolRegionFromRegionString(region);
-		const tftRankedInfo = await limitedRequest(() => riotApiTFT.tftLeague.getEntriesByPUUID({
+		return await limitedRequest(() => riotApiTFT.tftLeague.getEntriesByPUUID({
 			region: platformId,
 			puuid: puuid,
 		})) as unknown as RiotAPITypes.TftLeague.LeagueEntryDTO[];
-		return tftRankedInfo;
 	} catch (error) {
 		logger.error(`Error API Riot (getTFTPlayerRankInfo) :`, error);
 		throw new AppError(ErrorTypes.PLAYERRANKINFO_NOT_FOUND, `No PLAYERRANKINFO tft found for player puuid:${puuid} for region ${region}`);
@@ -411,14 +407,6 @@ function generateTFTCustomMessage(participant: RiotAPITypes.TftMatch.Participant
 
 	if (participant.placement == 1 && participant.puuid == "2y_cjrqPj2eEjRETZNa7ub54TTIYRK9NdYs5tOYlaDtY3RfCDakrDWZNuccHCrCe7dW2o1l6h5NSuw") { // Jojo
 		result = addCustomMessage(result, "🎵 Jojo dans la place, Attention quand il passe 🎵");
-	}
-
-	if (participant.placement <= 4 && participant.puuid == "w3y940nzLy_YfzBofWMV5AmT3CjYMPQQVaJ1VGm52J7IBvipaIbXJS1GhFN8qCBetIfJuILIs93s7A") { // Adam
-		result = addCustomMessage(result, "Lache ta comp internet ^^");
-	}
-
-	if (participant.placement > 4 && participant.puuid == "w3y940nzLy_YfzBofWMV5AmT3CjYMPQQVaJ1VGm52J7IBvipaIbXJS1GhFN8qCBetIfJuILIs93s7A") { // Adam
-		result = addCustomMessage(result, "Meme avec une comp internet t'y arrives pas ^^");
 	}
 
 	if (participant.placement == 7) {
