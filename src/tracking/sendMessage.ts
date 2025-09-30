@@ -1,32 +1,21 @@
-import { EmbedBuilder, TextChannel } from 'discord.js';
+import { ColorResolvable, EmbedBuilder, TextChannel } from 'discord.js';
+import { DDragon } from '@fightmegg/riot-api';
 import { PlayerLeagueGameInfo, PlayerTFTGameInfo } from '../riot/riotHelper';
 import { GameQueueType } from './GameQueueType';
 import { PlayerForQueueInfo, PlayerInfo, PlayerRecapInfo } from '../database/databaseHelper';
-import { calculateLPDifference } from './util';
-import { DDragon } from '@fightmegg/riot-api';
+import { calculateLPDifference, getDisplayRank, getDurationString } from './util';
 import logger from '../logger/logger';
+import { getTranslations } from '../translation/translation';
 
 export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName: string, tagline: string, gameInfo: PlayerLeagueGameInfo, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
-	const translations = {
-		fr: {
-			title: "[📜 Résultat de partie ]",
-			win: "Victoire",
-			loss: "Défaite",
-			lpChange: lpChange > 0 ? "a gagné" : "a perdu",
-		},
-		en: {
-			title: "[📜 Match Result ]",
-			win: "Victory",
-			loss: "Defeat",
-			lpChange: lpChange > 0 ? "won" : "lost",
-		},
-	};
+	const t = getTranslations(lang);
 
-	const t = translations[lang as keyof typeof translations];
 	const durationMinutes = gameInfo.gameDurationSeconds / 60;
 	const csPerMin = gameInfo.totalCS / durationMinutes;
 	const dmgPerMin = gameInfo.damage / durationMinutes;
 	const visionPerMin = gameInfo.visionScore / durationMinutes;
+
+	const displayRank = getDisplayRank(tier, rank);
 
 	const currentGameId = gameIdWithRegion.split("_")[1];
 	const matchUrl = `https://www.leagueofgraphs.com/match/${region.toLowerCase()}/${currentGameId}#participant${gameInfo.participantNumber}`;
@@ -38,94 +27,55 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
 		.setColor(gameInfo.win ? '#00FF00' : '#FF0000')
 		.setTitle(t.title)
 		.setURL(matchUrl)
-		.setAuthor({ name: `${gameName}#${tagline}` })
+		.setAuthor({ name: `${gameName}#${tagline}`, url: dpmUrl })
 		.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/${latestVersion}/img/champion/${gameInfo.championName}.png`)
-		.setDescription(`**${gameName} ${t.lpChange} ${Math.abs(lpChange)} LP (${tier} ${rank} – ${updatedLP} LP)**`)
+		.setDescription(`**${t.lpChange(lpChange)} ${Math.abs(lpChange)} LP | Rank : ${tier}${displayRank} (${updatedLP} LP)**`)
 		.addFields(
-			{ name: 'KDA', value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },
-			{ name: 'Time', value: `${Math.floor(durationMinutes)}:${(gameInfo.gameDurationSeconds % 60).toString().padStart(2, '0')}`, inline: true },
-			{ name: 'Score', value: `${gameInfo.scoreRating.toFixed(2)}`, inline: true },
-			{ name: 'CS/m', value: csPerMin.toFixed(1), inline: true },
-			{ name: 'Pings', value: `${gameInfo.pings}`, inline: true },
-			{ name: 'DMG', value: `${(gameInfo.damage / 1000).toFixed(1)}K (${Math.round(dmgPerMin)}/min)`, inline: true },
-			{ name: 'Vision score/m', value: visionPerMin.toFixed(2), inline: true },
-			{ name: 'Team Rank', value: gameInfo.teamRank, inline: true },
-			{ name: 'Queue', value: gameInfo.queueType == GameQueueType.RANKED_FLEX_SR ? "Flex" : "Solo/Duo", inline: true },
-			{ name: '', value: customMessage ? "*" + customMessage + "*" : "" }
+			{ name: t.kda, value: `${gameInfo.kills}/${gameInfo.deaths}/${gameInfo.assists}`, inline: true },
+			{ name: t.time, value: getDurationString(gameInfo.gameDurationSeconds), inline: true },
+			{ name: t.score, value: `${gameInfo.scoreRating.toFixed(2)}`, inline: true },
+			{ name: t.csPerMin, value: csPerMin.toFixed(1), inline: true },
+			{ name: t.pings, value: `${gameInfo.pings}`, inline: true },
+			{ name: t.damage, value: `${(gameInfo.damage / 1000).toFixed(1)}K (${Math.round(dmgPerMin)}/min)`, inline: true },
+			{ name: t.visionPerMin, value: visionPerMin.toFixed(2), inline: true },
+			{ name: t.teamRank, value: gameInfo.teamRank, inline: true },
+			{ name: t.queue, value: gameInfo.queueType === GameQueueType.RANKED_FLEX_SR ? t.queueTypeFlex : t.queueTypeSolo, inline: true },
 		)
-		.addFields(
-			{
-				name: '',
-				value: `[DPM](${dpmUrl})`,
-				inline: false
-			}
-		)
-		.setFooter({
-			text: `Date: ${new Date().toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric',
-				hour: '2-digit',
-				minute: '2-digit',
-				timeZone: "Europe/Paris",
-			})}`,
-		});
+		.setTimestamp();
+
+	if (customMessage) {
+		embed.addFields({ name: '\u200b', value: `*${customMessage}*` });
+	}
 
 	await channel.send({ embeds: [embed] });
 }
 
 export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: string, tagline: string, tftGameInfo: PlayerTFTGameInfo, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
-	const translations = {
-		fr: {
-			title: "[📜 Résultat TFT ]",
-			lpChangeText: lpChange > 0 ? "a gagné" : "a perdu",
-			placement: "Placement",
-			level: "Niveau",
-			round: "Round",
-			eliminated: "Joueurs Éliminés",
-			damage: "Dégâts",
-			mainTraits: "Traits Principaux",
-			queue: "Mode",
-			queueType: tftGameInfo.queueType == GameQueueType.RANKED_TFT_DOUBLE_UP ? "TFT Double Classé" : "TFT Classé",
-			time: "Durée",
-			goldLeft: "Or Restant",
-		},
-		en: {
-			title: "[📜 TFT Result ]",
-			lpChangeText: lpChange > 0 ? "gained" : "lost",
-			placement: "Placement",
-			level: "Level",
-			round: "Round",
-			eliminated: "Players Eliminated",
-			damage: "Damage",
-			mainTraits: "Main Traits",
-			queue: "Queue",
-			queueType: tftGameInfo.queueType == GameQueueType.RANKED_TFT_DOUBLE_UP ? "TFT Double Ranked" : "TFT Ranked",
-			time: "Duration",
-			goldLeft: "Gold Left",
-		},
-	};
+	const t = getTranslations(lang);
 
-	const t = translations[lang as keyof typeof translations];
-	const durationMinutes = Math.floor(tftGameInfo.gameDurationSeconds / 60);
-	const durationSeconds = Math.floor(tftGameInfo.gameDurationSeconds % 60);
-	const formattedDurationSeconds = durationSeconds.toString().padStart(2, '0');
+	const formattedDuration = getDurationString(tftGameInfo.gameDurationSeconds);
+	const displayRank = getDisplayRank(tier, rank);
 
 	const currentGameId = gameIdWithRegion.split("_")[1];
 	const matchUrl = `https://www.leagueofgraphs.com/tft/match/${region.toLowerCase()}/${currentGameId}`;
+	const lolChessUrl = `https://lolchess.gg/profile/${region.toLowerCase()}/${encodeURI(gameName)}-${tagline}`;
+
+	const tftColor = tftGameInfo.placement === 1 ? '#FFD700' :
+		tftGameInfo.placement <= 4 ? '#1DB954' : // Top 4
+			'#FF0000'; // Bottom 4
 
 	const embed = new EmbedBuilder()
-		.setColor(tftGameInfo.placement === 1 ? '#FFD700' : tftGameInfo.placement <= 4 ? '#00FF00' : '#FF0000')
+		.setColor(tftColor)
 		.setTitle(t.title)
 		.setURL(matchUrl)
-		.setAuthor({ name: `${gameName}#${tagline}` })
+		.setAuthor({ name: `${gameName}#${tagline}`, url: lolChessUrl })
 		.setThumbnail(tftGameInfo.littleLegendIconUrl || null)
-		.setDescription(`**${gameName} ${t.lpChangeText} ${Math.abs(lpChange)} LP (${tier} ${rank} – ${updatedLP} LP)**`)
+		.setDescription(`**${t.lpChange(lpChange)} ${Math.abs(lpChange)} LP | Rank : ${tier}${displayRank} (${updatedLP} LP)**`)
 		.addFields(
 			{ name: t.placement, value: `${getPlacementBadge(tftGameInfo.placement)} ${tftGameInfo.placement}${getOrdinalSuffix(tftGameInfo.placement, lang)}`, inline: true },
 			{ name: t.level, value: `${tftGameInfo.level}`, inline: true },
 			{ name: t.round, value: `${tftGameInfo.roundEliminated}`, inline: true },
-			{ name: t.time, value: `${durationMinutes}:${formattedDurationSeconds}`, inline: true },
+			{ name: t.time, value: formattedDuration, inline: true },
 			{ name: t.eliminated, value: `${tftGameInfo.playersEliminated}`, inline: true },
 			{ name: t.goldLeft, value: `${tftGameInfo.goldLeft} 🪙`, inline: true },
 		);
@@ -140,78 +90,64 @@ export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: s
 
 	embed.addFields(
 		{ name: t.damage, value: `${tftGameInfo.totalDamageToPlayers}`, inline: true },
-		{ name: t.queue, value: t.queueType, inline: true }
+		{ name: t.queue, value: tftGameInfo.queueType === GameQueueType.RANKED_TFT_DOUBLE_UP ? t.queueTypeTFTDouble : t.queueTypeTFT, inline: true }
 	);
 
-	if (customMessage) {
-		embed.addFields({ name: '', value: customMessage ? "*" + customMessage + "*" : "" });
-	}
+	embed.setTimestamp();
 
-	embed.setFooter({
-		text: `Date: ${new Date().toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
-			year: 'numeric', month: 'long', day: 'numeric',
-			hour: '2-digit', minute: '2-digit', timeZone: "Europe/Paris",
-		})}`,
-	});
+	if (customMessage) {
+		embed.addFields({ name: '\u200b', value: `*${customMessage}*` });
+	}
 
 	await channel.send({ embeds: [embed] });
 };
 
 export const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: PlayerRecapInfo[], queueType: GameQueueType, lang: string): Promise<void> => {
-	if (playerRecapInfos.length > 0) {
-		const translations = {
-			fr: {
-				title: {
-					[GameQueueType.RANKED_FLEX_SR]: "[📊 Résumé Quotidien Flex]",
-					[GameQueueType.RANKED_SOLO_5x5]: "[📈 Résumé Quotidien SoloQ]",
-					[GameQueueType.RANKED_TFT]: "[📜 Résumé Quotidien TFT]",
-					[GameQueueType.RANKED_TFT_DOUBLE_UP]: "[📜 Résumé Quotidien TFT Double]"
-				},
-				league: "LP",
-				wins: "Victoires",
-				losses: "Défaites",
-				from: "De",
-				to: "À"
-			},
-			en: {
-				title: {
-					[GameQueueType.RANKED_FLEX_SR]: "[📊 Flex Daily Recap]",
-					[GameQueueType.RANKED_SOLO_5x5]: "[📈 SoloQ Daily Recap]",
-					[GameQueueType.RANKED_TFT]: "[📜 TFT Daily Recap]",
-					[GameQueueType.RANKED_TFT_DOUBLE_UP]: "[📜 TFT Double Daily Recap]"
-				},
-				league: "LP",
-				wins: "Wins",
-				losses: "Losses",
-				from: "From",
-				to: "To"
-			}
-		};
-
-		const t = translations[lang as keyof typeof translations];
-		const queueTitle = t.title[queueType as keyof typeof t.title];
-
-		const embed = new EmbedBuilder()
-			.setTitle(queueTitle)
-			.setColor(
-				queueType === GameQueueType.RANKED_FLEX_SR ? 'Purple' :
-					queueType === GameQueueType.RANKED_SOLO_5x5 ? 'Blue' :
-						'Green'
-			)
-			.setDescription(
-				playerRecapInfos.map(entry => {
-					const { currentTier, currentRank, lastDayTier, lastDayRank, lastDayWin, lastDayLose, lastDayLP, currentLP } = entry.playerQueue;
-					const { gameName, tagLine } = entry.player;
-					return `**${gameName}#${tagLine} : ${entry.lpChange > 0 ? '+' : ''}${entry.lpChange} ${t.league}**  
-						🏆 ${t.wins}: **${lastDayWin}** | ❌ ${t.losses}: **${lastDayLose}** 
-						${t.from}: **${lastDayTier} ${lastDayRank} ${lastDayLP}** ➡️ ${t.to}: **${currentTier} ${currentRank} ${currentLP}**`;
-				}).join('\n\n')
-			);
-
-		await channel.send({ embeds: [embed] });
-	} else {
+	if (playerRecapInfos.length === 0) {
 		logger.info("No player did a game during this last 24 hours.");
+		return;
 	}
+
+	const queueColors: Record<GameQueueType, ColorResolvable> = {
+		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
+		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
+		[GameQueueType.RANKED_TFT]: "#1DB954",
+		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
+	};
+
+
+	const t = getTranslations(lang);
+
+	const queueTitle = t.recapTitles[queueType];
+	const recapColor = queueColors[queueType] || "#808080";
+
+	const embed = new EmbedBuilder()
+		.setTitle(queueTitle)
+		.setColor(recapColor);
+
+	playerRecapInfos.forEach(currentPlayerRecap => {
+		const { currentTier, currentRank, lastDayTier, lastDayRank, lastDayWin, lastDayLose, lastDayLP, currentLP } = currentPlayerRecap.playerQueue;
+		const { gameName, tagLine } = currentPlayerRecap.player;
+
+		const lpChange = currentPlayerRecap.lpChange;
+
+		const lpEmoji = lpChange > 0 ? '📈' : '📉';
+		const lpChangeText = `${lpChange > 0 ? '+' : ''}${lpChange} ${t.league}`;
+
+		const displayCurrentRank = getDisplayRank(currentTier!, currentRank!);
+		const displayLastDayRank = getDisplayRank(lastDayTier!, lastDayRank!);
+
+		const winsLossesLine = `🏆 ${t.wins}: **${lastDayWin}** | ❌ ${t.losses}: **${lastDayLose}**`;
+		const rankProgressionLine = `**${lastDayTier}${displayLastDayRank} ${lastDayLP} ${t.league}** ➡️ **${currentTier}${displayCurrentRank} ${currentLP} ${t.league}**`;
+
+		embed.addFields({
+			name: `${gameName}#${tagLine} - ${lpEmoji} ${lpChangeText}`,
+			value: `${winsLossesLine}\n${rankProgressionLine}`,
+			inline: false,
+		});
+	});
+
+	await channel.send({ embeds: [embed] });
 };
 
 export const generatePlayerRecapInfo = (players: PlayerInfo[], playersQueue: PlayerForQueueInfo[]): PlayerRecapInfo[] => {

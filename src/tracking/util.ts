@@ -45,3 +45,17 @@ export const getAbsoluteLP = (tier: string, rank: string, lp: number): number =>
 
 	return tierIndex * 400 + rankIndex * 100 + lp;
 };
+
+export const getDurationString = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+    return `${minutes}:${secs}`;
+};
+
+export const getDisplayRank = (tier: string, rank: string): string => {
+	if (!tier || tier.toUpperCase() === 'UNRANKED') {
+        return ''; 
+    }
+    const isHighRank = ['MASTER', 'GRANDMASTER', 'CHANLLENGER'].includes(tier);
+    return isHighRank ? '' : ` ${rank}`;
+};
