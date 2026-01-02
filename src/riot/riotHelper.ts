@@ -715,6 +715,7 @@ function addCustomMessage(finalString: string | undefined, newString: string): s
 }
 
 export interface PlayerLeagueGameInfo {
+	matchId: string;
 	gameEndTimestamp: number;
 	gameDurationSeconds: number;
 	totalCS: number;

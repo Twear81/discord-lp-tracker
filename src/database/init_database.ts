@@ -2,6 +2,7 @@ import logger from '../logger/logger';
 import sequelize from './database';
 import { Player } from './playerModel';
 import { Server } from './serverModel';
+import { LeagueGame, TFTGame } from './gameModel';
 
 const initDB = async (): Promise<void> => {
 	try {
@@ -13,4 +14,4 @@ const initDB = async (): Promise<void> => {
 	}
 };
 
-export { sequelize, Player, Server, initDB };
+export { sequelize, Player, Server, LeagueGame, TFTGame, initDB };

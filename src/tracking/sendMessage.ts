@@ -6,6 +6,7 @@ import { PlayerForQueueInfo, PlayerInfo, PlayerRecapInfo } from '../database/dat
 import { calculateLPDifference, getDisplayRank, getDurationString } from './util';
 import logger from '../logger/logger';
 import { getTranslations } from '../translation/translation';
+import { MonthlyRecapStats } from './monthlyRecap';
 
 export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName: string, tagline: string, gameInfo: PlayerLeagueGameInfo, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
 	const t = getTranslations(lang);
@@ -100,7 +101,7 @@ export const sendTFTGameResultMessage = async (channel: TextChannel, gameName: s
 	}
 
 	await channel.send({ embeds: [embed] });
-};
+}
 
 export const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: PlayerRecapInfo[], queueType: GameQueueType, lang: string): Promise<void> => {
 	if (playerRecapInfos.length === 0) {
@@ -148,7 +149,7 @@ export const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: P
 	});
 
 	await channel.send({ embeds: [embed] });
-};
+}
 
 export const generatePlayerRecapInfo = (players: PlayerInfo[], playersQueue: PlayerForQueueInfo[]): PlayerRecapInfo[] => {
 	// Remove entries with no win/lose or unranked (didn't play)
@@ -200,5 +201,143 @@ const getPlacementBadge = (place: number): string => {
 		case 3: return "🥉";
 		case 4: return "🏅";
 		default: return "❌";
+	}
+};
+
+export const sendLeagueMonthlyRecapMessage = async (channel: TextChannel, playerStats: MonthlyRecapStats[], month: number, year: number, queueType: GameQueueType, lang: string): Promise<void> => {
+	const t = getTranslations(lang);
+	const queueColors: Record<GameQueueType, ColorResolvable> = {
+		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
+		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
+		[GameQueueType.RANKED_TFT]: "#1DB954",
+		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
+	};
+
+	const monthNames = lang === 'fr'
+		? ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+		: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+	const monthName = monthNames[month - 1];
+	const recapColor = queueColors[queueType] || "#808080";
+
+	const embed = new EmbedBuilder()
+		.setTitle(`${t.monthlyRecapTitles[queueType]} - ${monthName} ${year}`)
+		.setColor(recapColor)
+		.setDescription(lang === 'fr' ? 'Statistiques du mois' : 'Monthly statistics');
+
+	// Format similaire au récap quotidien avec des infos en plus - regroupé dans un embed
+	// Si le message est trop grand, on le découpe en plusieurs messages
+	let currentEmbed = embed;
+	let playerCount = 0;
+
+	for (const stats of playerStats) {
+		const { player, totalGames, totalTimePlayed, totalLPGain, wins, losses, winrate, averageKDA, averageDamage, averageCSPerMin, averageVisionPerMin } = stats;
+		const { gameName, tagLine } = player;
+
+		const hoursPlayed = Math.floor(totalTimePlayed / 3600);
+		const minutesPlayed = Math.floor((totalTimePlayed % 3600) / 60);
+
+		const lpEmoji = totalLPGain > 0 ? '📈' : totalLPGain < 0 ? '📉' : '➡️';
+		const lpChangeText = `${totalLPGain > 0 ? '+' : ''}${totalLPGain} ${t.league}`;
+
+		const playerStatsText = `🏆 ${t.wins}: **${wins}** | ❌ ${t.losses}: **${losses}**
+🎮 ${t.games}: **${totalGames}** | ${t.time}: **${hoursPlayed}h ${minutesPlayed}min** | 📊 ${t.winrate}: **${winrate.toFixed(1)}%**
+⚔️ KDA: **${averageKDA?.kills.toFixed(1)}/${averageKDA?.deaths.toFixed(1)}/${averageKDA?.assists.toFixed(1)}**
+${t.damage}: **${(averageDamage! / 1000).toFixed(1)}K/game**
+${t.csPerMin}: **${averageCSPerMin?.toFixed(1)}**
+${t.visionPerMin}: **${averageVisionPerMin?.toFixed(2)}**`;
+
+		currentEmbed.addFields({
+			name: `${gameName}#${tagLine} - ${lpEmoji} ${lpChangeText}`,
+			value: playerStatsText,
+			inline: false,
+		});
+
+		playerCount++;
+
+		// Vérifier si l'embed dépasse la limite (25 fields)
+		if (currentEmbed.data && currentEmbed.data.fields && currentEmbed.data.fields.length > 24) {
+			// Envoyer l'embed actuel et en créer un nouveau
+			await channel.send({ embeds: [currentEmbed] });
+			currentEmbed = new EmbedBuilder()
+				.setTitle(`${t.monthlyRecapTitles[queueType]} - ${monthName} ${year}`)
+				.setColor(recapColor)
+				.setDescription(lang === 'fr' ? 'Statistiques du mois' : 'Monthly statistics');
+			playerCount = 0;
+		}
+	}
+
+	// Envoyer le dernier embed
+	if (playerCount > 0) {
+		currentEmbed.setTimestamp();
+		await channel.send({ embeds: [currentEmbed] });
+	}
+};
+
+export const sendTFTMonthlyRecapMessage = async (channel: TextChannel, playerStats: MonthlyRecapStats[], month: number, year: number, queueType: GameQueueType, lang: string): Promise<void> => {
+	const t = getTranslations(lang);
+	const queueColors: Record<GameQueueType, ColorResolvable> = {
+		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
+		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
+		[GameQueueType.RANKED_TFT]: "#1DB954",
+		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
+	};
+
+	const monthNames = lang === 'fr'
+		? ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+		: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+	const monthName = monthNames[month - 1];
+	const recapColor = queueColors[queueType] || "#808080";
+
+	const embed = new EmbedBuilder()
+		.setTitle(`${t.monthlyRecapTitles[queueType]} - ${monthName} ${year}`)
+		.setColor(recapColor)
+		.setDescription(lang === 'fr' ? 'Statistiques du mois' : 'Monthly statistics');
+
+	// Format similaire au récap quotidien avec des infos en plus - regroupé dans un embed
+	// Si le message est trop grand, on le découpe en plusieurs messages
+	let currentEmbed = embed;
+	let playerCount = 0;
+
+	for (const stats of playerStats) {
+		const { player, totalGames, totalTimePlayed, totalLPGain, wins, losses, winrate, averagePlacement, averageLevel } = stats;
+		const { gameName, tagLine } = player;
+
+		const hoursPlayed = Math.floor(totalTimePlayed / 3600);
+		const minutesPlayed = Math.floor((totalTimePlayed % 3600) / 60);
+
+		const lpEmoji = totalLPGain > 0 ? '📈' : totalLPGain < 0 ? '📉' : '➡️';
+		const lpChangeText = `${totalLPGain > 0 ? '+' : ''}${totalLPGain} ${t.league}`;
+
+		const playerStatsText = `🏆 ${t.wins}: **${wins}** | ❌ ${t.losses}: **${losses}**
+🎮 ${t.games}: **${totalGames}** | ${t.time}: **${hoursPlayed}h ${minutesPlayed}min** | 📊 ${t.winrate}: **${winrate.toFixed(1)}%**
+${t.avgPlacement}: **${averagePlacement?.toFixed(1)}**
+${t.level}: **${averageLevel?.toFixed(1)}**`;
+
+		currentEmbed.addFields({
+			name: `${gameName}#${tagLine} - ${lpEmoji} ${lpChangeText}`,
+			value: playerStatsText,
+			inline: false,
+		});
+
+		playerCount++;
+
+		// Vérifier si l'embed dépasse la limite (25 fields)
+		if (currentEmbed.data && currentEmbed.data.fields && currentEmbed.data.fields.length > 24) {
+			// Envoyer l'embed actuel et en créer un nouveau
+			await channel.send({ embeds: [currentEmbed] });
+			currentEmbed = new EmbedBuilder()
+				.setTitle(`${t.monthlyRecapTitles[queueType]} - ${monthName} ${year}`)
+				.setColor(recapColor)
+				.setDescription(lang === 'fr' ? 'Statistiques du mois' : 'Monthly statistics');
+			playerCount = 0;
+		}
+	}
+
+	// Envoyer le dernier embed
+	if (playerCount > 0) {
+		currentEmbed.setTimestamp();
+		await channel.send({ embeds: [currentEmbed] });
 	}
 };

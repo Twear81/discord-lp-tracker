@@ -1,5 +1,5 @@
 import { TextChannel } from 'discord.js';
-import { updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, PlayerInfo, updatePlayerLastDayWinLose, getPlayerForQueueInfoForSpecificServer, ServerInfo } from '../database/databaseHelper';
+import { updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, PlayerInfo, updatePlayerLastDayWinLose, getPlayerForQueueInfoForSpecificServer, ServerInfo, saveTFTGameToDatabase, saveLeagueGameToDatabase } from '../database/databaseHelper';
 import { getLeagueGameDetailForCurrentPlayer, getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, getTFTGameDetailForCurrentPlayer, getTFTPlayerRankInfo, PlayerTFTGameInfo, PlayerLeagueGameInfo } from '../riot/riotHelper';
 import { client } from '../index';
 import { GameQueueType, ManagedGameQueueType } from './GameQueueType';
@@ -49,6 +49,13 @@ async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, match
 	} else {
 		logger.warn("Can't calculateRRDifference because there is a null info");
 	}
+
+	// Save game details to database for monthly recap
+	await saveLeagueGameToDatabase(
+		playerQueueInfo,
+		gameDetails,
+		matchId
+	);
 
 	await sendLeagueGameResultMessage(
 		channel,
@@ -117,6 +124,13 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
 	} else {
 		logger.warn("Can't calculateRRDifference because there is a null info");
 	}
+
+	// Save game details to database for monthly recap
+	await saveTFTGameToDatabase(
+		playerQueueInfo,
+		gameDetails,
+		matchId
+	);
 
 	await sendTFTGameResultMessage(
 		channel,
