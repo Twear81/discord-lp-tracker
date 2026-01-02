@@ -13,6 +13,7 @@ import { generateRecapOfTheDay, initLastDayInfo, trackPlayers } from "./tracking
 import { generateMonthlyRecap } from "./tracking/monthlyRecap";
 import { deleteAllPlayersOfServer, deleteServer } from "./database/databaseHelper";
 import logger from "./logger/logger";
+import { purgeOldGames } from "./tracking/purge";
 
 dotenv.config();
 export const client = new Client({
@@ -69,6 +70,17 @@ client.once(Events.ClientReady, async () => {
 			logger.error(`❌ Failed to generate monthly recap:`, error);
 		}
 	});
+
+	// Cleanup task - 1st of month: Prune records > 12 months old
+	cron.schedule("0 0 1 * *", async () => {
+		try {
+			const yearsToKeep = 1
+			await purgeOldGames(yearsToKeep);
+		} catch (error) {
+			logger.error(`❌ Failed to generate monthly recap:`, error);
+		}
+	});
+
 });
 
 const dailyRecapAndReset = async () => {
