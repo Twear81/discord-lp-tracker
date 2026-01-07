@@ -11,6 +11,8 @@ export interface MonthlyRecapStats {
 	totalGames: number;
 	totalTimePlayed: number; // in seconds
 	totalLPGain: number;
+	totalCS?: number;
+	totalPing?: number;
 	wins: number;
 	losses: number;
 	winrate: number;
@@ -75,7 +77,7 @@ const generateLeagueMonthlyRecap = async (
 		const games = await getLeagueGamesForPlayerInMonth(player.id, month, year);
 		
 		// Filter games by queue type
-		const filteredGames = games.filter(game => game.queueType === queueType);
+		const filteredGames = games.filter(game => game.queueType === queueType.toString());
 		
 		if (filteredGames.length === 0) continue;
 
@@ -111,7 +113,7 @@ const generateTFTMonthlyRecap = async (
 		const games = await getTFTGamesForPlayerInMonth(player.id, month, year);
 		
 		// Filter games by queue type
-		const filteredGames = games.filter(game => game.queueType === queueType);
+		const filteredGames = games.filter(game => game.queueType === queueType.toString());
 		
 		if (filteredGames.length === 0) continue;
 
@@ -146,6 +148,7 @@ const calculateLeagueStats = (games: any[]): Omit<MonthlyRecapStats, 'player'> =
 	const totalAssists = games.reduce((sum, game) => sum + game.assists, 0);
 	const totalDamage = games.reduce((sum, game) => sum + game.damage, 0);
 	const totalCS = games.reduce((sum, game) => sum + game.totalCS, 0);
+	const totalPing = games.reduce((sum, game) => sum + game.pings, 0);
 	const totalVision = games.reduce((sum, game) => sum + game.visionScore, 0);
 
 	const averageKDA = {
@@ -162,6 +165,8 @@ const calculateLeagueStats = (games: any[]): Omit<MonthlyRecapStats, 'player'> =
 		totalGames,
 		totalTimePlayed,
 		totalLPGain,
+		totalCS,
+		totalPing,
 		wins,
 		losses,
 		winrate,

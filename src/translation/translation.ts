@@ -19,6 +19,7 @@ export interface GameTranslations {
     time: string;
     score: string;
     csPerMin: string;
+    totalCs: string;
     pings: string;
     damage: string;
     visionPerMin: string;
@@ -69,6 +70,7 @@ const allTranslations = {
         time: "⏱️ Durée",
         score: "⭐ Score",
         csPerMin: "🌾 CS/m",
+        totalCs: "🌾 CS",
         pings: "🔔 Pings",
         damage: "💥 Dégâts",
         visionPerMin: "👁️ Vision/m",
@@ -118,6 +120,7 @@ const allTranslations = {
         time: "⏱️ Duration",
         score: "⭐ Score",
         csPerMin: "🌾 CS/m",
+        totalCs: "🌾 CS",
         pings: "🔔 Pings",
         damage: "💥 Damage",
         visionPerMin: "👁️ Vision/m",

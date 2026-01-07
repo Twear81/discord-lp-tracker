@@ -231,7 +231,7 @@ export const sendLeagueMonthlyRecapMessage = async (channel: TextChannel, player
 	let playerCount = 0;
 
 	for (const stats of playerStats) {
-		const { player, totalGames, totalTimePlayed, totalLPGain, wins, losses, winrate, averageKDA, averageDamage, averageCSPerMin, averageVisionPerMin } = stats;
+		const { player, totalGames, totalTimePlayed, totalLPGain, totalCS, totalPing, wins, losses, winrate, averageKDA, averageDamage, averageVisionPerMin } = stats;
 		const { gameName, tagLine } = player;
 
 		const hoursPlayed = Math.floor(totalTimePlayed / 3600);
@@ -244,7 +244,8 @@ export const sendLeagueMonthlyRecapMessage = async (channel: TextChannel, player
 🎮 ${t.games}: **${totalGames}** | ${t.time}: **${hoursPlayed}h ${minutesPlayed}min** | 📊 ${t.winrate}: **${winrate.toFixed(1)}%**
 ⚔️ KDA: **${averageKDA?.kills.toFixed(1)}/${averageKDA?.deaths.toFixed(1)}/${averageKDA?.assists.toFixed(1)}**
 ${t.damage}: **${(averageDamage! / 1000).toFixed(1)}K/game**
-${t.csPerMin}: **${averageCSPerMin?.toFixed(1)}**
+${t.totalCs}: **${totalCS?.toFixed(1)}**
+${t.pings}: **${totalPing?.toFixed(1)}**
 ${t.visionPerMin}: **${averageVisionPerMin?.toFixed(2)}**`;
 
 		currentEmbed.addFields({
