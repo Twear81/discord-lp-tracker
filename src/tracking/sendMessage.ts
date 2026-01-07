@@ -109,14 +109,6 @@ export const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: P
 		return;
 	}
 
-	const queueColors: Record<GameQueueType, ColorResolvable> = {
-		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
-		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
-		[GameQueueType.RANKED_TFT]: "#1DB954",
-		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
-	};
-
-
 	const t = getTranslations(lang);
 
 	const queueTitle = t.recapTitles[queueType];
@@ -206,12 +198,6 @@ const getPlacementBadge = (place: number): string => {
 
 export const sendLeagueMonthlyRecapMessage = async (channel: TextChannel, playerStats: MonthlyRecapStats[], month: number, year: number, queueType: GameQueueType, lang: string): Promise<void> => {
 	const t = getTranslations(lang);
-	const queueColors: Record<GameQueueType, ColorResolvable> = {
-		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
-		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
-		[GameQueueType.RANKED_TFT]: "#1DB954",
-		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
-	};
 
 	const monthNames = lang === 'fr'
 		? ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
@@ -277,12 +263,6 @@ ${t.visionPerMin}: **${averageVisionPerMin?.toFixed(2)}**`;
 
 export const sendTFTMonthlyRecapMessage = async (channel: TextChannel, playerStats: MonthlyRecapStats[], month: number, year: number, queueType: GameQueueType, lang: string): Promise<void> => {
 	const t = getTranslations(lang);
-	const queueColors: Record<GameQueueType, ColorResolvable> = {
-		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
-		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
-		[GameQueueType.RANKED_TFT]: "#1DB954",
-		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
-	};
 
 	const monthNames = lang === 'fr'
 		? ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
@@ -342,3 +322,33 @@ ${t.level}: **${averageLevel?.toFixed(1)}**`;
 		await channel.send({ embeds: [currentEmbed] });
 	}
 };
+
+const queueColors: Record<GameQueueType, ColorResolvable> = {
+		// --- League of Legends Standard ---
+		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",      // Bleu LoL
+		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",       // Violet Flex
+		[GameQueueType.NORMAL_QUICKPLAY]: "#1ABC9C",    // Turquoise
+		[GameQueueType.NORMAL_DRAFT_5x5]: "#2ECC71",    // Vert
+
+		// --- League of Legends Special ---
+		[GameQueueType.ARAM]: "#95A5A6",                // Gris acier
+		[GameQueueType.ARENA]: "#E74C3C",               // Rouge combat
+		[GameQueueType.URF]: "#D35400",                 // Orange brûlé
+		[GameQueueType.ALL_FOR_ONE]: "#F39C12",         // Orange clair
+
+		// --- TFT ---
+		[GameQueueType.RANKED_TFT]: "#1DB954",          // Vert TFT
+		[GameQueueType.NORMAL_TFT]: "#27AE60",          // Vert sombre
+		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C", // Jaune Double Up
+		[GameQueueType.TFT_DOUBLE_UP_NORMAL]: "#F1C40F", // Jaune clair
+		[GameQueueType.TFT_HYPER_ROLL]: "#E67E22",      // Orange Hyper Roll
+		[GameQueueType.TFT_FORTUNES_FAVOR]: "#FFD700",  // Or
+		[GameQueueType.TFT_CHONCCS_TREASURE]: "#00FF7F", // Vert fluo
+		[GameQueueType.TFT_SET_REVIVAL]: "#34495E",     // Bleu sombre
+		[GameQueueType.TFT_TUTORIAL]: "#BDC3C7",        // Argent
+
+		// --- Bots / Co-op vs AI ---
+		[GameQueueType.BOT_INTRO]: "#ECF0F1",
+		[GameQueueType.BOT_BEGINNER]: "#95A5A6",
+		[GameQueueType.BOT_INTERMEDIATE]: "#7F8C8D",
+	};

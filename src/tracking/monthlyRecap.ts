@@ -50,10 +50,27 @@ export const generateMonthlyRecap = async (month: number, year: number): Promise
 			}
 
 			// Generate monthly recap for each queue type
+			// --- LEAGUE OF LEGENDS RECAPS ---
+			// SoloQ & Flex (Classé)
 			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_SOLO_5x5);
 			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_FLEX_SR);
+
+			// Modes Normaux & Spéciaux (Si tu souhaites suivre l'activité ARAM/Arena)
+			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.ARAM);
+			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.ARENA);
+			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.NORMAL_QUICKPLAY);
+			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.URF);
+
+
+			// --- TFT RECAPS ---
+			// Standard & Double Up (Classé)
 			await generateTFTMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_TFT);
 			await generateTFTMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_TFT_DOUBLE_UP);
+
+			// Autres modes TFT
+			await generateTFTMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.TFT_HYPER_ROLL);
+			await generateTFTMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.TFT_CHONCCS_TREASURE);
+			await generateTFTMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.TFT_SET_REVIVAL);
 		}
 
 		logger.info(`✅ Monthly recap generation finished successfully.`);

@@ -1,4 +1,4 @@
-import { DoubleTFT, FlexQ, Player, SoloQ, SoloTFT } from './playerModel';
+import { AllForOne, Aram, Arena, BotBeginner, BotIntermediate, BotIntro, ChonccsTreasureTFT, DoubleTFT, FlexQ, FortunesFavorTFT, HyperRollTFT, NormalDraft, Player, Quickplay, SetRevivalTFT, SoloQ, SoloTFT, Urf } from './playerModel';
 import { Server } from './serverModel';
 import { LeagueGame, TFTGame } from './gameModel';
 import { AppError, ErrorTypes } from '../error/error';
@@ -214,11 +214,32 @@ export const updatePlayerCurrentOrLastDayRank = async (serverId: string, puuid: 
 };
 
 const findPlayerToUpdate = async (existingPlayer: Model, queueType: GameQueueType): Promise<Model | null> => {
-	const queueModels = {
-		[GameQueueType.RANKED_FLEX_SR]: FlexQ,
+	const queueModels: Record<GameQueueType, any> = {
+		// LoL
 		[GameQueueType.RANKED_SOLO_5x5]: SoloQ,
+		[GameQueueType.RANKED_FLEX_SR]: FlexQ,
+		[GameQueueType.NORMAL_QUICKPLAY]: Quickplay,
+		[GameQueueType.NORMAL_DRAFT_5x5]: NormalDraft,
+		[GameQueueType.ARAM]: Aram,
+		[GameQueueType.ARENA]: Arena,
+		[GameQueueType.URF]: Urf,
+		[GameQueueType.ALL_FOR_ONE]: AllForOne,
+
+		// TFT
 		[GameQueueType.RANKED_TFT]: SoloTFT,
-		[GameQueueType.RANKED_TFT_DOUBLE_UP]: DoubleTFT
+		[GameQueueType.RANKED_TFT_DOUBLE_UP]: DoubleTFT,
+		[GameQueueType.TFT_HYPER_ROLL]: HyperRollTFT,
+		[GameQueueType.TFT_FORTUNES_FAVOR]: FortunesFavorTFT,
+		[GameQueueType.TFT_CHONCCS_TREASURE]: ChonccsTreasureTFT,
+		[GameQueueType.TFT_SET_REVIVAL]: SetRevivalTFT,
+		[GameQueueType.NORMAL_TFT]: SoloTFT,
+		[GameQueueType.TFT_TUTORIAL]: SoloTFT,
+		[GameQueueType.TFT_DOUBLE_UP_NORMAL]: DoubleTFT,
+
+		// Bots
+		[GameQueueType.BOT_INTRO]: BotIntro,
+		[GameQueueType.BOT_BEGINNER]: BotBeginner,
+		[GameQueueType.BOT_INTERMEDIATE]: BotIntermediate,
 	};
 	const model = queueModels[queueType];
 	if (!model) {

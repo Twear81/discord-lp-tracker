@@ -150,19 +150,60 @@ async function getTFTGameDetail(gameID: string, region: string): Promise<RiotAPI
 export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string, lang: string): Promise<PlayerLeagueGameInfo> {
 	try {
 		const gameDetail: RiotAPITypes.MatchV5.MatchDTO = await getGameDetail(gameID, region);
-		const { info: { gameDuration, participants, gameEndTimestamp, queueId } } = gameDetail;
+		const { info: { gameDuration, participants, gameEndTimestamp, queueId} } = gameDetail;
 
 		// Déterminer le type de la queue
 		let queueType: GameQueueType;
 		switch (queueId) {
+			// --- Ranked ---
 			case 420:
 				queueType = GameQueueType.RANKED_SOLO_5x5;
 				break;
 			case 440:
 				queueType = GameQueueType.RANKED_FLEX_SR;
 				break;
+
+			// --- Normal Games ---
+			case 400:
+				queueType = GameQueueType.NORMAL_DRAFT_5x5;
+				break;
+			case 430:
+				queueType = GameQueueType.NORMAL_QUICKPLAY;
+				break;
+			case 450:
+				queueType = GameQueueType.ARAM;
+				break;
+
+			// --- Special / Rotating Modes ---
+			case 1700:
+				queueType = GameQueueType.ARENA;
+				break;
+			case 900:
+				queueType = GameQueueType.URF;
+				break;
+			case 1020:
+				queueType = GameQueueType.ALL_FOR_ONE;
+				break;
+			case 1900:
+				queueType = GameQueueType.URF; // Pick URF
+				break;
+
+			// --- Co-op vs AI ---
+			case 830:
+				queueType = GameQueueType.BOT_INTRO;
+				break;
+			case 840:
+				queueType = GameQueueType.BOT_BEGINNER;
+				break;
+			case 850:
+				queueType = GameQueueType.BOT_INTERMEDIATE;
+				break;
+
 			default:
-				throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `Queue type not found for queueId:${queueId} for game:${gameID}`);
+				throw new AppError(
+					ErrorTypes.GAMEDETAIL_NOT_FOUND, 
+					`Queue type not found for queueId:${queueId} for game:${gameID}`
+				);
 		}
 
 		const participant = participants.find(p => p.puuid === puuid);
@@ -205,16 +246,48 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 	const { info: { queue_id, participants, game_datetime } } = tftGameDetail;
 
 	let queueType: GameQueueType;
-	switch (queue_id) {
-		case 1100:
-			queueType = GameQueueType.RANKED_TFT;
-			break;
-		case 1160:
-			queueType = GameQueueType.RANKED_TFT_DOUBLE_UP;
-			break;
-		default:
-			throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `TFT Queue type not found for queueId:${queue_id} for game:${gameID}`);
-	}
+switch (queue_id) {
+    // --- Standard & Ranked ---
+    case 1090:
+        queueType = GameQueueType.NORMAL_TFT;
+        break;
+    case 1100:
+        queueType = GameQueueType.RANKED_TFT;
+        break;
+    case 1130:
+        queueType = GameQueueType.TFT_HYPER_ROLL;
+        break;
+
+    // --- Double Up ---
+    case 1150:
+        queueType = GameQueueType.TFT_DOUBLE_UP_NORMAL; // Ancienne version / Normal
+        break;
+    case 1160:
+        queueType = GameQueueType.RANKED_TFT_DOUBLE_UP;
+        break;
+
+    // --- Event & Special Modes ---
+    case 1170:
+        queueType = GameQueueType.TFT_FORTUNES_FAVOR;
+        break;
+    case 1180:
+        queueType = GameQueueType.TFT_CHONCCS_TREASURE;
+        break;
+    case 1190:
+        queueType = GameQueueType.TFT_SET_REVIVAL; // Pour les retours d'anciens sets
+        break;
+
+    // --- Tutorials / Practice ---
+    case 1110:
+        queueType = GameQueueType.TFT_TUTORIAL;
+        break;
+
+    default:
+        throw new AppError(
+            ErrorTypes.GAMEDETAIL_NOT_FOUND, 
+            `TFT Queue type not found for queueId:${queue_id} for game:${gameID}`
+        );
+}
 
 	const participant = participants.find(p => p.puuid === puuid);
 	if (!participant) {

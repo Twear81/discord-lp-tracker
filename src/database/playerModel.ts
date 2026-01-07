@@ -116,10 +116,30 @@ const defineQueueModel = (name: string) => {
 	});
 };
 
+// --- LoL Ranked ---
 export const SoloQ = defineQueueModel('SoloQ');
 export const FlexQ = defineQueueModel('FlexQ');
+
+// --- LoL Normal & Special ---
+export const Quickplay = defineQueueModel('Quickplay');
+export const NormalDraft = defineQueueModel('NormalDraft');
+export const Aram = defineQueueModel('Aram');
+export const Arena = defineQueueModel('Arena');
+export const Urf = defineQueueModel('Urf');
+export const AllForOne = defineQueueModel('AllForOne');
+
+// --- TFT ---
 export const SoloTFT = defineQueueModel('SoloTFT');
 export const DoubleTFT = defineQueueModel('DoubleTFT');
+export const HyperRollTFT = defineQueueModel('HyperRollTFT');
+export const FortunesFavorTFT = defineQueueModel('FortunesFavorTFT');
+export const ChonccsTreasureTFT = defineQueueModel('ChonccsTreasureTFT');
+export const SetRevivalTFT = defineQueueModel('SetRevivalTFT');
+
+// --- Bots (IA) ---
+export const BotIntro = defineQueueModel('BotIntro');
+export const BotBeginner = defineQueueModel('BotBeginner');
+export const BotIntermediate = defineQueueModel('BotIntermediate');
 
 // Associations
 Player.hasOne(SoloQ, { foreignKey: 'playerId', onDelete: 'CASCADE' });
