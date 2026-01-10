@@ -10,8 +10,10 @@ import { commands } from "./commands";
 import { deployCommands } from "./deploy-commands";
 import { initDB } from './database/init_database';
 import { generateRecapOfTheDay, initLastDayInfo, trackPlayers } from "./tracking/tracking";
+import { generateMonthlyRecap } from "./tracking/monthlyRecap";
 import { deleteAllPlayersOfServer, deleteServer } from "./database/databaseHelper";
 import logger from "./logger/logger";
+import { purgeOldGames } from "./tracking/purge";
 
 dotenv.config();
 export const client = new Client({
@@ -54,6 +56,31 @@ client.once(Events.ClientReady, async () => {
 	// Update tft-tactician json
 	updateTFTTacticianFile();
 	cron.schedule("0 10 * * *", async () => updateTFTTacticianFile());
+	
+	// Monthly recap - 1st of each month at 8:00
+	cron.schedule("0 8 1 * *", async () => {
+		try {
+			const now = new Date();
+			const month = now.getMonth() + 1; // getMonth() returns 0-11
+			const year = now.getFullYear();
+			logger.info(`📊 Generating monthly recap for ${month}/${year}...`);
+			await generateMonthlyRecap(month, year);
+			logger.info(`✅ Monthly recap for ${month}/${year} completed`);
+		} catch (error) {
+			logger.error(`❌ Failed to generate monthly recap:`, error);
+		}
+	});
+
+	// Cleanup task - 1st of month: Prune records > 12 months old
+	cron.schedule("0 0 1 * *", async () => {
+		try {
+			const yearsToKeep = 1
+			await purgeOldGames(yearsToKeep);
+		} catch (error) {
+			logger.error(`❌ Failed to generate monthly recap:`, error);
+		}
+	});
+
 });
 
 const dailyRecapAndReset = async () => {

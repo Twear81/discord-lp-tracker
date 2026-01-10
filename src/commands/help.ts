@@ -14,10 +14,14 @@ const languages = {
 			'➜ `/deleteplayer accountname:<nom> tag:<tag> region:<région>` : Supprime un joueur de la liste.\n' +
 			'➜ `/list` : Affiche la liste des joueurs suivis.\n' +
 			'➜ `/leaderboard` : Affiche le classement général des joueurs.\n\n' +
+			'🔹 **Récapitulatif mensuel manuel**\n' +
+			'➜ `/monthlyrecap month:<mois> year:<année>` : Génère manuellement un récapitulatif mensuel des joueurs.\n\n' +
 			'🔹 **Récapitulatif quotidien**\n' +
 			'📢 Tous les matins, le bot envoie un résumé des performances :\n' +
 			'- Victoires / Défaites 🎉💀\n' +
 			'- LP gagnés / perdus 📈📉\n\n' +
+			'🔹 **Récapitulatif mensuel automatique**\n' +
+			'📢 Le 1er de chaque mois, le bot envoie automatiquement le récapitulatif du mois précédent pour tous les joueurs.\n\n' +
 			'*Besoin d`aide ? N`hésitez pas à demander !*',
 	},
 	en: {
@@ -31,10 +35,14 @@ const languages = {
 			'➜ `/deleteplayer accountname:<name> tag:<tag> region:<region>` : Removes a player from the list.\n' +
 			'➜ `/list` : Displays the list of tracked players.\n' +
 			'➜ `/leaderboard` : Shows the general ranking of players.\n\n' +
+			'🔹 **Manual Monthly Recap**\n' +
+			'➜ `/monthlyrecap month:<month> year:<year>` : Manually generates a monthly recap for players.\n\n' +
 			'🔹 **Daily Recap**\n' +
 			'📢 Every morning, the bot sends a performance summary:\n' +
 			'- Wins / Losses 🎉💀\n' +
 			'- LP gained / lost 📈📉\n\n' +
+			'🔹 **Automatic Monthly Recap**\n' +
+			'📢 On the 1st of each month, the bot automatically sends a recap of the previous month for all players.\n\n' +
 			'*Need help? Feel free to ask!*',
 	},
 };

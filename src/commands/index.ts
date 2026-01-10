@@ -7,6 +7,7 @@ import * as tfttoggle from "./tftToggle";
 import * as language from "./language";
 import * as leaderboard from "./leaderboard";
 import * as list from "./list";
+import * as monthlyrecap from "./monthlyRecap";
 
 export const commands = {
 	init,
@@ -17,5 +18,6 @@ export const commands = {
 	tfttoggle,
 	language,
 	leaderboard,
-	list
+	list,
+	monthlyrecap
 };

@@ -1,9 +1,12 @@
 import { DoubleTFT, FlexQ, Player, SoloQ, SoloTFT } from './playerModel';
 import { Server } from './serverModel';
+import { LeagueGame, TFTGame } from './gameModel';
 import { AppError, ErrorTypes } from '../error/error';
-import { Model } from 'sequelize';
+import { Model, Op } from 'sequelize';
 import { GameQueueType, ManagedGameQueueType } from '../tracking/GameQueueType';
+import { PlayerLeagueGameInfo, PlayerTFTGameInfo } from '../riot/riotHelper';
 import logger from '../logger/logger';
+import { calculateLPDifference } from '../tracking/util';
 
 // SERVER PART
 export const addOrUpdateServer = async (serverId: string, channelId: string, flexToggle: boolean, tftToggle: boolean, lang: string): Promise<void> => {
@@ -490,3 +493,199 @@ export interface PlayerRecapInfo {
 	playerQueue: PlayerForQueueInfo;
 	lpChange: number;
 }
+
+// GAME DATABASE HELPERS
+
+export const saveLeagueGameToDatabase = async (
+	playerQueueInfo: PlayerForQueueInfo,
+	gameInfo: PlayerLeagueGameInfo,
+	riotMatchId: string,
+): Promise<void> => {
+	try {
+		const { playerId, currentRank, currentTier, currentLP, oldRank, oldTier, oldLP } = playerQueueInfo;
+		// Check if game already exists - use playerId + riotMatchId as unique combination
+		const existingGame = await LeagueGame.findOne({ where: { playerId, matchId: riotMatchId } });
+		if (existingGame) {
+			logger.info(`Game ${riotMatchId} already exists in database for player ${playerId}. Skipping.`);
+			return;
+		}
+		
+		let lpGain = 0;
+		if (currentRank != null && oldRank != null) {
+			lpGain = calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
+		} else {
+			logger.warn("Can't calculateRRDifference because there is a null info");
+		}
+
+		const createdGame = await LeagueGame.create({
+			playerId,
+			matchId: riotMatchId,
+			gameEndTimestamp: gameInfo.gameEndTimestamp,
+			gameDurationSeconds: gameInfo.gameDurationSeconds,
+			win: gameInfo.win,
+			kills: gameInfo.kills,
+			deaths: gameInfo.deaths,
+			assists: gameInfo.assists,
+			totalCS: gameInfo.totalCS,
+			damage: gameInfo.damage,
+			visionScore: gameInfo.visionScore,
+			pings: gameInfo.pings,
+			scoreRating: gameInfo.scoreRating,
+			teamRank: gameInfo.teamRank,
+			championName: gameInfo.championName,
+			championId: gameInfo.championId,
+			queueType: gameInfo.queueType,
+			lpGain,
+			oldRank,
+			oldTier,
+			oldLP,
+			currentRank,
+			currentTier,
+			currentLP,
+		});
+		
+		if (createdGame && createdGame.dataValues && createdGame.dataValues.id) {
+			logger.info(`✅ League game saved to database for playerId ${playerId}, gameId: ${createdGame.dataValues.id}`);
+		} else {
+			logger.error(`❌ League game creation returned no ID for playerId ${playerId}`);
+			throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to save League game - no ID returned');
+		}
+	} catch (error) {
+		logger.error(`❌ Failed to save League game to database:`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to save League game');
+	}
+};
+
+export const saveTFTGameToDatabase = async (
+	playerQueueInfo: PlayerForQueueInfo,
+	gameInfo: PlayerTFTGameInfo,
+	riotMatchId: string,
+): Promise<void> => {
+	try {
+		const { playerId, currentRank, currentTier, currentLP, oldRank, oldTier, oldLP } = playerQueueInfo;
+		// Check if game already exists - use playerId + riotMatchId as unique combination
+		const existingGame = await TFTGame.findOne({ where: { playerId, matchId: riotMatchId } });
+		if (existingGame) {
+			logger.info(`TFT game ${riotMatchId} already exists in database for player ${playerId}. Skipping.`);
+			return;
+		}
+
+		let lpGain = 0;
+		if (currentRank != null && oldRank != null) {
+			lpGain = calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
+		} else {
+			logger.warn("Can't calculateRRDifference because there is a null info");
+		}
+
+		const createdGame = await TFTGame.create({
+			playerId,
+			matchId: riotMatchId,
+			gameEndTimestamp: gameInfo.gameEndTimestamp,
+			gameDurationSeconds: gameInfo.gameDurationSeconds,
+			win: gameInfo.win,
+			placement: gameInfo.placement,
+			level: gameInfo.level,
+			roundEliminated: gameInfo.roundEliminated,
+			playersEliminated: gameInfo.playersEliminated,
+			totalDamageToPlayers: gameInfo.totalDamageToPlayers,
+			goldLeft: gameInfo.goldLeft,
+			mainTraits: gameInfo.mainTraits.join(', '),
+			queueType: gameInfo.queueType,
+			lpGain,
+			oldRank,
+			oldTier,
+			oldLP,
+			currentRank,
+			currentTier,
+			currentLP,
+		});
+		
+		if (createdGame && createdGame.dataValues && createdGame.dataValues.id) {
+			logger.info(`✅ TFT game saved to database for playerId ${playerId}, gameId: ${createdGame.dataValues.id}`);
+		} else {
+			logger.error(`❌ TFT game creation returned no ID for playerId ${playerId}`);
+			throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to save TFT game - no ID returned');
+		}
+	} catch (error) {
+		logger.error(`❌ Failed to save TFT game to database:`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to save TFT game');
+	}
+};
+
+export const getLeagueGamesForPlayerInMonth = async (playerId: number, month: number, year: number): Promise<Model[]> => {
+	try {
+		const startDate = new Date(year, month - 1, 1).getTime();
+		const endDate = new Date(year, month, 0, 23, 59, 59).getTime();
+
+		const games = await LeagueGame.findAll({
+			where: {
+				playerId,
+				gameEndTimestamp: {
+					[Op.gte]: startDate,
+					[Op.lte]: endDate,
+				},
+			},
+		});
+		return games.map(game => game.dataValues);
+	} catch (error) {
+		logger.error(`❌ Failed to get League games for player ${playerId} in ${month}/${year}:`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to get League games');
+	}
+};
+
+export const getTFTGamesForPlayerInMonth = async (playerId: number, month: number, year: number): Promise<Model[]> => {
+	try {
+		const startDate = new Date(year, month - 1, 1).getTime();
+		const endDate = new Date(year, month, 0, 23, 59, 59).getTime();
+
+		const games = await TFTGame.findAll({
+			where: {
+				playerId,
+				gameEndTimestamp: {
+					[Op.gte]: startDate,
+					[Op.lte]: endDate,
+				},
+			},
+		});
+		return games.map(game => game.dataValues);
+	} catch (error) {
+		logger.error(`❌ Failed to get TFT games for player ${playerId} in ${month}/${year}:`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to get TFT games');
+	}
+};
+
+export const deleteOldLeagueGames = async (beforeDate: Date): Promise<number> => {
+	try {
+		const timestamp = beforeDate.getTime();
+		const result = await LeagueGame.destroy({
+			where: {
+				gameEndTimestamp: {
+					[Op.lt]: timestamp,
+				},
+			},
+		});
+		logger.info(`✅ Deleted ${result} old League games from database`);
+		return result;
+	} catch (error) {
+		logger.error(`❌ Failed to delete old League games:`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to delete old League games');
+	}
+};
+
+export const deleteOldTFTGames = async (beforeDate: Date): Promise<number> => {
+	try {
+		const timestamp = beforeDate.getTime();
+		const result = await TFTGame.destroy({
+			where: {
+				gameEndTimestamp: {
+					[Op.lt]: timestamp,
+				},
+			},
+		});
+		logger.info(`✅ Deleted ${result} old TFT games from database`);
+		return result;
+	} catch (error) {
+		logger.error(`❌ Failed to delete old TFT games:`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to delete old TFT games');
+	}
+};

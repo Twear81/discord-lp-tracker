@@ -25,9 +25,10 @@ The bot is built using:
 ## 🚀 Features
 - ✅ Real-time match tracking (SoloQ, Flex, TFT)
 - ✅ Daily performance recap for tracked players
+- ✅ Monthly recap (automatic on the 1st of each month or manual)
 - ✅ Leaderboard support
 - ✅ Toggle tracking per game mode (Flex / TFT)
-- ✅ Multilingual: English & French  
+- ✅ Multilingual: English & French
 
 ## 📌 Bot Usage Guide
 Welcome! Here are the commands to use the bot properly:
@@ -44,6 +45,10 @@ Welcome! Here are the commands to use the bot properly:
 - `/deleteplayer accountname:<name> tag:<tag> region:<region>` : Removes a player from the list.
 - `/list` : Displays the list of tracked players.
 - `/leaderboard` : Shows the general ranking of players.
+
+### 🔹 Monthly Recap
+- `/monthlyrecap month:<month> year:<year>` : Manually generates a monthly recap for players.
+- 📢 On the 1st of each month, the bot automatically sends a recap of the previous month for all players.
 
 ### 🔹 Daily Recap
 📢 Every morning, the bot sends a performance summary:
