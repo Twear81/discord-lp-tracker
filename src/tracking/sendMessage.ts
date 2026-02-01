@@ -231,7 +231,7 @@ export const sendLeagueMonthlyRecapMessage = async (channel: TextChannel, player
 	let playerCount = 0;
 
 	for (const stats of playerStats) {
-		const { player, totalGames, totalTimePlayed, totalLPGain, totalCS, totalPing, wins, losses, winrate, averageKDA, averageDamage, averageVisionPerMin } = stats;
+		const { player, totalGames, totalTimePlayed, totalLPGain, totalCS, totalPing, wins, losses, winrate, averageKDA, averageScore, averageDamage, averageVisionPerMin } = stats;
 		const { gameName, tagLine } = player;
 
 		const hoursPlayed = Math.floor(totalTimePlayed / 3600);
@@ -242,10 +242,10 @@ export const sendLeagueMonthlyRecapMessage = async (channel: TextChannel, player
 
 		const playerStatsText = `🏆 ${t.wins}: **${wins}** | ❌ ${t.losses}: **${losses}**
 🎮 ${t.games}: **${totalGames}** | ${t.time}: **${hoursPlayed}h ${minutesPlayed}min** | 📊 ${t.winrate}: **${winrate.toFixed(1)}%**
-⚔️ KDA: **${averageKDA?.kills.toFixed(1)}/${averageKDA?.deaths.toFixed(1)}/${averageKDA?.assists.toFixed(1)}**
+⚔️ KDA: **${averageKDA?.kills.toFixed(1)}/${averageKDA?.deaths.toFixed(1)}/${averageKDA?.assists.toFixed(1)}** | 🎯 Score: **${averageScore?.toFixed(1)}**
 ${t.damage}: **${(averageDamage! / 1000).toFixed(1)}K/game**
-${t.totalCs}: **${totalCS?.toFixed(1)}**
-${t.pings}: **${totalPing?.toFixed(1)}**
+${t.totalCs}: **${totalCS?.toFixed(0)}**
+${t.pings}: **${totalPing?.toFixed(0)}**
 ${t.visionPerMin}: **${averageVisionPerMin?.toFixed(2)}**`;
 
 		currentEmbed.addFields({

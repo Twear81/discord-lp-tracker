@@ -61,8 +61,17 @@ client.once(Events.ClientReady, async () => {
 	cron.schedule("0 8 1 * *", async () => {
 		try {
 			const now = new Date();
-			const month = now.getMonth() + 1; // getMonth() returns 0-11
-			const year = now.getFullYear();
+			let month = now.getMonth(); // getMonth() returns 0-11
+			let year = now.getFullYear();
+			
+			// Calculate previous month
+			if (month === 0) {
+				// January: previous month is December of previous year
+				month = 12;
+				year = year - 1;
+			}
+			// Otherwise: month is already the previous month (0-indexed)
+			
 			logger.info(`📊 Generating monthly recap for ${month}/${year}...`);
 			await generateMonthlyRecap(month, year);
 			logger.info(`✅ Monthly recap for ${month}/${year} completed`);
@@ -71,10 +80,10 @@ client.once(Events.ClientReady, async () => {
 		}
 	});
 
-	// Cleanup task - 1st of month: Prune records > 12 months old
+	// Cleanup task - 1st of month: Prune records > 24 months old
 	cron.schedule("0 0 1 * *", async () => {
 		try {
-			const yearsToKeep = 1
+			const yearsToKeep = 2
 			await purgeOldGames(yearsToKeep);
 		} catch (error) {
 			logger.error(`❌ Failed to generate monthly recap:`, error);

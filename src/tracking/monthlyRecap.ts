@@ -1,5 +1,5 @@
 import { TextChannel } from 'discord.js';
-import { getAllServer, listAllPlayerForSpecificServer, getLeagueGamesForPlayerInMonth, getTFTGamesForPlayerInMonth } from '../database/databaseHelper';
+import { getAllServer, listAllPlayerForSpecificServer, getLeagueGamesForPlayerInMonth, getTFTGamesForPlayerInMonth, LeagueGameInfo, TFTGameInfo } from '../database/databaseHelper';
 import { GameQueueType } from './GameQueueType';
 import { PlayerInfo } from '../database/databaseHelper';
 import { client } from '../index';
@@ -21,6 +21,7 @@ export interface MonthlyRecapStats {
 		deaths: number;
 		assists: number;
 	};
+	averageScore?: number;
 	averageDamage?: number;
 	averageCSPerMin?: number;
 	averageVisionPerMin?: number;
@@ -74,7 +75,7 @@ const generateLeagueMonthlyRecap = async (
 	const playerStats: MonthlyRecapStats[] = [];
 
 	for (const player of players) {
-		const games = await getLeagueGamesForPlayerInMonth(player.id, month, year);
+		const games: LeagueGameInfo[] = await getLeagueGamesForPlayerInMonth(player.id, month, year);
 		
 		// Filter games by queue type
 		const filteredGames = games.filter(game => game.queueType === queueType.toString());
@@ -135,7 +136,7 @@ const generateTFTMonthlyRecap = async (
 	await sendTFTMonthlyRecapMessage(channel, playerStats, month, year, queueType, lang);
 };
 
-const calculateLeagueStats = (games: any[]): Omit<MonthlyRecapStats, 'player'> => {
+const calculateLeagueStats = (games: LeagueGameInfo[]): Omit<MonthlyRecapStats, 'player'> => {
 	const totalGames = games.length;
 	const totalTimePlayed = games.reduce((sum, game) => sum + game.gameDurationSeconds, 0);
 	const totalLPGain = games.reduce((sum, game) => sum + (game.lpGain || 0), 0);
@@ -150,6 +151,7 @@ const calculateLeagueStats = (games: any[]): Omit<MonthlyRecapStats, 'player'> =
 	const totalCS = games.reduce((sum, game) => sum + game.totalCS, 0);
 	const totalPing = games.reduce((sum, game) => sum + game.pings, 0);
 	const totalVision = games.reduce((sum, game) => sum + game.visionScore, 0);
+	const totalScore = games.reduce((sum, game) => sum + game.scoreRating, 0);
 
 	const averageKDA = {
 		kills: totalKills / totalGames,
@@ -157,6 +159,7 @@ const calculateLeagueStats = (games: any[]): Omit<MonthlyRecapStats, 'player'> =
 		assists: totalAssists / totalGames,
 	};
 
+	const averageScore = totalScore / totalGames;
 	const averageDamage = totalDamage / totalGames;
 	const averageCSPerMin = totalCS / (totalTimePlayed / 60);
 	const averageVisionPerMin = totalVision / (totalTimePlayed / 60);
@@ -171,13 +174,14 @@ const calculateLeagueStats = (games: any[]): Omit<MonthlyRecapStats, 'player'> =
 		losses,
 		winrate,
 		averageKDA,
+		averageScore,
 		averageDamage,
 		averageCSPerMin,
 		averageVisionPerMin,
 	};
 };
 
-const calculateTFTStats = (games: any[]): Omit<MonthlyRecapStats, 'player'> => {
+const calculateTFTStats = (games: TFTGameInfo[]): Omit<MonthlyRecapStats, 'player'> => {
 	const totalGames = games.length;
 	const totalTimePlayed = games.reduce((sum, game) => sum + game.gameDurationSeconds, 0);
 	const totalLPGain = games.reduce((sum, game) => sum + (game.lpGain || 0), 0);

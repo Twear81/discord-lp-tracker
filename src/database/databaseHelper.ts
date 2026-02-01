@@ -494,6 +494,58 @@ export interface PlayerRecapInfo {
 	lpChange: number;
 }
 
+export interface LeagueGameInfo {
+	id: number;
+	playerId: number;
+	matchId: string;
+	gameEndTimestamp: number;
+	gameDurationSeconds: number;
+	win: boolean;
+	kills: number;
+	deaths: number;
+	assists: number;
+	totalCS: number;
+	damage: number;
+	visionScore: number;
+	pings: number;
+	scoreRating: number;
+	teamRank: string;
+	championName: string;
+	championId: number;
+	queueType: string;
+	lpGain: number | null;
+	rankBefore: string | null;
+	tierBefore: string | null;
+	lpBefore: number | null;
+	rankAfter: string | null;
+	tierAfter: string | null;
+	lpAfter: number | null;
+}
+
+export interface TFTGameInfo {
+	id: number;
+	playerId: number;
+	matchId: string;
+	gameEndTimestamp: number;
+	gameDurationSeconds: number;
+	win: boolean;
+	placement: number;
+	level: number;
+	roundEliminated: string;
+	playersEliminated: number;
+	totalDamageToPlayers: number;
+	goldLeft: number;
+	mainTraits: string | null;
+	queueType: string;
+	lpGain: number | null;
+	rankBefore: string | null;
+	tierBefore: string | null;
+	lpBefore: number | null;
+	rankAfter: string | null;
+	tierAfter: string | null;
+	lpAfter: number | null;
+}
+
 // GAME DATABASE HELPERS
 
 export const saveLeagueGameToDatabase = async (
@@ -612,7 +664,7 @@ export const saveTFTGameToDatabase = async (
 	}
 };
 
-export const getLeagueGamesForPlayerInMonth = async (playerId: number, month: number, year: number): Promise<Model[]> => {
+export const getLeagueGamesForPlayerInMonth = async (playerId: number, month: number, year: number): Promise<LeagueGameInfo[]> => {
 	try {
 		const startDate = new Date(year, month - 1, 1).getTime();
 		const endDate = new Date(year, month, 0, 23, 59, 59).getTime();
@@ -626,14 +678,14 @@ export const getLeagueGamesForPlayerInMonth = async (playerId: number, month: nu
 				},
 			},
 		});
-		return games.map(game => game.dataValues);
+		return games.map(game => game.dataValues as LeagueGameInfo);
 	} catch (error) {
 		logger.error(`❌ Failed to get League games for player ${playerId} in ${month}/${year}:`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to get League games');
 	}
 };
 
-export const getTFTGamesForPlayerInMonth = async (playerId: number, month: number, year: number): Promise<Model[]> => {
+export const getTFTGamesForPlayerInMonth = async (playerId: number, month: number, year: number): Promise<TFTGameInfo[]> => {
 	try {
 		const startDate = new Date(year, month - 1, 1).getTime();
 		const endDate = new Date(year, month, 0, 23, 59, 59).getTime();
@@ -647,7 +699,7 @@ export const getTFTGamesForPlayerInMonth = async (playerId: number, month: numbe
 				},
 			},
 		});
-		return games.map(game => game.dataValues);
+		return games.map(game => game.dataValues as TFTGameInfo);
 	} catch (error) {
 		logger.error(`❌ Failed to get TFT games for player ${playerId} in ${month}/${year}:`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to get TFT games');

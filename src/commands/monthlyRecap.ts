@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags, SlashCommandIntegerOption } from 'discord.js';
 import { getLangServer } from '../database/databaseHelper';
 import { generateMonthlyRecap } from '../tracking/monthlyRecap';
 import logger from '../logger/logger';
@@ -6,7 +6,7 @@ import logger from '../logger/logger';
 export const data = new SlashCommandBuilder()
 	.setName('monthlyrecap')
 	.setDescription('Generate a monthly recap of all tracked players')
-	.addIntegerOption((option: any) =>
+	.addIntegerOption((option: SlashCommandIntegerOption) =>
 		option
 			.setName('month')
 			.setDescription('The month number (1-12)')
@@ -14,7 +14,7 @@ export const data = new SlashCommandBuilder()
 			.setMinValue(1)
 			.setMaxValue(12)
 	)
-	.addIntegerOption((option: any) =>
+	.addIntegerOption((option: SlashCommandIntegerOption) =>
 		option
 			.setName('year')
 			.setDescription('The year')
