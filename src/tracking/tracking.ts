@@ -1,7 +1,7 @@
 import { TextChannel } from 'discord.js';
 import { getAllServer, listAllPlayerForSpecificServer, resetLastDayOfAllPlayer, getPlayerForQueueInfoForSpecificServer, listAllPlayerForQueueInfoForSpecificServer, updatePlayerGameNameAndTagLine, updatePlayerInfoCurrentAndLastForQueueType } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
-import { getPlayerRankInfo, getTFTPlayerRankInfo, getAccountByPUUID } from '../riot/riotHelper';
+import { getPlayerRankInfo, getTFTPlayerRankInfo, getAccountByPUUID } from '../riot';
 import { client } from '../index';
 import { GameQueueType } from './GameQueueType';
 import { leagueGameProcessor, processGameType, tftGameProcessor } from './gameProcessors';

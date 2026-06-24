@@ -1,6 +1,6 @@
 import { TextChannel } from 'discord.js';
 import { updatePlayerLastGameId, updatePlayerCurrentOrLastDayRank, PlayerInfo, updatePlayerLastDayWinLose, getPlayerForQueueInfoForSpecificServer, ServerInfo, saveTFTGameToDatabase, saveLeagueGameToDatabase } from '../database/databaseHelper';
-import { getLeagueGameDetailForCurrentPlayer, getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, getTFTGameDetailForCurrentPlayer, getTFTPlayerRankInfo, PlayerTFTGameInfo, PlayerLeagueGameInfo } from '../riot/riotHelper';
+import { getLeagueGameDetailForCurrentPlayer, getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, getTFTGameDetailForCurrentPlayer, getTFTPlayerRankInfo, PlayerTFTGameInfo, PlayerLeagueGameInfo } from '../riot';
 import { client } from '../index';
 import { GameQueueType, ManagedGameQueueType } from './GameQueueType';
 import { sendLeagueGameResultMessage, sendTFTGameResultMessage } from './sendMessage';

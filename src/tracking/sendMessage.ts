@@ -1,6 +1,6 @@
 import { ColorResolvable, EmbedBuilder, TextChannel } from 'discord.js';
 import { DDragon } from '@fightmegg/riot-api';
-import { PlayerLeagueGameInfo, PlayerTFTGameInfo } from '../riot/riotHelper';
+import { PlayerLeagueGameInfo, PlayerTFTGameInfo } from '../riot';
 import { GameQueueType } from './GameQueueType';
 import { PlayerForQueueInfo, PlayerInfo, PlayerRecapInfo } from '../database/databaseHelper';
 import { calculateLPDifference, getDisplayRank, getDurationString } from './util';

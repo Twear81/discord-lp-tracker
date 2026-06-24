@@ -4,7 +4,7 @@ import { LeagueGame, TFTGame } from './gameModel';
 import { AppError, ErrorTypes } from '../error/error';
 import { Model, Op } from 'sequelize';
 import { GameQueueType, ManagedGameQueueType } from '../tracking/GameQueueType';
-import { PlayerLeagueGameInfo, PlayerTFTGameInfo } from '../riot/riotHelper';
+import { PlayerLeagueGameInfo, PlayerTFTGameInfo } from '../riot';
 import logger from '../logger/logger';
 import { calculateLPDifference } from '../tracking/util';
 

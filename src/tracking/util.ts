@@ -56,6 +56,6 @@ export const getDisplayRank = (tier: string, rank: string): string => {
 	if (!tier || tier.toUpperCase() === 'UNRANKED') {
         return ''; 
     }
-    const isHighRank = ['MASTER', 'GRANDMASTER', 'CHANLLENGER'].includes(tier);
+    const isHighRank = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tier);
     return isHighRank ? '' : ` ${rank}`;
 };
