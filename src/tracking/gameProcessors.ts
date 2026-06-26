@@ -12,7 +12,26 @@ async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, match
 	logger.info(`➡️ [League] New match ${matchId} found for player ${player.gameName}#${player.tagLine} on server ${server.serverid}.`);
 
 	// 1. Fetch game and rank details
-	const gameDetails: PlayerLeagueGameInfo = await getLeagueGameDetailForCurrentPlayer(player.puuid, matchId, player.region, server.lang);
+	let gameDetails: PlayerLeagueGameInfo;
+	try {
+		gameDetails = await getLeagueGameDetailForCurrentPlayer(player.puuid, matchId, player.region, server.lang);
+	} catch (error) {
+		if (error instanceof AppError && error.type === ErrorTypes.GAMEDETAIL_NOT_FOUND && error.message.includes("Queue type not found")) {
+			// Match is not in one of our tracked queues (SoloQ/Flex/Clash/5v5). Just update lastGameID so we don't re-check it.
+			logger.info(`[League] Skipping non-tracked queue match ${matchId} for player ${player.gameName}.`);
+			await updatePlayerLastGameId(server.serverid, player.puuid, matchId, ManagedGameQueueType.LEAGUE);
+			return;
+		}
+		throw error;
+	}
+
+	// 2. If the match is Flex and the server has Flex tracking disabled, skip it
+	if (gameDetails.queueType === GameQueueType.RANKED_FLEX_SR && !server.flextoggle) {
+		logger.info(`[League] Skipping Flex match ${matchId} for player ${player.gameName} (server flextoggle is off).`);
+		await updatePlayerLastGameId(server.serverid, player.puuid, matchId, ManagedGameQueueType.LEAGUE);
+		return;
+	}
+
 	const playerRankStats = await getPlayerRankInfo(player.puuid, player.region);
 
 	// 2. Update database
@@ -154,7 +173,7 @@ interface GameProcessor {
 	isEnabled(server: ServerInfo): boolean;
 	getPUUID(player: PlayerInfo): string;
 	getLastGameId(player: PlayerInfo): string | null;
-	getLastMatches(puuid: string, region: string, options?: boolean): Promise<string[]>;
+	getLastMatches(puuid: string, region: string): Promise<string[]>;
 	handleNewGame(server: ServerInfo, player: PlayerInfo, matchId: string, firstRun: boolean): Promise<void>;
 }
 
@@ -164,7 +183,9 @@ export const leagueGameProcessor: GameProcessor = {
 	isEnabled: (server) => true, // Always active
 	getPUUID: (player) => player.puuid,
 	getLastGameId: (player) => player.lastGameID,
-	getLastMatches: (puuid, region, flexToggle) => getLastRankedLeagueMatch(puuid, region, flexToggle!),
+	// Single API call: fetch the player's most recent match (any type).
+	// We then check its queueId against our tracked queues (SoloQ, Flex, Clash, 5v5) in handleNewLeagueGame.
+	getLastMatches: (puuid, region) => getLastRankedLeagueMatch(puuid, region),
 	handleNewGame: handleNewLeagueGame,
 };
 
@@ -188,7 +209,7 @@ export async function processGameType(server: ServerInfo, players: PlayerInfo[],
 		if (!puuid) {
 			return Promise.resolve({ player, matchIds: [] });
 		}
-		return processor.getLastMatches(puuid, player.region, server.flextoggle)
+		return processor.getLastMatches(puuid, player.region)
 			.then(matchIds => ({ player, matchIds }))
 			.catch(error => {
 				logger.error(`❌ Failed to fetch ${processor.gameName} matches for ${player.gameName}:`, error);

@@ -53,6 +53,8 @@ export const generateMonthlyRecap = async (month: number, year: number): Promise
 			// Generate monthly recap for each queue type
 			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_SOLO_5x5);
 			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_FLEX_SR);
+			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_CLASH);
+			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_5v5);
 			await generateTFTMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_TFT);
 			await generateTFTMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_TFT_DOUBLE_UP);
 		}

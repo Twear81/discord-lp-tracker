@@ -62,6 +62,12 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 			case 440:
 				queueType = GameQueueType.RANKED_FLEX_SR;
 				break;
+			case 700:
+				queueType = GameQueueType.RANKED_CLASH;
+				break;
+			case 710:
+				queueType = GameQueueType.RANKED_5v5;
+				break;
 			default:
 				throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `Queue type not found for queueId:${queueId} for game:${gameID}`);
 		}
@@ -102,22 +108,10 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 	}
 }
 
-export async function getLastRankedLeagueMatch(puuid: string, region: string, isFlex: boolean): Promise<string[]> {
+export async function getLastRankedLeagueMatch(puuid: string, region: string): Promise<string[]> {
 	try {
 		const platformId = getPlatformIdFromRegionString(region);
-
-		let params;
-		if (isFlex) {
-			params = {
-				type: RiotAPITypes.MatchV5.MatchType.Ranked, // All ranked game
-				count: 1
-			};
-		} else {
-			params = {
-				queue: 420, // default to Ranked Solo/Duo
-				count: 1
-			};
-		}
+		const params = { count: 1 };
 
 		return await limitedRequest(() => riotApi.matchV5.getIdsByPuuid({
 			cluster: platformId,

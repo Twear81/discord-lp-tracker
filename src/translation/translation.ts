@@ -27,6 +27,8 @@ export interface GameTranslations {
     queue: string;
     queueTypeSolo: string;
     queueTypeFlex: string;
+    queueTypeClash: string;
+    queueType5v5: string;
 
     // Teamfight Tactics (TFT)
     placement: string;
@@ -48,12 +50,16 @@ const allTranslations = {
         recapTitles: {
             [GameQueueType.RANKED_SOLO_5x5]: "[📈 Résumé Quotidien SoloQ]",
             [GameQueueType.RANKED_FLEX_SR]: "[📊 Résumé Quotidien Flex]",
+            [GameQueueType.RANKED_CLASH]: "[⚔️ Résumé Quotidien Clash]",
+            [GameQueueType.RANKED_5v5]: "[🎯 Résumé Quotidien 5v5]",
             [GameQueueType.RANKED_TFT]: "[📜 Résumé Quotidien TFT]",
             [GameQueueType.RANKED_TFT_DOUBLE_UP]: "[🤝 Résumé Quotidien TFT Double]"
         },
         monthlyRecapTitles: {
             [GameQueueType.RANKED_SOLO_5x5]: "[📜 Résumé Mensuel SoloQ]",
             [GameQueueType.RANKED_FLEX_SR]: "[📜 Résumé Mensuel Flex]",
+            [GameQueueType.RANKED_CLASH]: "[📜 Résumé Mensuel Clash]",
+            [GameQueueType.RANKED_5v5]: "[📜 Résumé Mensuel 5v5]",
             [GameQueueType.RANKED_TFT]: "[📜 Résumé Mensuel TFT]",
             [GameQueueType.RANKED_TFT_DOUBLE_UP]: "[📜 Résumé Mensuel TFT Double]"
         },
@@ -78,6 +84,8 @@ const allTranslations = {
         queue: "🗺️ Queue",
         queueTypeSolo: "Solo/Duo",
         queueTypeFlex: "Flex",
+        queueTypeClash: "Clash",
+        queueType5v5: "Classé 5v5",
 
         // TFT (avec les emojis)
         placement: "🏆 Placement",
@@ -98,12 +106,16 @@ const allTranslations = {
         recapTitles: {
             [GameQueueType.RANKED_SOLO_5x5]: "[📈 SoloQ Daily Recap]",
             [GameQueueType.RANKED_FLEX_SR]: "[📊 Flex Daily Recap]",
+            [GameQueueType.RANKED_CLASH]: "[⚔️ Clash Daily Recap]",
+            [GameQueueType.RANKED_5v5]: "[🎯 Ranked 5v5 Daily Recap]",
             [GameQueueType.RANKED_TFT]: "[📜 TFT Daily Recap]",
             [GameQueueType.RANKED_TFT_DOUBLE_UP]: "[🤝 TFT Double Daily Recap]"
         },
         monthlyRecapTitles: {
             [GameQueueType.RANKED_SOLO_5x5]: "[📜 Monthly Recap SoloQ]",
             [GameQueueType.RANKED_FLEX_SR]: "[📜 Monthly Recap Flex]",
+            [GameQueueType.RANKED_CLASH]: "[📜 Monthly Recap Clash]",
+            [GameQueueType.RANKED_5v5]: "[📜 Monthly Recap 5v5]",
             [GameQueueType.RANKED_TFT]: "[📜 Monthly Recap TFT]",
             [GameQueueType.RANKED_TFT_DOUBLE_UP]: "[📜 Monthly Recap TFT Double]"
         },
@@ -128,6 +140,8 @@ const allTranslations = {
         queue: "🗺️ Queue",
         queueTypeSolo: "Solo/Duo",
         queueTypeFlex: "Flex",
+        queueTypeClash: "Clash",
+        queueType5v5: "Ranked 5v5",
 
         // TFT (with emojis)
         placement: "🏆 Placement",

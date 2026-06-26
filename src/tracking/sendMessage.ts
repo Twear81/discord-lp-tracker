@@ -8,8 +8,21 @@ import logger from '../logger/logger';
 import { getTranslations } from '../translation/translation';
 import { MonthlyRecapStats } from './monthlyRecap';
 
+/**
+ * Template unique pour les messages de fin de partie League of Legends.
+ * Utilisé pour toutes les queues LoL classées : SoloQ, Flex, Clash, Ranked 5v5.
+ */
 export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName: string, tagline: string, gameInfo: PlayerLeagueGameInfo, rank: string, tier: string, lpChange: number, updatedLP: number, region: string, gameIdWithRegion: string, customMessage: string | undefined, lang: string): Promise<void> => {
 	const t = getTranslations(lang);
+
+	const leagueQueueLabels: Record<GameQueueType, string> = {
+		[GameQueueType.RANKED_SOLO_5x5]: t.queueTypeSolo,
+		[GameQueueType.RANKED_FLEX_SR]: t.queueTypeFlex,
+		[GameQueueType.RANKED_CLASH]: t.queueTypeClash,
+		[GameQueueType.RANKED_5v5]: t.queueType5v5,
+		[GameQueueType.RANKED_TFT]: t.queueTypeTFT,
+		[GameQueueType.RANKED_TFT_DOUBLE_UP]: t.queueTypeTFTDouble,
+	};
 
 	const durationMinutes = gameInfo.gameDurationSeconds / 60;
 	const csPerMin = gameInfo.totalCS / durationMinutes;
@@ -40,7 +53,7 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
 			{ name: t.damage, value: `${(gameInfo.damage / 1000).toFixed(1)}K (${Math.round(dmgPerMin)}/min)`, inline: true },
 			{ name: t.visionPerMin, value: visionPerMin.toFixed(2), inline: true },
 			{ name: t.teamRank, value: gameInfo.teamRank, inline: true },
-			{ name: t.queue, value: gameInfo.queueType === GameQueueType.RANKED_FLEX_SR ? t.queueTypeFlex : t.queueTypeSolo, inline: true },
+			{ name: t.queue, value: leagueQueueLabels[gameInfo.queueType] ?? t.queueTypeSolo, inline: true },
 		)
 		.setTimestamp();
 
@@ -112,6 +125,8 @@ export const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: P
 	const queueColors: Record<GameQueueType, ColorResolvable> = {
 		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
 		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
+		[GameQueueType.RANKED_CLASH]: "#E74C3C",
+		[GameQueueType.RANKED_5v5]: "#2ECC71",
 		[GameQueueType.RANKED_TFT]: "#1DB954",
 		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
 	};
@@ -209,6 +224,8 @@ export const sendLeagueMonthlyRecapMessage = async (channel: TextChannel, player
 	const queueColors: Record<GameQueueType, ColorResolvable> = {
 		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
 		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
+		[GameQueueType.RANKED_CLASH]: "#E74C3C",
+		[GameQueueType.RANKED_5v5]: "#2ECC71",
 		[GameQueueType.RANKED_TFT]: "#1DB954",
 		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
 	};
@@ -280,6 +297,8 @@ export const sendTFTMonthlyRecapMessage = async (channel: TextChannel, playerSta
 	const queueColors: Record<GameQueueType, ColorResolvable> = {
 		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
 		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
+		[GameQueueType.RANKED_CLASH]: "#E74C3C",
+		[GameQueueType.RANKED_5v5]: "#2ECC71",
 		[GameQueueType.RANKED_TFT]: "#1DB954",
 		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
 	};

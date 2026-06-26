@@ -1,4 +1,4 @@
-import { DoubleTFT, FlexQ, Player, SoloQ, SoloTFT } from './playerModel';
+import { DoubleTFT, FlexQ, Player, ClashQ, Ranked5v5, SoloQ, SoloTFT } from './playerModel';
 import { Server } from './serverModel';
 import { LeagueGame, TFTGame } from './gameModel';
 import { AppError, ErrorTypes } from '../error/error';
@@ -119,6 +119,8 @@ export const addPlayer = async (serverId: string, puuid: string, tftpuuid: strin
 	// Create all sub table entry
 	await SoloQ.create({ playerId: player.dataValues.id, puuid: player.dataValues.puuid });
 	await FlexQ.create({ playerId: player.dataValues.id, puuid: player.dataValues.puuid });
+	await ClashQ.create({ playerId: player.dataValues.id, puuid: player.dataValues.puuid });
+	await Ranked5v5.create({ playerId: player.dataValues.id, puuid: player.dataValues.puuid });
 	await SoloTFT.create({ playerId: player.dataValues.id, puuid: player.dataValues.tftpuuid });
 	await DoubleTFT.create({ playerId: player.dataValues.id, puuid: player.dataValues.tftpuuid });
 };
@@ -217,6 +219,8 @@ const findPlayerToUpdate = async (existingPlayer: Model, queueType: GameQueueTyp
 	const queueModels = {
 		[GameQueueType.RANKED_FLEX_SR]: FlexQ,
 		[GameQueueType.RANKED_SOLO_5x5]: SoloQ,
+		[GameQueueType.RANKED_CLASH]: ClashQ,
+		[GameQueueType.RANKED_5v5]: Ranked5v5,
 		[GameQueueType.RANKED_TFT]: SoloTFT,
 		[GameQueueType.RANKED_TFT_DOUBLE_UP]: DoubleTFT
 	};

@@ -18,6 +18,8 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 
 		const playerSortForSoloQ: PlayerForQueueInfo[] = sortPlayersByRank(await listAllPlayerForQueueInfoForSpecificServer(serverId, GameQueueType.RANKED_SOLO_5x5));
 		const playerSortForFlex: PlayerForQueueInfo[] = sortPlayersByRank(await listAllPlayerForQueueInfoForSpecificServer(serverId, GameQueueType.RANKED_FLEX_SR));
+		const playerSortForClash: PlayerForQueueInfo[] = sortPlayersByRank(await listAllPlayerForQueueInfoForSpecificServer(serverId, GameQueueType.RANKED_CLASH));
+		const playerSortFor5v5: PlayerForQueueInfo[] = sortPlayersByRank(await listAllPlayerForQueueInfoForSpecificServer(serverId, GameQueueType.RANKED_5v5));
 		const playerSortForTFT: PlayerForQueueInfo[] = sortPlayersByRank(await listAllPlayerForQueueInfoForSpecificServer(serverId, GameQueueType.RANKED_TFT));
 
 		let hasAlreadySentAMessage = false;
@@ -25,6 +27,10 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 			await generateLeaderboardMessage(interaction, serverInfo.lang, playerInfoList, playerSortForFlex, GameQueueType.RANKED_FLEX_SR, hasAlreadySentAMessage);
 			hasAlreadySentAMessage = true;
 		}
+		await generateLeaderboardMessage(interaction, serverInfo.lang, playerInfoList, playerSortForClash, GameQueueType.RANKED_CLASH, hasAlreadySentAMessage);
+		hasAlreadySentAMessage = true;
+		await generateLeaderboardMessage(interaction, serverInfo.lang, playerInfoList, playerSortFor5v5, GameQueueType.RANKED_5v5, hasAlreadySentAMessage);
+		hasAlreadySentAMessage = true;
 		if (serverInfo.tfttoggle == true) {
 			await generateLeaderboardMessage(interaction, serverInfo.lang, playerInfoList, playerSortForTFT, GameQueueType.RANKED_TFT, hasAlreadySentAMessage);
 			hasAlreadySentAMessage = true;
@@ -72,12 +78,16 @@ const generateLeaderboardMessage = async (interaction: CommandInteraction, lang:
 	const titleMapFR: Record<GameQueueType, string> = {
 		[GameQueueType.RANKED_SOLO_5x5]: "🏆 Classement SoloQ",
 		[GameQueueType.RANKED_FLEX_SR]: "🏆 Classement FlexQ",
+		[GameQueueType.RANKED_CLASH]: "🏆 Classement Clash",
+		[GameQueueType.RANKED_5v5]: "🏆 Classement 5v5",
 		[GameQueueType.RANKED_TFT]: "🏆 Classement TFT",
 		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "🏆 Classement TFT Double",
 	};
 	const titleMapEN: Record<GameQueueType, string> = {
 		[GameQueueType.RANKED_SOLO_5x5]: "🏆 SoloQ Leaderboard",
 		[GameQueueType.RANKED_FLEX_SR]: "🏆 FlexQ Leaderboard",
+		[GameQueueType.RANKED_CLASH]: "🏆 Clash Leaderboard",
+		[GameQueueType.RANKED_5v5]: "🏆 5v5 Leaderboard",
 		[GameQueueType.RANKED_TFT]: "🏆 TFT Leaderboard",
 		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "🏆 TFT Double Leaderboard",
 	};
@@ -110,6 +120,8 @@ const generateLeaderboardMessage = async (interaction: CommandInteraction, lang:
 	enum QueueColor {
 		RANKED_SOLO_5x5 = 0x0099FF, // Bleu for SoloQ
 		RANKED_FLEX_SR = 0xFFD700,  // Gold for Flex
+		RANKED_CLASH = 0xE74C3C,    // Red for Clash
+		RANKED_5v5 = 0x2ECC71,      // Green for 5v5
 		RANKED_TFT = 0x8A2BE2       // Purple for TFT
 	}
 

@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
-import { addPlayer, getPlayerForSpecificServer, getServer, updatePlayerInfoCurrentAndLastForQueueType, updatePlayerLastGameId } from '../database/databaseHelper';
+import { addPlayer, getPlayerForSpecificServer, updatePlayerInfoCurrentAndLastForQueueType, updatePlayerLastGameId } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
 import { getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, getSummonerByName, getTFTPlayerRankInfo, getTFTSummonerByName } from '../riot';
 import { GameQueueType, ManagedGameQueueType } from '../tracking/GameQueueType';
@@ -41,8 +41,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 	try {
 		await interaction.deferReply({ ephemeral: true });
 
-		const serverInfo = await getServer(serverId);
-
 		const summoner = await getSummonerByName(accountname, tag, region);
 		const summonerTFT = await getTFTSummonerByName(accountname, tag, region);
 		if (!summoner.puuid || !summonerTFT) {
@@ -72,7 +70,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		}
 
 		// Get its last ranked league game
-		const leagueMatchIds = await getLastRankedLeagueMatch(currentPlayer.puuid, currentPlayer.region, serverInfo.flextoggle);
+		const leagueMatchIds = await getLastRankedLeagueMatch(currentPlayer.puuid, currentPlayer.region);
 		const currentLeagueGameIdWithRegion = leagueMatchIds[0]; // example -> EUW1_7294524077
 		// Update last game inside database
 		await updatePlayerLastGameId(serverId, currentPlayer.puuid, currentLeagueGameIdWithRegion, ManagedGameQueueType.LEAGUE);

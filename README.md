@@ -1,7 +1,7 @@
 # Discord LP-Tracker
 
 ## 📌 Description
-Discord LP-Tracker is a Discord bot that tracks the match history of you and your friends in League of Legends. The bot sends a message every time a tracked player finishes a game. Every morning, it provides a recap of wins, losses, and LP gains for each tracked player. It supports both SoloQ and Flex queues.
+Discord LP-Tracker is a Discord bot that tracks the match history of you and your friends in League of Legends. The bot sends a message every time a tracked player finishes a game. Every morning, it provides a recap of wins, losses, and LP gains for each tracked player. It supports SoloQ, Flex, Clash, and Ranked 5v5 queues.
 
 ### 🔍 APIs Used
 The bot uses Riot APIs:
@@ -23,7 +23,7 @@ The bot is built using:
 - **@fightmegg/riot-api**
 
 ## 🚀 Features
-- ✅ Real-time match tracking (SoloQ, Flex, TFT)
+- ✅ Real-time match tracking (SoloQ, Flex, Clash, Ranked 5v5, TFT)
 - ✅ Daily performance recap for tracked players
 - ✅ Monthly recap (automatic on the 1st of each month or manual)
 - ✅ Leaderboard support
