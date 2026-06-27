@@ -6,7 +6,7 @@ import { Model, Op } from 'sequelize';
 import { GameQueueType, ManagedGameQueueType } from '../tracking/GameQueueType';
 import { PlayerLeagueGameInfo, PlayerTFTGameInfo } from '../riot';
 import logger from '../logger/logger';
-import { calculateLPDifference } from '../tracking/util';
+import { calculateLPDifference, MIN_GAME_DURATION_SECONDS } from '../tracking/util';
 
 // SERVER PART
 export const addOrUpdateServer = async (serverId: string, channelId: string, flexToggle: boolean, tftToggle: boolean, lang: string): Promise<void> => {
@@ -680,6 +680,9 @@ export const getLeagueGamesForPlayerInMonth = async (playerId: number, month: nu
 					[Op.gte]: startDate,
 					[Op.lte]: endDate,
 				},
+				gameDurationSeconds: {
+					[Op.gte]: MIN_GAME_DURATION_SECONDS,
+				},
 			},
 		});
 		return games.map(game => game.dataValues as LeagueGameInfo);
@@ -700,6 +703,9 @@ export const getTFTGamesForPlayerInMonth = async (playerId: number, month: numbe
 				gameEndTimestamp: {
 					[Op.gte]: startDate,
 					[Op.lte]: endDate,
+				},
+				gameDurationSeconds: {
+					[Op.gte]: MIN_GAME_DURATION_SECONDS,
 				},
 			},
 		});

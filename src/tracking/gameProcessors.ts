@@ -4,7 +4,7 @@ import { getLeagueGameDetailForCurrentPlayer, getLastRankedLeagueMatch, getLastT
 import { client } from '../index';
 import { GameQueueType, ManagedGameQueueType } from './GameQueueType';
 import { sendLeagueGameResultMessage, sendTFTGameResultMessage } from './sendMessage';
-import { calculateLPDifference, isTimestampInRecapRange } from './util';
+import { calculateLPDifference, isGameDurationValid, isTimestampInRecapRange } from './util';
 import logger from '../logger/logger';
 import { AppError, ErrorTypes } from '../error/error';
 
@@ -28,6 +28,13 @@ async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, match
 	// 2. If the match is Flex and the server has Flex tracking disabled, skip it
 	if (gameDetails.queueType === GameQueueType.RANKED_FLEX_SR && !server.flextoggle) {
 		logger.info(`[League] Skipping Flex match ${matchId} for player ${player.gameName} (server flextoggle is off).`);
+		await updatePlayerLastGameId(server.serverid, player.puuid, matchId, ManagedGameQueueType.LEAGUE);
+		return;
+	}
+
+	// 2b. Skip remakes / cancelled games (shorter than MIN_GAME_DURATION_SECONDS)
+	if (!isGameDurationValid(gameDetails.gameDurationSeconds)) {
+		logger.info(`[League] Skipping remake/cancelled match ${matchId} for player ${player.gameName} (${gameDetails.gameDurationSeconds}s).`);
 		await updatePlayerLastGameId(server.serverid, player.puuid, matchId, ManagedGameQueueType.LEAGUE);
 		return;
 	}
@@ -109,7 +116,14 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
 		throw error;
 	}
 
-	// 2. Update database
+	// 2. Skip remakes / cancelled games (shorter than MIN_GAME_DURATION_SECONDS)
+	if (!isGameDurationValid(gameDetails.gameDurationSeconds)) {
+		logger.info(`[TFT] Skipping remake/cancelled match ${matchId} for player ${player.gameName} (${gameDetails.gameDurationSeconds}s).`);
+		await updatePlayerLastGameId(server.serverid, player.tftpuuid, matchId, ManagedGameQueueType.TFT);
+		return;
+	}
+
+	// 3. Update database
 	const playerRankStats = await getTFTPlayerRankInfo(player.tftpuuid, player.region);
 	if (isTimestampInRecapRange(gameDetails.gameEndTimestamp)) {
 		await updatePlayerLastDayWinLose(server.serverid, player.tftpuuid, gameDetails.queueType, gameDetails.win);

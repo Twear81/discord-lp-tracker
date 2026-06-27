@@ -1,3 +1,7 @@
+export const MIN_GAME_DURATION_SECONDS = 13 * 60;
+
+export const isGameDurationValid = (durationSeconds: number): boolean => durationSeconds >= MIN_GAME_DURATION_SECONDS;
+
 export function isTimestampInRecapRange(timestamp: number): boolean {
 	// Convert timestamp to milliseconds if it's in seconds
 	if (timestamp < 1e12) {
