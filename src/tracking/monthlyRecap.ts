@@ -1,5 +1,5 @@
 import { TextChannel } from 'discord.js';
-import { getAllServer, listAllPlayerForSpecificServer, getLeagueGamesForPlayerInMonth, getTFTGamesForPlayerInMonth, LeagueGameInfo, TFTGameInfo } from '../database/databaseHelper';
+import { getAllServer, getServer, listAllPlayerForSpecificServer, getLeagueGamesForPlayerInMonth, getTFTGamesForPlayerInMonth, LeagueGameInfo, TFTGameInfo } from '../database/databaseHelper';
 import { GameQueueType } from './GameQueueType';
 import { PlayerInfo } from '../database/databaseHelper';
 import { client } from '../index';
@@ -32,25 +32,25 @@ export interface MonthlyRecapStats {
 	averageTeamRankLabel?: string;
 }
 
-export const generateMonthlyRecap = async (month: number, year: number): Promise<void> => {
+export const generateMonthlyRecap = async (month: number, year: number, serverId?: string): Promise<void> => {
 	logger.info(`📊 Starting monthly recap generation for ${month}/${year}...`);
-	
+
 	try {
-		const servers = await getAllServer();
-		
+		const servers = serverId ? [await getServer(serverId)] : await getAllServer();
+
 		for (const server of servers) {
 			const currentServerID = server.serverid;
 			const channel = await client.channels.fetch(server.channelid) as TextChannel;
 
 			if (!channel) {
 				logger.error(`❌ Failed to find channel with ID ${server.channelid} for server ${currentServerID}. Skipping monthly recap.`);
-				return;
+				continue;
 			}
 
 			const players = await listAllPlayerForSpecificServer(currentServerID);
 			if (players.length === 0) {
 				logger.info(`No players to send monthly recap for on server ${currentServerID}.`);
-				return;
+				continue;
 			}
 
 			// Generate monthly recap for each queue type

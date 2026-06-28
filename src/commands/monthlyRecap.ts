@@ -49,7 +49,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
 		logger.info(`📊 Generating monthly recap for ${month}/${year} on server ${serverId}`);
 
-		await generateMonthlyRecap(month, year);
+		await generateMonthlyRecap(month, year, serverId);
 
 		const successMessage = lang === 'fr'
 			? `✅ Récapitulatif mensuel pour ${month}/${year} généré avec succès !`
@@ -65,9 +65,20 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		const errorMessage = lang === 'fr'
 			? '❌ Échec de la génération du récapitulatif mensuel. Contactez le développeur.'
 			: '❌ Failed to generate monthly recap. Contact the developer.';
-		await interaction.reply({
-			content: errorMessage,
-			flags: MessageFlags.Ephemeral,
-		});
+		try {
+			if (interaction.deferred || interaction.replied) {
+				await interaction.followUp({
+					content: errorMessage,
+					flags: MessageFlags.Ephemeral,
+				});
+			} else {
+				await interaction.reply({
+					content: errorMessage,
+					flags: MessageFlags.Ephemeral,
+				});
+			}
+		} catch (followUpError) {
+			logger.error('❌ Failed to send error reply:', followUpError);
+		}
 	}
 }
