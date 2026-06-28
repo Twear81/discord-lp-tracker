@@ -13,7 +13,7 @@ const initDB = async (): Promise<void> => {
 		await ensureIndexes();
 		await backfillQueueTables();
 	} catch (error) {
-		logger.error('❌ Failed to sync the database:', error);
+		logger.error('❌ Failed to initialize the database:', error);
 		throw error;
 	}
 };
@@ -21,12 +21,12 @@ const initDB = async (): Promise<void> => {
 const ensureIndexes = async (): Promise<void> => {
 	const queries: string[] = [
 		'CREATE INDEX IF NOT EXISTS idx_players_serverid ON Players (serverid)',
-		'CREATE INDEX IF NOT EXISTS idx_soloq_playerid ON SoloQ (playerId)',
-		'CREATE INDEX IF NOT EXISTS idx_flexq_playerid ON FlexQ (playerId)',
-		'CREATE INDEX IF NOT EXISTS idx_clashq_playerid ON ClashQ (playerId)',
-		'CREATE INDEX IF NOT EXISTS idx_ranked5v5_playerid ON Ranked5v5 (playerId)',
-		'CREATE INDEX IF NOT EXISTS idx_solotft_playerid ON SoloTFT (playerId)',
-		'CREATE INDEX IF NOT EXISTS idx_doubletft_playerid ON DoubleTFT (playerId)',
+		'CREATE INDEX IF NOT EXISTS idx_soloq_playerid ON SoloQs (playerId)',
+		'CREATE INDEX IF NOT EXISTS idx_flexq_playerid ON FlexQs (playerId)',
+		'CREATE INDEX IF NOT EXISTS idx_clashq_playerid ON ClashQs (playerId)',
+		'CREATE INDEX IF NOT EXISTS idx_ranked5v5_playerid ON Ranked5v5s (playerId)',
+		'CREATE INDEX IF NOT EXISTS idx_solotft_playerid ON SoloTFTs (playerId)',
+		'CREATE INDEX IF NOT EXISTS idx_doubletft_playerid ON DoubleTFTs (playerId)',
 		'CREATE INDEX IF NOT EXISTS idx_leaguegames_playerid_endts ON LeagueGames (playerId, gameEndTimestamp)',
 		'CREATE INDEX IF NOT EXISTS idx_leaguegames_endts ON LeagueGames (gameEndTimestamp)',
 		'CREATE INDEX IF NOT EXISTS idx_tftgames_playerid_endts ON TFTGames (playerId, gameEndTimestamp)',
