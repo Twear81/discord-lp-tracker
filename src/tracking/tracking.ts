@@ -139,15 +139,11 @@ export const generateRecapOfTheDay = async (): Promise<void> => {
 			};
 
 			// Process all queue types in parallel
-			// Clash and Ranked 5v5 are only available on weekends, so we only process them then
-			const day = new Date().getDay(); // 0 = Sunday, 6 = Saturday
-			const isWeekend = day === 0 || day === 6;
-
 			await Promise.all([
-				processQueue(GameQueueType.RANKED_SOLO_5x5, true), // SoloQ is always on
+				processQueue(GameQueueType.RANKED_SOLO_5x5, true),
 				processQueue(GameQueueType.RANKED_FLEX_SR, server.flextoggle),
-				processQueue(GameQueueType.RANKED_CLASH, isWeekend), // Weekend only
-				processQueue(GameQueueType.RANKED_5v5, isWeekend), // Weekend only
+				processQueue(GameQueueType.RANKED_CLASH, true),
+				processQueue(GameQueueType.RANKED_5v5, true),
 				processQueue(GameQueueType.RANKED_TFT, server.tfttoggle),
 				processQueue(GameQueueType.RANKED_TFT_DOUBLE_UP, server.tfttoggle)
 			]);
