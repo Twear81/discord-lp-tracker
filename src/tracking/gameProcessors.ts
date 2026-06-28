@@ -107,7 +107,7 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
 	let gameDetails: PlayerTFTGameInfo;
 
 	try {
-		gameDetails = await getTFTGameDetailForCurrentPlayer(player.tftpuuid, matchId, player.region);
+		gameDetails = await getTFTGameDetailForCurrentPlayer(player.tftpuuid, matchId, player.region, server.lang);
 	} catch (error) {
 		if (error instanceof AppError && error.type === ErrorTypes.GAMEDETAIL_NOT_FOUND && error.message.includes("TFT Queue type not found")) {
 			logger.info(`[TFT] Skipping non-tracked queue match ${matchId} for player ${player.gameName} (Queue ID not recognized).`);

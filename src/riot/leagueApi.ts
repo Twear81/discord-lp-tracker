@@ -95,7 +95,7 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 			championName: participant.championName,
 			win: participant.win,
 			queueType,
-			customMessage: generateLeagueCustomMessage(participant, participants, gameEndTimestamp, gameDuration)
+			customMessage: generateLeagueCustomMessage(participant, participants, gameEndTimestamp, gameDuration, lang)
 		};
 
 		return result;

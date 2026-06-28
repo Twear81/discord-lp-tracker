@@ -36,7 +36,7 @@ export async function getTFTGameDetail(gameID: string, region: string): Promise<
 	}
 }
 
-export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string): Promise<PlayerTFTGameInfo> {
+export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string, lang: string): Promise<PlayerTFTGameInfo> {
 	const tftGameDetail: RiotAPITypes.TftMatch.MatchDTO = await getTFTGameDetail(gameID, region);
 	const { info: { queue_id, participants, game_datetime, game_length } } = tftGameDetail;
 
@@ -73,7 +73,7 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 		units: participant.units,
 		win: participant.placement <= 4,
 		queueType: queueType,
-		customMessage: generateTFTCustomMessage(participant)
+		customMessage: generateTFTCustomMessage(participant, game_datetime, lang)
 	};
 }
 
