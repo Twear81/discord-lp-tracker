@@ -76,8 +76,9 @@ export function getTeamLevelFromMatch(participants: RiotAPITypes.MatchV5.Partici
 		score: scores[i],
 	}));
 
-	const sortedTeammates = teammatesWithScores.sort((a, b) => b.score - a.score);
-	const currentPlayerPositionInTheTeam = sortedTeammates.findIndex(obj => obj.participant.puuid === participant.puuid);
+	const currentPlayerEntry = teammatesWithScores.find(t => t.participant.puuid === participant.puuid);
+	const currentPlayerScore = currentPlayerEntry?.score ?? 0;
+	const currentPlayerPositionInTheTeam = teammatesWithScores.filter(t => t.score > currentPlayerScore).length;
 
 	if (lang === 'fr') {
 		switch (currentPlayerPositionInTheTeam) {
