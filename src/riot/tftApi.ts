@@ -38,7 +38,7 @@ export async function getTFTGameDetail(gameID: string, region: string): Promise<
 
 export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string): Promise<PlayerTFTGameInfo> {
 	const tftGameDetail: RiotAPITypes.TftMatch.MatchDTO = await getTFTGameDetail(gameID, region);
-	const { info: { queue_id, participants, game_datetime } } = tftGameDetail;
+	const { info: { queue_id, participants, game_datetime, game_length } } = tftGameDetail;
 
 	let queueType: GameQueueType;
 	switch (queue_id) {
@@ -59,7 +59,7 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 
 	return {
 		gameEndTimestamp: game_datetime,
-		gameDurationSeconds: participant.time_eliminated,
+		gameDurationSeconds: game_length,
 		littleLegendIconUrl: await getLittleLegendIconUrl(participant.companion.item_ID),
 		placement: participant.placement,
 		mainTraits: getMainTrait(participant.traits),

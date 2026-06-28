@@ -85,9 +85,9 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 							const shouldUpdate = playerQueueInfo.lastDayDate == null || !isTimestampInRecapRange(playerQueueInfo.lastDayDate.valueOf());
 							logger.info(`Should update: ${shouldUpdate}, for rank ${rankInfo.rank} and tier ${rankInfo.tier} and ${rankInfo.leaguePoints} lp`);
 
-							if (shouldUpdate) {
-								updatePlayerInfoCurrentAndLastForQueueType(server.serverid, player.puuid, queueType, rankInfo.leaguePoints, rankInfo.rank, rankInfo.tier)
-							}
+						if (shouldUpdate) {
+							await updatePlayerInfoCurrentAndLastForQueueType(server.serverid, player.puuid, queueType, rankInfo.leaguePoints, rankInfo.rank, rankInfo.tier)
+						}
 						} else {
 							logger.warn(`❌ Missing rank ou queue data for player ${player.puuid}.`);
 						}

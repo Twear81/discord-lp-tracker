@@ -6,14 +6,37 @@ import { LeagueGame, TFTGame } from './gameModel';
 
 const initDB = async (): Promise<void> => {
 	try {
-		// force: true réinitialise la DB à chaque exécution
+		// force: false to preserve existing data on production
 		await sequelize.sync({ force: false });
 		logger.info('📦 Database synced');
 
+		await ensureIndexes();
 		await backfillQueueTables();
 	} catch (error) {
 		logger.error('❌ Failed to sync the database:', error);
+		throw error;
 	}
+};
+
+const ensureIndexes = async (): Promise<void> => {
+	const queries: string[] = [
+		'CREATE INDEX IF NOT EXISTS idx_players_serverid ON Players (serverid)',
+		'CREATE INDEX IF NOT EXISTS idx_soloq_playerid ON SoloQ (playerId)',
+		'CREATE INDEX IF NOT EXISTS idx_flexq_playerid ON FlexQ (playerId)',
+		'CREATE INDEX IF NOT EXISTS idx_clashq_playerid ON ClashQ (playerId)',
+		'CREATE INDEX IF NOT EXISTS idx_ranked5v5_playerid ON Ranked5v5 (playerId)',
+		'CREATE INDEX IF NOT EXISTS idx_solotft_playerid ON SoloTFT (playerId)',
+		'CREATE INDEX IF NOT EXISTS idx_doubletft_playerid ON DoubleTFT (playerId)',
+		'CREATE INDEX IF NOT EXISTS idx_leaguegames_playerid_endts ON LeagueGames (playerId, gameEndTimestamp)',
+		'CREATE INDEX IF NOT EXISTS idx_leaguegames_endts ON LeagueGames (gameEndTimestamp)',
+		'CREATE INDEX IF NOT EXISTS idx_tftgames_playerid_endts ON TFTGames (playerId, gameEndTimestamp)',
+		'CREATE INDEX IF NOT EXISTS idx_tftgames_endts ON TFTGames (gameEndTimestamp)',
+	];
+
+	for (const sql of queries) {
+		await sequelize.query(sql);
+	}
+	logger.info('📇 Indexes ensured');
 };
 
 const backfillQueueTables = async (): Promise<void> => {

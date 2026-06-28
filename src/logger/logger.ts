@@ -23,7 +23,6 @@ const logger = createLogger({
 	format: format.combine(
 		format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
 		format.errors({ stack: true }), // Apply globally for all transports
-		format.splat(), // Required for string interpolation with %s, %d, etc.
 	),
 
 	transports: [

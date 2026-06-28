@@ -22,6 +22,8 @@ export const Server = sequelize.define('Server', {
 		type: DataTypes.BOOLEAN,
 		allowNull: false,
 	},
+	// Deprecated: kept for backwards compatibility with existing SQLite databases.
+	// TFT Double shares the tfttoggle (AGENTS.md). New writes must always set this to false.
 	tftdoubletoggle: {
 		type: DataTypes.BOOLEAN,
 		allowNull: false,

@@ -23,8 +23,9 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
     const serverId = interaction.guildId as string;
-    const lang: string = await getLangServer(serverId);
+    let lang: string = 'en';
     try {
+        lang = await getLangServer(serverId);
 
 		const month = interaction.options.getInteger('month')!;
 		const year = interaction.options.getInteger('year')!;

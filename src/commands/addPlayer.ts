@@ -71,12 +71,12 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
 		// Get its last ranked league game
 		const leagueMatchIds = await getLastRankedLeagueMatch(currentPlayer.puuid, currentPlayer.region);
-		const currentLeagueGameIdWithRegion = leagueMatchIds[0]; // example -> EUW1_7294524077
+		const currentLeagueGameIdWithRegion = leagueMatchIds[0] ?? null; // example -> EUW1_7294524077
 		// Update last game inside database
 		await updatePlayerLastGameId(serverId, currentPlayer.puuid, currentLeagueGameIdWithRegion, ManagedGameQueueType.LEAGUE);
 		// Get its last tft game
 		const tftMatchIds = await getLastTFTMatch(currentPlayer.tftpuuid, currentPlayer.region);
-		const currentTFTGameIdWithRegion = tftMatchIds[0]; // example -> EUW1_7294524077
+		const currentTFTGameIdWithRegion = tftMatchIds[0] ?? null; // example -> EUW1_7294524077
 		// Update last game inside database
 		await updatePlayerLastGameId(serverId, currentPlayer.tftpuuid, currentTFTGameIdWithRegion, ManagedGameQueueType.TFT);
 
