@@ -24,6 +24,7 @@ export interface GameTranslations {
     damage: string;
     visionPerMin: string;
     teamRank: string;
+    avgTeamRank: string;
     queue: string;
     queueTypeSolo: string;
     queueTypeFlex: string;
@@ -81,6 +82,7 @@ const allTranslations = {
         damage: "💥 Dégâts",
         visionPerMin: "👁️ Vision/m",
         teamRank: "🤝 Rang d'équipe",
+        avgTeamRank: "🤝 Rang d'équipe moyen",
         queue: "🗺️ Queue",
         queueTypeSolo: "Solo/Duo",
         queueTypeFlex: "Flex",
@@ -137,6 +139,7 @@ const allTranslations = {
         damage: "💥 Damage",
         visionPerMin: "👁️ Vision/m",
         teamRank: "🤝 Team Rank",
+        avgTeamRank: "🤝 Avg Team Rank",
         queue: "🗺️ Queue",
         queueTypeSolo: "Solo/Duo",
         queueTypeFlex: "Flex",

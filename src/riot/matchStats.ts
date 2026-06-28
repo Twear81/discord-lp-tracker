@@ -58,6 +58,49 @@ export function getTotalPings(participant: ParticipantWithPings): number {
 	}, 0);
 }
 
+export function getTeamRankLabelFromPosition(position: number, lang: string): string {
+	if (lang === 'fr') {
+		switch (position) {
+			case 0: return "🥇 MVP";
+			case 1: return "🥈 Solide";
+			case 2: return "🫥 Invisible";
+			case 3: return "🐢 Traîné";
+			default: return "🤡 Ancre";
+		}
+	}
+	switch (position) {
+		case 0: return "🥇 MVP";
+		case 1: return "🥈 Solid";
+		case 2: return "🫥 Invisible";
+		case 3: return "🐢 Dragged";
+		default: return "🤡 Anchor";
+	}
+}
+
+export function getTeamRankPositionFromLabel(label: string, lang: string): number {
+	if (label === "Unknown") return -1;
+
+	const fr: Record<string, number> = {
+		"🥇 MVP": 0,
+		"🥈 Solide": 1,
+		"🫥 Invisible": 2,
+		"🐢 Traîné": 3,
+		"🤡 Ancre": 4,
+	};
+	const en: Record<string, number> = {
+		"🥇 MVP": 0,
+		"🥈 Solid": 1,
+		"🫥 Invisible": 2,
+		"🐢 Dragged": 3,
+		"🤡 Anchor": 4,
+	};
+
+	if (lang === 'fr') {
+		return fr[label] ?? -1;
+	}
+	return en[label] ?? -1;
+}
+
 export function getTeamLevelFromMatch(participants: RiotAPITypes.MatchV5.ParticipantDTO[], gameDurationSeconds: number, puuid: string, lang: string): string {
 	const participant = participants.find((p: RiotAPITypes.MatchV5.ParticipantDTO) => p.puuid === puuid);
 	if (!participant) return "Unknown";
@@ -80,22 +123,7 @@ export function getTeamLevelFromMatch(participants: RiotAPITypes.MatchV5.Partici
 	const currentPlayerScore = currentPlayerEntry?.score ?? 0;
 	const currentPlayerPositionInTheTeam = teammatesWithScores.filter(t => t.score > currentPlayerScore).length;
 
-	if (lang === 'fr') {
-		switch (currentPlayerPositionInTheTeam) {
-			case 0: return "🥇 MVP";
-			case 1: return "🥈 Solide";
-			case 2: return "🫥 Invisible";
-			case 3: return "🐢 Traîné";
-			default: return "🤡 Ancre";
-		}
-	}
-	switch (currentPlayerPositionInTheTeam) {
-		case 0: return "🥇 MVP";
-		case 1: return "🥈 Solid";
-		case 2: return "🫥 Invisible";
-		case 3: return "🐢 Dragged";
-		default: return "🤡 Anchor";
-	}
+	return getTeamRankLabelFromPosition(currentPlayerPositionInTheTeam, lang);
 }
 
 export function getStageFromRound(lastRound: number): string {

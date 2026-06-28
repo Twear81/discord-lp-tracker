@@ -4,6 +4,7 @@ import { GameQueueType } from './GameQueueType';
 import { PlayerInfo } from '../database/databaseHelper';
 import { client } from '../index';
 import { sendLeagueMonthlyRecapMessage, sendTFTMonthlyRecapMessage } from './sendMessage';
+import { getTeamRankLabelFromPosition, getTeamRankPositionFromLabel } from '../riot/matchStats';
 import logger from '../logger/logger';
 
 export interface MonthlyRecapStats {
@@ -27,6 +28,8 @@ export interface MonthlyRecapStats {
 	averageVisionPerMin?: number;
 	averagePlacement?: number;
 	averageLevel?: number;
+	averageTeamRank?: number;
+	averageTeamRankLabel?: string;
 }
 
 export const generateMonthlyRecap = async (month: number, year: number): Promise<void> => {
@@ -84,7 +87,7 @@ const generateLeagueMonthlyRecap = async (
 		
 		if (filteredGames.length === 0) continue;
 
-		const stats = calculateLeagueStats(filteredGames);
+		const stats = calculateLeagueStats(filteredGames, lang);
 		playerStats.push({
 			player,
 			...stats,
@@ -138,7 +141,7 @@ const generateTFTMonthlyRecap = async (
 	await sendTFTMonthlyRecapMessage(channel, playerStats, month, year, queueType, lang);
 };
 
-const calculateLeagueStats = (games: LeagueGameInfo[]): Omit<MonthlyRecapStats, 'player'> => {
+const calculateLeagueStats = (games: LeagueGameInfo[], lang: string): Omit<MonthlyRecapStats, 'player'> => {
 	const totalGames = games.length;
 	const totalTimePlayed = games.reduce((sum, game) => sum + game.gameDurationSeconds, 0);
 	const totalLPGain = games.reduce((sum, game) => sum + (game.lpGain || 0), 0);
@@ -166,6 +169,19 @@ const calculateLeagueStats = (games: LeagueGameInfo[]): Omit<MonthlyRecapStats, 
 	const averageCSPerMin = totalCS / (totalTimePlayed / 60);
 	const averageVisionPerMin = totalVision / (totalTimePlayed / 60);
 
+	let averageTeamRank: number | undefined;
+	let averageTeamRankLabel: string | undefined;
+	const teamRankPositions = games
+		.map(game => getTeamRankPositionFromLabel(game.teamRank, lang))
+		.filter(position => position >= 0);
+	if (teamRankPositions.length > 0) {
+		const sum = teamRankPositions.reduce((acc, position) => acc + position, 0);
+		const rawAverage = sum / teamRankPositions.length;
+		averageTeamRank = rawAverage;
+		const roundedPosition = Math.max(0, Math.min(4, Math.round(rawAverage)));
+		averageTeamRankLabel = getTeamRankLabelFromPosition(roundedPosition, lang);
+	}
+
 	return {
 		totalGames,
 		totalTimePlayed,
@@ -180,6 +196,8 @@ const calculateLeagueStats = (games: LeagueGameInfo[]): Omit<MonthlyRecapStats, 
 		averageDamage,
 		averageCSPerMin,
 		averageVisionPerMin,
+		averageTeamRank,
+		averageTeamRankLabel,
 	};
 };
 
