@@ -26,6 +26,24 @@ export const client = new Client({
 
 export const TACTICIAN_FILE_PATH = path.resolve(__dirname, "../tft-tactician.json");
 
+process.on('uncaughtException', (error, origin) => {
+	logger.error('💀 uncaughtException — bot va crasher', { error, origin });
+	logger.on('finish', () => process.exit(1));
+	logger.end();
+});
+
+process.on('unhandledRejection', (reason) => {
+	logger.error('💀 unhandledRejection', { reason });
+});
+
+client.on(Events.Error, (error) => {
+	logger.error('💀 Discord client error:', error);
+});
+
+client.on(Events.Warn, (message) => {
+	logger.warn('⚠️ Discord client warning:', message);
+});
+
 client.once(Events.ClientReady, () => {
 	void (async () => {
 		try {
