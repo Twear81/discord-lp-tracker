@@ -2,7 +2,7 @@ import { RiotAPITypes } from "@fightmegg/riot-api";
 import { AppError, ErrorTypes } from "../error/error";
 import { GameQueueType } from "../tracking/GameQueueType";
 import logger from "../logger/logger";
-import { limitedRequest, riotApiTFT } from "./config";
+import { limitedRequest, riotApiTFT, withRetryOnDuplicateJob } from "./config";
 import { getPlatformIdFromRegionString, getLolRegionFromRegionString } from "./region";
 import { PlayerTFTGameInfo } from "./types";
 import { getMainTrait, getStageFromRound } from "./matchStats";
@@ -80,13 +80,13 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 export async function getLastTFTMatch(puuid: string, region: string): Promise<string[]> {
 	try {
 		const platformId = getPlatformIdFromRegionString(region);
-		return await limitedRequest(() => riotApiTFT.tftMatch.getMatchIdsByPUUID({
+		return await withRetryOnDuplicateJob(() => limitedRequest(() => riotApiTFT.tftMatch.getMatchIdsByPUUID({
 			region: platformId,
 			puuid,
 			params: {
 				count: 1
 			}
-		})) as unknown as Promise<string[]>;
+		}))) as unknown as Promise<string[]>;
 	} catch (error) {
 		logger.error(`Error API Riot (getLastTFTMatch) :`, error);
 		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last tft match found for player ${puuid} for region ${region}`);

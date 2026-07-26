@@ -4,6 +4,7 @@ import cron from "node-cron";
 import axios from "axios";
 import { promises as fs } from "fs";
 import path from "path";
+import { inspect } from "util";
 import dotenv from 'dotenv';
 import { DDragon } from "@fightmegg/riot-api";
 import { commands } from "./commands";
@@ -33,7 +34,11 @@ process.on('uncaughtException', (error, origin) => {
 });
 
 process.on('unhandledRejection', (reason) => {
-	logger.error('💀 unhandledRejection', { reason });
+	logger.error('💀 unhandledRejection', {
+		reason: inspect(reason, { depth: 5, showHidden: true }),
+		type: reason instanceof Error ? reason.constructor.name : typeof reason,
+		stack: reason instanceof Error ? reason.stack : undefined,
+	});
 });
 
 client.on(Events.Error, (error) => {

@@ -1,6 +1,7 @@
 import { RiotAPI, RiotAPITypes } from "@fightmegg/riot-api";
 import dotenv from "dotenv";
 import Bottleneck from "bottleneck";
+import logger from "../logger/logger";
 
 dotenv.config();
 
@@ -61,4 +62,30 @@ export type RiotAPICall =
 export async function limitedRequest<T extends RiotAPICall>(apiCallFn: () => Promise<T>): Promise<T> {
 	const response = await limiter.schedule(() => apiCallFn());
 	return response as T;
+}
+
+const DUPLICATE_JOB_MESSAGE = 'A job with the same id already exists';
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 100;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export async function withRetryOnDuplicateJob<T>(apiCallFn: () => Promise<T>): Promise<T> {
+	let lastError: unknown;
+	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+		try {
+			return await apiCallFn();
+		} catch (error) {
+			lastError = error;
+			const message = error instanceof Error ? error.message : String(error);
+			const isDuplicate = message.includes(DUPLICATE_JOB_MESSAGE);
+			if (!isDuplicate || attempt === MAX_RETRIES) {
+				throw error;
+			}
+			const delay = BASE_DELAY_MS * (attempt + 1) + Math.floor(Math.random() * 50);
+			logger.warn(`⚠️ Bottleneck duplicate job, retry ${attempt + 1}/${MAX_RETRIES} dans ${delay}ms`);
+			await sleep(delay);
+		}
+	}
+	throw lastError;
 }

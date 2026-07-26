@@ -2,7 +2,7 @@ import { RiotAPITypes } from "@fightmegg/riot-api";
 import { AppError, ErrorTypes } from "../error/error";
 import { GameQueueType } from "../tracking/GameQueueType";
 import logger from "../logger/logger";
-import { limitedRequest, riotApi } from "./config";
+import { limitedRequest, riotApi, withRetryOnDuplicateJob } from "./config";
 import { getPlatformIdFromRegionString, getLolRegionFromRegionString } from "./region";
 import { PlayerLeagueGameInfo } from "./types";
 import { computePlayerScore } from "./score";
@@ -113,11 +113,11 @@ export async function getLastRankedLeagueMatch(puuid: string, region: string): P
 		const platformId = getPlatformIdFromRegionString(region);
 		const params = { count: 1 };
 
-		return await limitedRequest(() => riotApi.matchV5.getIdsByPuuid({
+		return await withRetryOnDuplicateJob(() => limitedRequest(() => riotApi.matchV5.getIdsByPuuid({
 			cluster: platformId,
 			puuid,
 			params,
-		})) as unknown as Promise<string[]>;
+		}))) as unknown as Promise<string[]>;
 
 	} catch (error) {
 		logger.error(`Riot API Error (getLastRankedLeagueMatch):`, error);
