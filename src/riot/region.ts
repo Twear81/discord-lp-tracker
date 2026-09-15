@@ -1,11 +1,16 @@
-import { PlatformId } from "@fightmegg/riot-api";
+import { Constants } from "twisted";
 import { AppError, ErrorTypes } from "../error/error";
 import logger from "../logger/logger";
 
-export function getPlatformIdFromRegionString(region: string): PlatformId.EUROPE | PlatformId.AMERICAS {
-	const mapping: Record<string, (PlatformId.EUROPE | PlatformId.AMERICAS)> = {
-		"EUW": PlatformId.EUROPE,
-		"NA": PlatformId.AMERICAS
+// Twisted replaces the @fightmegg/riot-api PlatformId enum. The mapping
+// stays the same in spirit (EUW -> EUROPE cluster, EUW -> EUW1 platform)
+// but the value names come from twisted's Constants.Regions / RegionGroups.
+
+// Cluster routing (used by MatchV5 and TftMatch — region groups like EUROPE/AMERICAS).
+export function getPlatformIdFromRegionString(region: string): Constants.RegionGroups {
+	const mapping: Record<string, Constants.RegionGroups> = {
+		"EUW": Constants.RegionGroups.EUROPE,
+		"NA": Constants.RegionGroups.AMERICAS,
 	};
 	const result = mapping[region.toUpperCase()];
 	if (result === undefined) {
@@ -15,10 +20,17 @@ export function getPlatformIdFromRegionString(region: string): PlatformId.EUROPE
 	return result;
 }
 
-export function getLolRegionFromRegionString(region: string): PlatformId.EUW1 | PlatformId.NA1 {
-	const mapping: Record<string, (PlatformId.EUW1 | PlatformId.NA1)> = {
-		"EUW": PlatformId.EUW1,
-		"NA": PlatformId.NA1
+// Account-V1 cluster routing. Same mapping as above but Account-V1 doesn't
+// accept SEA, so the return type is narrowed to AccountAPIRegionGroups.
+export function getAccountClusterFromRegionString(region: string): Constants.AccountAPIRegionGroups {
+	return getPlatformIdFromRegionString(region) as Constants.AccountAPIRegionGroups;
+}
+
+// Platform IDs (used by League-V4 and TftLeague-V1 — EUW1/NA1).
+export function getLolRegionFromRegionString(region: string): Constants.Regions {
+	const mapping: Record<string, Constants.Regions> = {
+		"EUW": Constants.Regions.EU_WEST,
+		"NA": Constants.Regions.AMERICA_NORTH,
 	};
 	const result = mapping[region.toUpperCase()];
 	if (result === undefined) {
