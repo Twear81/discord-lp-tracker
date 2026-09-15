@@ -10,12 +10,14 @@ Bot Discord qui suit l'historique de parties **League of Legends** et **Teamfigh
 - **TypeScript** strict (`tsconfig.json`: `strict`, `strictNullChecks`, `target: ES2022`, `module: commonjs`)
 - **discord.js** v14
 - **SQLite** via **Sequelize** v6
-- **`@fightmegg/riot-api`** — fork local (`git+https://github.com/Twear81/riot-api.git`)
+- **`twisted`** — client Riot API (remplace l'ancien `@fightmegg/riot-api`, fork local supprimé en `f6af93c`)
 - **node-cron** — tâches planifiées
 - **winston** + **winston-daily-rotate-file** — logs rotatifs
 - **bottleneck** — rate-limit des appels Riot API
 - **axios** + **dotenv**
 - Build: **tsup** (minify). Dev: **tsx watch**. Lint: **ESLint** flat config + typescript-eslint
+
+> **Note Riot API** : la lib `twisted` remplace l'ancien wrapper `@fightmegg/riot-api`. Deux clés sont toujours nécessaires : `RIOT_API` (LoL + Account-V1) et `RIOT_API_TFT` (TFT + Account-V1) — l'Account-V1 retourne des PUUIDs distincts par clé, et `/addplayer` stocke les deux dans `puuid` et `tftpuuid`.
 
 ## Setup & Environment
 
