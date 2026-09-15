@@ -1,5 +1,12 @@
 export const MIN_GAME_DURATION_SECONDS = 13 * 60;
 
+// The daily recap is sent at RECAP_CUTOFF_HOUR:RECAP_CUTOFF_MINUTE. The same
+// instant is the floor for "last 24h" — anything newer is counted toward
+// today's recap. Both src/index.ts (cron) and isTimestampInRecapRange must
+// agree on this value, so it lives here as the single source of truth.
+export const RECAP_CUTOFF_HOUR = 6;
+export const RECAP_CUTOFF_MINUTE = 33;
+
 export const isGameDurationValid = (durationSeconds: number): boolean => durationSeconds >= MIN_GAME_DURATION_SECONDS;
 
 export function isTimestampInRecapRange(timestamp: number): boolean {
@@ -10,18 +17,19 @@ export function isTimestampInRecapRange(timestamp: number): boolean {
 
 	const now = new Date();
 
-	// Set 06:33 AM today
-	const today6am33 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 6, 33, 0, 0);
+	// Set the cutoff time today
+	const todayCutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate(), RECAP_CUTOFF_HOUR, RECAP_CUTOFF_MINUTE, 0, 0);
 
-	// Manage the last day
-	if (now.getHours() < 6 || (now.getHours() === 6 && now.getMinutes() < 33)) {
-		today6am33.setDate(today6am33.getDate() - 1);
+	// If we're earlier in the day than the cutoff, "last 24h" starts at the
+	// previous day's cutoff instead of today's.
+	if (now.getHours() < RECAP_CUTOFF_HOUR || (now.getHours() === RECAP_CUTOFF_HOUR && now.getMinutes() < RECAP_CUTOFF_MINUTE)) {
+		todayCutoff.setDate(todayCutoff.getDate() - 1);
 	}
 
-	const todayTimestamp = today6am33.getTime();
+	const cutoffTimestamp = todayCutoff.getTime();
 
 	// Check if the timestamp falls within the range
-	return timestamp >= todayTimestamp;
+	return timestamp >= cutoffTimestamp;
 }
 
 export const calculateLPDifference = (beforeRank: string, afterRank: string, beforeTier: string, afterTier: string, beforeLP: number, afterLP: number): number => {
