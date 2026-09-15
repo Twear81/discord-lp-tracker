@@ -47,11 +47,29 @@ export async function limitedRequest<T>(apiCallFn: () => Promise<T>): Promise<T>
 type CacheEntry<T> = { value: T; expires: number };
 const cache = new Map<string, CacheEntry<unknown>>();
 
+// Cap the cache so the Map can't grow unbounded across the bot's
+// lifetime. The key universe is roughly O(players × tracked queues +
+// matches_played_per_day), and entries are replaced on access once they
+// expire. 1000 entries is well above the typical deployment size for
+// this bot and keeps memory under a few hundred KB even with full
+// Riot payload bodies.
+const MAX_CACHE_ENTRIES = 1000;
+
 export async function withCache<T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
 	const now = Date.now();
 	const hit = cache.get(key) as CacheEntry<T> | undefined;
 	if (hit && hit.expires > now) {
 		return hit.value;
+	}
+	// Evict the oldest entry when at capacity. Map iteration order is
+	// insertion order, so the first key is the oldest. FIFO is fine here:
+	// a hit on an expired key overwrites it in place (no size change), and
+	// a cache miss just bumps size by one — which is exactly when we evict.
+	if (cache.size >= MAX_CACHE_ENTRIES) {
+		const oldestKey = cache.keys().next().value;
+		if (oldestKey !== undefined) {
+			cache.delete(oldestKey);
+		}
 	}
 	const value = await loader();
 	cache.set(key, { value, expires: now + ttlMs });
