@@ -1,7 +1,7 @@
-import { DDragon } from "@fightmegg/riot-api";
 import { promises as fs } from "fs";
 import { TACTICIAN_FILE_PATH } from "..";
 import logger from "../logger/logger";
+import { lolApi } from "./config";
 
 interface TacticianImage {
 	full: string;
@@ -49,7 +49,8 @@ export async function getLittleLegendIconUrl(skinId: number): Promise<string> {
 	}
 
 	const baseImageName = tactician.image.full;
-	const latestVersion = await new DDragon().versions.latest();
+	const versions = await lolApi.DataDragon.getVersions();
+	const latestVersion = versions[0];
 	const littleLegendUrl = `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/img/tft-tactician/${baseImageName}`;
 	return littleLegendUrl;
 }

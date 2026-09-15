@@ -6,8 +6,8 @@ import { promises as fs } from "fs";
 import path from "path";
 import { inspect } from "util";
 import dotenv from 'dotenv';
-import { DDragon } from "@fightmegg/riot-api";
 import { commands } from "./commands";
+import { lolApi } from "./riot/config";
 import { deployCommands } from "./deploy-commands";
 import { initDB } from './database/init_database';
 import { generateRecapOfTheDay, initLastDayInfo, trackPlayers } from "./tracking/tracking";
@@ -151,7 +151,7 @@ const updateTFTTacticianFile = async () => {
 	try {
 		logger.info("➡️ Starting the daily update of tft-tactician.json...");
 
-		const latestVersion = await new DDragon().versions.latest();
+		const latestVersion = (await lolApi.DataDragon.getVersions())[0];
 		let currentVersion = null;
 		// Try to read the file
 		try {
