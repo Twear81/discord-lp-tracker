@@ -20,7 +20,7 @@ The bot is built using:
 - **discord.js**
 - **SQLite3**
 - **Sequelize**
-- **@fightmegg/riot-api**
+- **[twisted](https://github.com/twirkabir/twisted)** (Riot API client)
 
 ## 🚀 Features
 - ✅ Real-time match tracking (SoloQ, Flex, Clash, Ranked 5v5, TFT)
