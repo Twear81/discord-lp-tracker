@@ -6,6 +6,11 @@ import { LeagueGame, TFTGame } from './gameModel';
 
 const initDB = async (): Promise<void> => {
 	try {
+		// SQLite disables FK enforcement by default — without this, the
+		// `onDelete: 'CASCADE'` declared on Player.hasOne(...) and
+		// Player.hasMany(...) is ignored and rows are orphaned on delete.
+		await sequelize.query('PRAGMA foreign_keys = ON;');
+
 		// force: false to preserve existing data on production
 		await sequelize.sync({ force: false });
 		logger.info('📦 Database synced');
