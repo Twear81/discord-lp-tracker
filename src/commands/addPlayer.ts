@@ -41,44 +41,73 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 	try {
 		await interaction.deferReply({ ephemeral: true });
 
-		const summoner = await getSummonerByName(accountname, tag, region);
-		const summonerTFT = await getTFTSummonerByName(accountname, tag, region);
+		// LoL and TFT account lookups hit different keys → fire in parallel.
+		const [summoner, summonerTFT] = await Promise.all([
+			getSummonerByName(accountname, tag, region),
+			getTFTSummonerByName(accountname, tag, region),
+		]);
 		if (!summoner.puuid || !summonerTFT) {
 			throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, NOT_FOUND_ERROR);
 		}
-		
+
 		await addPlayer(serverId, summoner.puuid, summonerTFT.puuid, summoner.gameName!, summoner.tagLine!, region);
 
-		const playerRankInfos = await getPlayerRankInfo(summoner.puuid, region);
-		const playerRankInfosTFT = await getTFTPlayerRankInfo(summonerTFT.puuid, region);
+		// Both rank endpoints are independent → fire in parallel.
+		const [playerRankInfos, playerRankInfosTFT] = await Promise.all([
+			getPlayerRankInfo(summoner.puuid, region),
+			getTFTPlayerRankInfo(summonerTFT.puuid, region),
+		]);
 
 		const currentPlayer = await getPlayerForSpecificServer(serverId, summoner.puuid);
+
+		// Build the list of rank-update promises up front; each entry is an
+		// independent DB write on a different queue row, so they can run
+		// concurrently. We use allSettled to keep the previous behaviour
+		// (a single failing rank doesn't abort the whole command).
+		const rankUpdates: Promise<unknown>[] = [];
 		for (const playerRankStat of playerRankInfos) {
 			if (playerRankStat.queueType in GameQueueType) {
-				await updatePlayerInfoCurrentAndLastForQueueType(serverId, currentPlayer.puuid, GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType], playerRankStat.leaguePoints, playerRankStat.rank, playerRankStat.tier);
+				rankUpdates.push(updatePlayerInfoCurrentAndLastForQueueType(
+					serverId,
+					currentPlayer.puuid,
+					GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType],
+					playerRankStat.leaguePoints,
+					playerRankStat.rank,
+					playerRankStat.tier,
+				));
 			} else {
 				logger.warn(playerRankStat.queueType + ' was not a know queue type.');
 			}
 		}
-		// TFT
 		for (const playerRankStat of playerRankInfosTFT) {
 			if (playerRankStat.queueType in GameQueueType) {
-				await updatePlayerInfoCurrentAndLastForQueueType(serverId, currentPlayer.tftpuuid, GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType], playerRankStat.leaguePoints || 0, playerRankStat.rank || "", playerRankStat.tier || "Unranked");
+				rankUpdates.push(updatePlayerInfoCurrentAndLastForQueueType(
+					serverId,
+					currentPlayer.tftpuuid,
+					GameQueueType[playerRankStat.queueType as keyof typeof GameQueueType],
+					playerRankStat.leaguePoints || 0,
+					playerRankStat.rank || "",
+					playerRankStat.tier || "Unranked",
+				));
 			} else {
 				logger.warn(playerRankStat.queueType + ' was not a know queue type.');
 			}
 		}
+		await Promise.allSettled(rankUpdates);
 
-		// Get its last ranked league game
-		const leagueMatchIds = await getLastRankedLeagueMatch(currentPlayer.puuid, currentPlayer.region);
+		// Last-match lookups for LoL and TFT are independent.
+		const [leagueMatchIds, tftMatchIds] = await Promise.all([
+			getLastRankedLeagueMatch(currentPlayer.puuid, currentPlayer.region),
+			getLastTFTMatch(currentPlayer.tftpuuid, currentPlayer.region),
+		]);
 		const currentLeagueGameIdWithRegion = leagueMatchIds[0] ?? null; // example -> EUW1_7294524077
-		// Update last game inside database
-		await updatePlayerLastGameId(serverId, currentPlayer.puuid, currentLeagueGameIdWithRegion, ManagedGameQueueType.LEAGUE);
-		// Get its last tft game
-		const tftMatchIds = await getLastTFTMatch(currentPlayer.tftpuuid, currentPlayer.region);
 		const currentTFTGameIdWithRegion = tftMatchIds[0] ?? null; // example -> EUW1_7294524077
-		// Update last game inside database
-		await updatePlayerLastGameId(serverId, currentPlayer.tftpuuid, currentTFTGameIdWithRegion, ManagedGameQueueType.TFT);
+
+		// Both last-game writes are independent.
+		await Promise.all([
+			updatePlayerLastGameId(serverId, currentPlayer.puuid, currentLeagueGameIdWithRegion, ManagedGameQueueType.LEAGUE),
+			updatePlayerLastGameId(serverId, currentPlayer.tftpuuid, currentTFTGameIdWithRegion, ManagedGameQueueType.TFT),
+		]);
 
 		await interaction.editReply({
 			content: `The player "${accountname}#${tag}" for region ${region} has been added.`
