@@ -1,13 +1,13 @@
-import { RiotAPITypes } from "@fightmegg/riot-api";
+import { Dto } from "twisted";
 import { PingKeys, ParticipantWithPings } from "./types";
 import { computePlayerScore } from "./score";
 
-export function getMainTrait(traits: RiotAPITypes.TftMatch.TraitDTO[]): Array<string> {
+export function getMainTrait(traits: Dto.TraitDto[]): Array<string> {
 	if (!traits || traits.length === 0) {
 		return [];
 	}
 
-	const activeTraits: RiotAPITypes.TftMatch.TraitDTO[] = traits.filter(trait => trait.tier_current > 0);
+	const activeTraits: Dto.TraitDto[] = traits.filter(trait => trait.tier_current > 0);
 
 	if (activeTraits.length === 0) {
 		return [];
@@ -26,7 +26,7 @@ export function getMainTrait(traits: RiotAPITypes.TftMatch.TraitDTO[]): Array<st
 		style: topTrait.style ?? 0
 	};
 
-	const resultTraits: RiotAPITypes.TftMatch.TraitDTO[] = activeTraits.filter(trait =>
+	const resultTraits: Dto.TraitDto[] = activeTraits.filter(trait =>
 		trait.num_units === topScore.num_units && (trait.style ?? 0) === topScore.style
 	);
 
@@ -101,11 +101,11 @@ export function getTeamRankPositionFromLabel(label: string, lang: string): numbe
 	return en[label] ?? -1;
 }
 
-export function getTeamLevelFromMatch(participants: RiotAPITypes.MatchV5.ParticipantDTO[], gameDurationSeconds: number, puuid: string, lang: string): string {
-	const participant = participants.find((p: RiotAPITypes.MatchV5.ParticipantDTO) => p.puuid === puuid);
+export function getTeamLevelFromMatch(participants: Dto.MatchV5DTOs.ParticipantDto[], gameDurationSeconds: number, puuid: string, lang: string): string {
+	const participant = participants.find((p: Dto.MatchV5DTOs.ParticipantDto) => p.puuid === puuid);
 	if (!participant) return "Unknown";
 
-	const scores = participants.map((p: RiotAPITypes.MatchV5.ParticipantDTO, index: number, array: RiotAPITypes.MatchV5.ParticipantDTO[]) => computePlayerScore(p, array, gameDurationSeconds));
+	const scores = participants.map((p: Dto.MatchV5DTOs.ParticipantDto, index: number, array: Dto.MatchV5DTOs.ParticipantDto[]) => computePlayerScore(p, array, gameDurationSeconds));
 
 	const playerTeamId = participant.teamId;
 	const teammateIndex: Array<number> = [];

@@ -1,4 +1,4 @@
-import { RiotAPITypes } from "@fightmegg/riot-api";
+import { Dto } from "twisted";
 import { GameQueueType } from "../tracking/GameQueueType";
 
 export type PingKeys =
@@ -16,7 +16,7 @@ export type PingKeys =
 	| "visionClearedPings"
 	| "visionPings";
 
-export type ParticipantWithPings = RiotAPITypes.MatchV5.ParticipantDTO & {
+export type ParticipantWithPings = Dto.MatchV5DTOs.ParticipantDto & {
 	[key in PingKeys]?: number;
 };
 
@@ -53,8 +53,8 @@ export interface PlayerTFTGameInfo {
 	totalDamageToPlayers: number;
 	goldLeft: number;
 	participantNumber: number;
-	traits: RiotAPITypes.TftMatch.TraitDTO[];
-	units: RiotAPITypes.TftMatch.UnitDTO[];
+	traits: Dto.TraitDto[];
+	units: Dto.UnitDto[];
 	win: boolean;
 	queueType: GameQueueType;
 	customMessage: string | undefined;
