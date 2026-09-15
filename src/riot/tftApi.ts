@@ -1,35 +1,58 @@
-import { RiotAPITypes } from "@fightmegg/riot-api";
+import { Dto } from "twisted";
 import { AppError, ErrorTypes } from "../error/error";
 import { GameQueueType } from "../tracking/GameQueueType";
 import logger from "../logger/logger";
-import { limitedRequest, riotApiTFT, withRetryOnDuplicateJob } from "./config";
-import { getPlatformIdFromRegionString, getLolRegionFromRegionString } from "./region";
+import { limitedRequest, riotApiTft, tftApi, withCache, withRetryOnDuplicateJob } from "./config";
+import { getAccountClusterFromRegionString, getLolRegionFromRegionString, getPlatformIdFromRegionString } from "./region";
 import { PlayerTFTGameInfo } from "./types";
 import { getMainTrait, getStageFromRound } from "./matchStats";
 import { generateTFTCustomMessage } from "./customMessages";
 import { getLittleLegendIconUrl } from "./tactician";
 
-export async function getTFTSummonerByName(accountName: string, tag: string, region: string): Promise<RiotAPITypes.Account.AccountDTO> {
+// Local cache TTLs mirror the old @fightmegg/riot-api config.byMethod values.
+const TTL = {
+	ACCOUNT_BY_RIOT_ID_MS: 60_000,
+	TFT_LEAGUE_ENTRIES_MS: 30_000,
+	TFT_MATCH_BY_ID_MS: 30_000,
+	TFT_MATCH_IDS_MS: 5_000,
+} as const;
+
+// Riot's actual TFT companion JSON includes `item_ID` (the little legend
+// skin id) but twisted's typed wrapper only exposes content_ID / skin_ID
+// / species. Accessing `item_ID` requires a local widening cast.
+type CompanionWithItemId = Dto.CompanionDto & { item_ID: number };
+
+// Account-V1: getByRiotId(gameName, tagLine, region) -> ApiResponseDTO<AccountDto>
+// Routed through the TFT key to double Account quota across both keys.
+export async function getTFTSummonerByName(accountName: string, tag: string, region: string): Promise<Dto.AccountDto> {
 	try {
-		const platformId = getPlatformIdFromRegionString(region);
-		return await limitedRequest(() => riotApiTFT.account.getByRiotId({
-			region: platformId,
-			gameName: accountName,
-			tagLine: tag,
-		})) as unknown as Promise<RiotAPITypes.Account.AccountDTO>;
+		const cluster = getAccountClusterFromRegionString(region);
+		return await withCache(
+			`account|getByRiotId|${accountName}|${tag}|${cluster}`,
+			TTL.ACCOUNT_BY_RIOT_ID_MS,
+			async () => {
+				const { response } = await limitedRequest(() => riotApiTft.Account.getByRiotId(accountName, tag, cluster));
+				return response;
+			},
+		);
 	} catch (error) {
 		logger.error(`Error API Riot (getTFTSummonerByName) :`, error);
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `No player found for ${accountName}#${tag} for region ${region}`);
 	}
 }
 
-export async function getTFTGameDetail(gameID: string, region: string): Promise<RiotAPITypes.TftMatch.MatchDTO> {
+// TftMatch: get(matchId, region) -> ApiResponseDTO<MatchTFTDTO>
+export async function getTFTGameDetail(gameID: string, region: string): Promise<Dto.MatchTFTDTO> {
 	try {
-		const platformId = getPlatformIdFromRegionString(region);
-		return await limitedRequest(() => riotApiTFT.tftMatch.getById({
-			region: platformId,
-			matchId: gameID
-		})) as unknown as Promise<RiotAPITypes.TftMatch.MatchDTO>;
+		const cluster = getPlatformIdFromRegionString(region);
+		return await withCache(
+			`tftMatch|getById|${gameID}|${cluster}`,
+			TTL.TFT_MATCH_BY_ID_MS,
+			async () => {
+				const { response } = await limitedRequest(() => tftApi.Match.get(gameID, cluster));
+				return response;
+			},
+		);
 	} catch (error) {
 		logger.error(`Error API Riot (getTFTGameDetail) :`, error);
 		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No game detail found for gameID ${gameID} for region ${region}`);
@@ -37,7 +60,7 @@ export async function getTFTGameDetail(gameID: string, region: string): Promise<
 }
 
 export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string, lang: string): Promise<PlayerTFTGameInfo> {
-	const tftGameDetail: RiotAPITypes.TftMatch.MatchDTO = await getTFTGameDetail(gameID, region);
+	const tftGameDetail: Dto.MatchTFTDTO = await getTFTGameDetail(gameID, region);
 	const { info: { queue_id, participants, game_datetime, game_length } } = tftGameDetail;
 
 	let queueType: GameQueueType;
@@ -57,10 +80,12 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No participant found for player ${puuid} in game ${gameID}`);
 	}
 
+	const companion = participant.companion as unknown as CompanionWithItemId;
+
 	return {
 		gameEndTimestamp: game_datetime,
 		gameDurationSeconds: game_length,
-		littleLegendIconUrl: await getLittleLegendIconUrl(participant.companion.item_ID),
+		littleLegendIconUrl: await getLittleLegendIconUrl(companion.item_ID),
 		placement: participant.placement,
 		mainTraits: getMainTrait(participant.traits),
 		level: participant.level,
@@ -77,29 +102,38 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 	};
 }
 
+// TftMatch: list(puuid, region, query) -> ApiResponseDTO<string[]>
+// Cached 5s (matches the original TFT_MATCH_IDS_BY_PUUID TTL) to dedupe.
 export async function getLastTFTMatch(puuid: string, region: string): Promise<string[]> {
 	try {
-		const platformId = getPlatformIdFromRegionString(region);
-		return await withRetryOnDuplicateJob(() => limitedRequest(() => riotApiTFT.tftMatch.getMatchIdsByPUUID({
-			region: platformId,
-			puuid,
-			params: {
-				count: 1
-			}
-		}))) as unknown as Promise<string[]>;
+		const cluster = getPlatformIdFromRegionString(region);
+		return await withCache(
+			`tftMatch|list|${puuid}|${cluster}`,
+			TTL.TFT_MATCH_IDS_MS,
+			() => withRetryOnDuplicateJob(() => limitedRequest(async () => {
+				const { response } = await tftApi.Match.list(puuid, cluster, { count: 1 });
+				return response;
+			})),
+		);
 	} catch (error) {
-		logger.error(`Error API Riot (getLastTFTMatch) :`, error);
+		logger.error(`Riot API Error (getLastTFTMatch):`, error);
 		throw new AppError(ErrorTypes.LASTMATCH_NOT_FOUND, `No last tft match found for player ${puuid} for region ${region}`);
 	}
 }
 
-export async function getTFTPlayerRankInfo(puuid: string, region: string): Promise<RiotAPITypes.TftLeague.LeagueEntryDTO[]> {
+// TftLeague: getByPUUID(puuid, region) -> ApiResponseDTO<LeagueEntryDTO[]>
+// `getEntriesByPUUID` IS exposed on TftApi.League (good — no PUUID->SummonerId workaround needed).
+export async function getTFTPlayerRankInfo(puuid: string, region: string): Promise<Dto.LeagueEntryDTO[]> {
 	try {
-		const platformId = getLolRegionFromRegionString(region);
-		return await limitedRequest(() => riotApiTFT.tftLeague.getEntriesByPUUID({
-			region: platformId,
-			puuid: puuid,
-		})) as unknown as RiotAPITypes.TftLeague.LeagueEntryDTO[];
+		const lolRegion = getLolRegionFromRegionString(region);
+		return await withCache(
+			`tftLeague|getByPUUID|${puuid}|${lolRegion}`,
+			TTL.TFT_LEAGUE_ENTRIES_MS,
+			async () => {
+				const { response } = await limitedRequest(() => tftApi.League.getByPUUID(puuid, lolRegion));
+				return response;
+			},
+		);
 	} catch (error) {
 		logger.error(`Error API Riot (getTFTPlayerRankInfo) :`, error);
 		throw new AppError(ErrorTypes.PLAYERRANKINFO_NOT_FOUND, `No PLAYERRANKINFO tft found for player puuid:${puuid} for region ${region}`);
