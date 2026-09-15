@@ -1,34 +1,24 @@
+import { Constants } from "twisted";
 import { AppError, ErrorTypes } from "../error/error";
 import { GameQueueType } from "../tracking/GameQueueType";
 import logger from "../logger/logger";
-import { limitedRequest, lolApi, riotApiLol, withCache, withRetryOnDuplicateJob } from "./config";
-import { getAccountClusterFromRegionString, getLolRegionFromRegionString, getPlatformIdFromRegionString } from "./region";
+import { lolApi, riotApiLol, riotCached, riotCachedWithRetry, TTL } from "./config";
+import { regionToPlatform } from "./region";
 import { PlayerLeagueGameInfo } from "./types";
 import { computePlayerScore } from "./score";
 import { getTotalPings, getTeamLevelFromMatch } from "./matchStats";
 import { generateLeagueCustomMessage } from "./customMessages";
-import type { AccountDto, MatchV5MatchDto, MatchQueryV5Query, SummonerLeagueDto, V5ParticipantDto } from "./twistedTypes";
-
-// Local cache TTLs mirror the old @fightmegg/riot-api config.byMethod values.
-const TTL = {
-	ACCOUNT_BY_RIOT_ID_MS: 60_000,
-	ACCOUNT_BY_PUUID_MS: 60_000,
-	MATCH_BY_ID_MS: 30_000,
-	MATCH_IDS_MS: 5_000,
-	LEAGUE_ENTRIES_MS: 30_000,
-} as const;
+import type { AccountDto, MatchV5MatchDto, SummonerLeagueDto, V5ParticipantDto } from "./twistedTypes";
 
 // Account-V1: getByRiotId(gameName, tagLine, region) -> ApiResponseDTO<AccountDto>
 export async function getSummonerByName(accountName: string, tag: string, region: string): Promise<AccountDto> {
 	try {
-		const cluster = getAccountClusterFromRegionString(region);
-		return await withCache(
+		const platform = regionToPlatform(region);
+		const cluster = Constants.regionToRegionGroupForAccountAPI(platform);
+		return await riotCached(
 			`account|getByRiotId|${accountName}|${tag}|${cluster}`,
 			TTL.ACCOUNT_BY_RIOT_ID_MS,
-			async () => {
-				const { response } = await limitedRequest(() => riotApiLol.Account.getByRiotId(accountName, tag, cluster));
-				return response;
-			},
+			() => riotApiLol.Account.getByRiotId(accountName, tag, cluster),
 		);
 	} catch (error) {
 		logger.error(`Error API Riot (getSummonerByName) :`, error);
@@ -39,14 +29,12 @@ export async function getSummonerByName(accountName: string, tag: string, region
 // Account-V1: getByPUUID(puuid, region) -> ApiResponseDTO<AccountDto>
 export async function getAccountByPUUID(puuid: string, region: string): Promise<AccountDto> {
 	try {
-		const cluster = getAccountClusterFromRegionString(region);
-		return await withCache(
+		const platform = regionToPlatform(region);
+		const cluster = Constants.regionToRegionGroupForAccountAPI(platform);
+		return await riotCached(
 			`account|getByPUUID|${puuid}|${cluster}`,
 			TTL.ACCOUNT_BY_PUUID_MS,
-			async () => {
-				const { response } = await limitedRequest(() => riotApiLol.Account.getByPUUID(puuid, cluster));
-				return response;
-			},
+			() => riotApiLol.Account.getByPUUID(puuid, cluster),
 		);
 	} catch (error) {
 		logger.error(`Error API Riot (getAccountByPUUID) :`, error);
@@ -57,14 +45,11 @@ export async function getAccountByPUUID(puuid: string, region: string): Promise<
 // MatchV5: get(matchId, region) -> ApiResponseDTO<MatchV5DTOs.MatchDto>
 export async function getGameDetail(gameID: string, region: string): Promise<MatchV5MatchDto> {
 	try {
-		const cluster = getPlatformIdFromRegionString(region);
-		return await withCache(
+		const cluster = Constants.regionToRegionGroup(regionToPlatform(region));
+		return await riotCached(
 			`matchV5|getById|${gameID}|${cluster}`,
 			TTL.MATCH_BY_ID_MS,
-			async () => {
-				const { response } = await limitedRequest(() => lolApi.MatchV5.get(gameID, cluster));
-				return response;
-			},
+			() => lolApi.MatchV5.get(gameID, cluster),
 		);
 	} catch (error) {
 		logger.error(`Error API Riot (getGameDetail) :`, error);
@@ -132,18 +117,16 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 }
 
 // MatchV5: list(puuid, region, query) -> ApiResponseDTO<string[]>
-// Cached 5s to dedupe rapid polls of the same player.
+// Cached 5s and goes through the duplicate-job retry path because the
+// tracking cron can overlap itself on redeploys.
 export async function getLastRankedLeagueMatch(puuid: string, region: string): Promise<string[]> {
 	try {
-		const cluster = getPlatformIdFromRegionString(region);
-		const query: MatchQueryV5Query = { count: 1 };
-		return await withCache(
+		const cluster = Constants.regionToRegionGroup(regionToPlatform(region));
+		const query = { count: 1 };
+		return await riotCachedWithRetry(
 			`matchV5|list|${puuid}|${cluster}`,
 			TTL.MATCH_IDS_MS,
-			() => withRetryOnDuplicateJob(() => limitedRequest(async () => {
-				const { response } = await lolApi.MatchV5.list(puuid, cluster, query);
-				return response;
-			})),
+			() => lolApi.MatchV5.list(puuid, cluster, query),
 		);
 	} catch (error) {
 		logger.error(`Riot API Error (getLastRankedLeagueMatch):`, error);
@@ -154,14 +137,11 @@ export async function getLastRankedLeagueMatch(puuid: string, region: string): P
 // League-V4: byPUUID(puuid, region) -> ApiResponseDTO<SummonerLeagueDto[]>
 export async function getPlayerRankInfo(puuid: string, region: string): Promise<SummonerLeagueDto[]> {
 	try {
-		const lolRegion = getLolRegionFromRegionString(region);
-		return await withCache(
-			`league|byPUUID|${puuid}|${lolRegion}`,
+		const platform = regionToPlatform(region);
+		return await riotCached(
+			`league|byPUUID|${puuid}|${platform}`,
 			TTL.LEAGUE_ENTRIES_MS,
-			async () => {
-				const { response } = await limitedRequest(() => lolApi.League.byPUUID(puuid, lolRegion));
-				return response;
-			},
+			() => lolApi.League.byPUUID(puuid, platform),
 		);
 	} catch (error) {
 		logger.error(`Error API Riot (getPlayerRankInfo) :`, error);
