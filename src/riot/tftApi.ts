@@ -1,21 +1,14 @@
+import { Constants } from "twisted";
 import { AppError, ErrorTypes } from "../error/error";
 import { GameQueueType } from "../tracking/GameQueueType";
 import logger from "../logger/logger";
-import { limitedRequest, riotApiTft, tftApi, withCache, withRetryOnDuplicateJob } from "./config";
-import { getAccountClusterFromRegionString, getLolRegionFromRegionString, getPlatformIdFromRegionString } from "./region";
+import { riotApiTft, riotCached, riotCachedWithRetry, tftApi, TTL } from "./config";
+import { regionToPlatform } from "./region";
 import { PlayerTFTGameInfo } from "./types";
 import { getMainTrait, getStageFromRound } from "./matchStats";
 import { generateTFTCustomMessage } from "./customMessages";
 import { getLittleLegendIconUrl } from "./tactician";
 import type { MatchTFTDto, TFTAccountDto, TFTLeagueEntryDto, TFTParticipantDto } from "./twistedTypes";
-
-// Local cache TTLs mirror the old @fightmegg/riot-api config.byMethod values.
-const TTL = {
-	ACCOUNT_BY_RIOT_ID_MS: 60_000,
-	TFT_LEAGUE_ENTRIES_MS: 30_000,
-	TFT_MATCH_BY_ID_MS: 30_000,
-	TFT_MATCH_IDS_MS: 5_000,
-} as const;
 
 // Riot's TFT companion JSON includes `item_ID` (the little legend skin id)
 // but twisted's typed wrapper only exposes content_ID / skin_ID / species.
@@ -23,17 +16,16 @@ const TTL = {
 type CompanionWithItemId = { item_ID: number };
 
 // Account-V1: getByRiotId(gameName, tagLine, region) -> ApiResponseDTO<AccountDto>
-// Routed through the TFT key to double Account quota across both keys.
+// Routed through the TFT key because Account-V1 returns a different PUUID
+// per key (confirmed empirically against database.sqlite).
 export async function getTFTSummonerByName(accountName: string, tag: string, region: string): Promise<TFTAccountDto> {
 	try {
-		const cluster = getAccountClusterFromRegionString(region);
-		return await withCache(
+		const platform = regionToPlatform(region);
+		const cluster = Constants.regionToRegionGroupForAccountAPI(platform);
+		return await riotCached(
 			`account|getByRiotId|${accountName}|${tag}|${cluster}`,
 			TTL.ACCOUNT_BY_RIOT_ID_MS,
-			async () => {
-				const { response } = await limitedRequest(() => riotApiTft.Account.getByRiotId(accountName, tag, cluster));
-				return response;
-			},
+			() => riotApiTft.Account.getByRiotId(accountName, tag, cluster),
 		);
 	} catch (error) {
 		logger.error(`Error API Riot (getTFTSummonerByName) :`, error);
@@ -44,14 +36,11 @@ export async function getTFTSummonerByName(accountName: string, tag: string, reg
 // TftMatch: get(matchId, region) -> ApiResponseDTO<MatchTFTDTO>
 export async function getTFTGameDetail(gameID: string, region: string): Promise<MatchTFTDto> {
 	try {
-		const cluster = getPlatformIdFromRegionString(region);
-		return await withCache(
+		const cluster = Constants.regionToRegionGroup(regionToPlatform(region));
+		return await riotCached(
 			`tftMatch|getById|${gameID}|${cluster}`,
-			TTL.TFT_MATCH_BY_ID_MS,
-			async () => {
-				const { response } = await limitedRequest(() => tftApi.Match.get(gameID, cluster));
-				return response;
-			},
+			TTL.MATCH_BY_ID_MS,
+			() => tftApi.Match.get(gameID, cluster),
 		);
 	} catch (error) {
 		logger.error(`Error API Riot (getTFTGameDetail) :`, error);
@@ -103,17 +92,15 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 }
 
 // TftMatch: list(puuid, region, query) -> ApiResponseDTO<string[]>
-// Cached 5s to dedupe rapid polls.
+// Cached 5s and goes through the duplicate-job retry path.
 export async function getLastTFTMatch(puuid: string, region: string): Promise<string[]> {
 	try {
-		const cluster = getPlatformIdFromRegionString(region);
-		return await withCache(
+		const cluster = Constants.regionToRegionGroup(regionToPlatform(region));
+		const query = { count: 1 };
+		return await riotCachedWithRetry(
 			`tftMatch|list|${puuid}|${cluster}`,
-			TTL.TFT_MATCH_IDS_MS,
-			() => withRetryOnDuplicateJob(() => limitedRequest(async () => {
-				const { response } = await tftApi.Match.list(puuid, cluster, { count: 1 });
-				return response;
-			})),
+			TTL.MATCH_IDS_MS,
+			() => tftApi.Match.list(puuid, cluster, query),
 		);
 	} catch (error) {
 		logger.error(`Riot API Error (getLastTFTMatch):`, error);
@@ -124,14 +111,11 @@ export async function getLastTFTMatch(puuid: string, region: string): Promise<st
 // TftLeague: getByPUUID(puuid, region) -> ApiResponseDTO<LeagueEntryDTO[]>
 export async function getTFTPlayerRankInfo(puuid: string, region: string): Promise<TFTLeagueEntryDto[]> {
 	try {
-		const lolRegion = getLolRegionFromRegionString(region);
-		return await withCache(
-			`tftLeague|getByPUUID|${puuid}|${lolRegion}`,
-			TTL.TFT_LEAGUE_ENTRIES_MS,
-			async () => {
-				const { response } = await limitedRequest(() => tftApi.League.getByPUUID(puuid, lolRegion));
-				return response;
-			},
+		const platform = regionToPlatform(region);
+		return await riotCached(
+			`tftLeague|getByPUUID|${puuid}|${platform}`,
+			TTL.LEAGUE_ENTRIES_MS,
+			() => tftApi.League.getByPUUID(puuid, platform),
 		);
 	} catch (error) {
 		logger.error(`Error API Riot (getTFTPlayerRankInfo) :`, error);
