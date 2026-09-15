@@ -1,11 +1,9 @@
 import { Sequelize } from 'sequelize';
 
-// Initialize Sequelize (replace with your database credentials)
-const sequelize = new Sequelize('database', 'user', 'F*1m$4dc%lR8iT', {
-	host: 'localhost',
+// SQLite doesn't use a username/password/host — keep them out of the repo.
+const sequelize = new Sequelize({
 	dialect: 'sqlite',
 	logging: false,
-	// SQLite only
 	storage: 'database.sqlite',
 });
 
