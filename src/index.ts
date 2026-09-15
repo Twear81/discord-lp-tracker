@@ -189,10 +189,6 @@ const updateTFTTacticianFile = async () => {
 
 		await fs.writeFile(TACTICIAN_FILE_PATH, JSON.stringify(updatedData));
 		logger.info("✅ tft-tactician.json has been successfully updated!");
-
-		// Optionnel : recharge le cache si tu fais du require à chaud
-		delete require.cache[require.resolve(TACTICIAN_FILE_PATH)];
-
 	} catch (error) {
 		logger.error("❌ An error occurred during the update of tft-tactician.json:", error);
 	}
