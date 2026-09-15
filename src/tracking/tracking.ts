@@ -55,45 +55,57 @@ export const initLastDayInfo = async (haveToResetLastDay: boolean): Promise<void
 
 		for (const server of servers) {
 			const players = await listAllPlayerForSpecificServer(server.serverid);
-			if (players.length === 0) return;
+			if (players.length === 0) continue;
 
-			for (const player of players) {
-				try {
-					const playerAccount = await getAccountByPUUID(player.puuid, player.region);
-					const leagueRanks = await getPlayerRankInfo(player.puuid, player.region);
-					const tftRanks = await getTFTPlayerRankInfo(player.tftpuuid, player.region);
+			// Process each player concurrently. A failure on one player must
+			// not abort the rest, so we wrap each iteration in its own
+			// try/catch and drive the whole loop with allSettled.
+			const playerResults = await Promise.allSettled(
+				players.map(async (player) => {
+					// Account + LoL rank + TFT rank hits are all independent.
+					const [playerAccount, leagueRanks, tftRanks] = await Promise.all([
+						getAccountByPUUID(player.puuid, player.region),
+						getPlayerRankInfo(player.puuid, player.region),
+						getTFTPlayerRankInfo(player.tftpuuid, player.region),
+					]);
 
 					if (!playerAccount || !leagueRanks || !tftRanks) {
 						logger.error(`❌ Missing data for player ${player.puuid}.`);
-						continue;
+						return;
 					}
 
 					// Update name and tagline if necessary
-					if (playerAccount && (playerAccount.gameName !== player.gameName || playerAccount.tagLine !== player.tagLine)) {
+					if (playerAccount.gameName !== player.gameName || playerAccount.tagLine !== player.tagLine) {
 						logger.info(`✏️ Updating name for ${player.gameName}#${player.tagLine}...`);
 						await updatePlayerGameNameAndTagLine(server.serverid, player.puuid, playerAccount.gameName!, playerAccount.tagLine!);
 					}
 
-					// Process both League and TFT ranks
+					// Each rank entry writes to a different queue row, so they
+					// can be processed in parallel. allSettled preserves the
+					// previous behavior (a single bad rank doesn't kill the rest).
 					const combinedRanks = [...leagueRanks, ...tftRanks];
+					const rankUpdates = combinedRanks.map(async (rankInfo) => {
+						if (!(rankInfo.queueType in GameQueueType) || rankInfo.leaguePoints === undefined || rankInfo.rank === undefined || rankInfo.tier === undefined) {
+							logger.warn(`❌ Missing rank ou queue data for player ${player.puuid}.`);
+							return;
+						}
+						const queueType = GameQueueType[rankInfo.queueType as keyof typeof GameQueueType];
+						const playerQueueInfo = await getPlayerForQueueInfoForSpecificServer(server.serverid, player.puuid, queueType);
 
-					for (const rankInfo of combinedRanks) {
-						if (rankInfo.queueType in GameQueueType && rankInfo.leaguePoints !== undefined && rankInfo.rank !== undefined && rankInfo.tier !== undefined) {
-							const queueType = GameQueueType[rankInfo.queueType as keyof typeof GameQueueType];
-							const playerQueueInfo = await getPlayerForQueueInfoForSpecificServer(server.serverid, player.puuid, queueType);
-
-							const shouldUpdate = playerQueueInfo.lastDayDate == null || !isTimestampInRecapRange(playerQueueInfo.lastDayDate.valueOf());
-							logger.info(`Should update: ${shouldUpdate}, for rank ${rankInfo.rank} and tier ${rankInfo.tier} and ${rankInfo.leaguePoints} lp`);
+						const shouldUpdate = playerQueueInfo.lastDayDate == null || !isTimestampInRecapRange(playerQueueInfo.lastDayDate.valueOf());
+						logger.info(`Should update: ${shouldUpdate}, for rank ${rankInfo.rank} and tier ${rankInfo.tier} and ${rankInfo.leaguePoints} lp`);
 
 						if (shouldUpdate) {
-							await updatePlayerInfoCurrentAndLastForQueueType(server.serverid, player.puuid, queueType, rankInfo.leaguePoints, rankInfo.rank, rankInfo.tier)
+							await updatePlayerInfoCurrentAndLastForQueueType(server.serverid, player.puuid, queueType, rankInfo.leaguePoints, rankInfo.rank, rankInfo.tier);
 						}
-						} else {
-							logger.warn(`❌ Missing rank ou queue data for player ${player.puuid}.`);
-						}
-					}
-				} catch (e) {
-					logger.error(`❌  A fatal error occurred during initLastDayInfo for player: ${player.puuid} :`, e);
+					});
+					await Promise.allSettled(rankUpdates);
+				}),
+			);
+
+			for (const [index, result] of playerResults.entries()) {
+				if (result.status === 'rejected') {
+					logger.error(`❌  A fatal error occurred during initLastDayInfo for player: ${players[index].puuid} :`, result.reason);
 				}
 			}
 		}
