@@ -1,37 +1,23 @@
 import { Constants } from "twisted";
 import { AppError, ErrorTypes } from "../error/error";
 import logger from "../logger/logger";
-import type { AccountCluster, Region, RegionGroup } from "./twistedTypes";
+import type { Region } from "./twistedTypes";
 
-// Cluster routing (used by MatchV5 and TftMatch).
-export function getPlatformIdFromRegionString(region: string): RegionGroup {
-	const mapping: Record<string, RegionGroup> = {
-		"EUW": Constants.RegionGroups.EUROPE,
-		"NA": Constants.RegionGroups.AMERICAS,
-	};
-	const result = mapping[region.toUpperCase()];
-	if (result === undefined) {
-		logger.error(`Unknown region for platform id: ${region}`);
+const PLATFORM_FROM_DB_REGION: Record<string, Region> = {
+	EUW: Constants.Regions.EU_WEST,
+	NA: Constants.Regions.AMERICA_NORTH,
+};
+
+// Translate the user-facing region string stored in the DB ("EUW" / "NA")
+// to twisted's Region enum. Cluster routing (for MatchV5 / TftMatch /
+// Account-V1) is handled by twisted's own Constants.regionToRegionGroup()
+// and Constants.regionToRegionGroupForAccountAPI(), so callers don't need
+// parallel helpers per cluster type.
+export function regionToPlatform(region: string): Region {
+	const platform = PLATFORM_FROM_DB_REGION[region.toUpperCase()];
+	if (!platform) {
+		logger.error(`Unknown region: ${region}`);
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `Unsupported region: ${region}`);
 	}
-	return result;
-}
-
-// Account-V1 cluster routing. Same mapping as above, narrowed to AccountCluster.
-export function getAccountClusterFromRegionString(region: string): AccountCluster {
-	return getPlatformIdFromRegionString(region) as AccountCluster;
-}
-
-// Platform IDs (used by League-V4 and TftLeague-V1).
-export function getLolRegionFromRegionString(region: string): Region {
-	const mapping: Record<string, Region> = {
-		"EUW": Constants.Regions.EU_WEST,
-		"NA": Constants.Regions.AMERICA_NORTH,
-	};
-	const result = mapping[region.toUpperCase()];
-	if (result === undefined) {
-		logger.error(`Unknown region for lol region: ${region}`);
-		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `Unsupported region: ${region}`);
-	}
-	return result;
+	return platform;
 }
