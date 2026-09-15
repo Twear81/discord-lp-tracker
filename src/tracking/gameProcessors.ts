@@ -184,7 +184,6 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
 
 interface GameProcessor {
 	gameName: 'League' | 'TFT';
-	isEnabled(server: ServerInfo): boolean;
 	getPUUID(player: PlayerInfo): string;
 	getLastGameId(player: PlayerInfo): string | null;
 	getLastMatches(puuid: string, region: string): Promise<string[]>;
@@ -193,8 +192,6 @@ interface GameProcessor {
 
 export const leagueGameProcessor: GameProcessor = {
 	gameName: 'League',
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	isEnabled: (server) => true, // Always active
 	getPUUID: (player) => player.puuid,
 	getLastGameId: (player) => player.lastGameID,
 	// Single API call: fetch the player's most recent match (any type).
@@ -205,7 +202,6 @@ export const leagueGameProcessor: GameProcessor = {
 
 export const tftGameProcessor: GameProcessor = {
 	gameName: 'TFT',
-	isEnabled: (server) => server.tfttoggle,
 	getPUUID: (player) => player.tftpuuid,
 	getLastGameId: (player) => player.lastTFTGameID,
 	getLastMatches: (puuid, region) => getLastTFTMatch(puuid, region),
@@ -213,9 +209,6 @@ export const tftGameProcessor: GameProcessor = {
 };
 
 export async function processGameType(server: ServerInfo, players: PlayerInfo[], processor: GameProcessor, firstRun: boolean): Promise<void> {
-	if (!processor.isEnabled(server)) {
-		return;
-	}
 	logger.info(`ℹ️ Starting ${processor.gameName} tracking for server ${server.serverid}...`);
 
 	const matchRequests = players.map(player => {
