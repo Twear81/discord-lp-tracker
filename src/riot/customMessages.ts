@@ -1,6 +1,6 @@
-import { RiotAPITypes } from "@fightmegg/riot-api";
 import { GameQueueType } from "../tracking/GameQueueType";
 import { getTeamLevelFromMatch, getTeamRankPositionFromLabel } from "./matchStats";
+import type { TFTParticipantDto, V5ParticipantDto } from "./twistedTypes";
 
 export const LATE_NIGHT_START_HOUR = 1;
 export const LATE_NIGHT_END_HOUR = 6;
@@ -293,8 +293,8 @@ export const TFT_MESSAGE_RULES: MessageRule<TFTMessageInfo>[] = [
 // ---------- Public API ----------
 
 export function generateLeagueCustomMessage(
-	participant: RiotAPITypes.MatchV5.ParticipantDTO,
-	allParticipants: RiotAPITypes.MatchV5.ParticipantDTO[],
+	participant: V5ParticipantDto,
+	allParticipants: V5ParticipantDto[],
 	gameEndTimestamp: number,
 	gameDurationSeconds: number,
 	lang: string,
@@ -325,7 +325,7 @@ export function generateLeagueCustomMessage(
 	return generateMessages(LEAGUE_MESSAGE_RULES, info);
 }
 
-export function generateTFTCustomMessage(participant: RiotAPITypes.TftMatch.ParticipantDTO, gameEndTimestamp: number, lang: string): string | undefined {
+export function generateTFTCustomMessage(participant: TFTParticipantDto, gameEndTimestamp: number, lang: string): string | undefined {
 	void lang;
 	const info: TFTMessageInfo = {
 		puuid: participant.puuid,

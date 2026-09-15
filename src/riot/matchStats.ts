@@ -1,13 +1,13 @@
-import { Dto } from "twisted";
-import { PingKeys, ParticipantWithPings } from "./types";
+import type { PingKeys, ParticipantWithPings } from "./types";
 import { computePlayerScore } from "./score";
+import type { TFTTraitDto, V5ParticipantDto } from "./twistedTypes";
 
-export function getMainTrait(traits: Dto.TraitDto[]): Array<string> {
+export function getMainTrait(traits: TFTTraitDto[]): Array<string> {
 	if (!traits || traits.length === 0) {
 		return [];
 	}
 
-	const activeTraits: Dto.TraitDto[] = traits.filter(trait => trait.tier_current > 0);
+	const activeTraits: TFTTraitDto[] = traits.filter(trait => trait.tier_current > 0);
 
 	if (activeTraits.length === 0) {
 		return [];
@@ -26,7 +26,7 @@ export function getMainTrait(traits: Dto.TraitDto[]): Array<string> {
 		style: topTrait.style ?? 0
 	};
 
-	const resultTraits: Dto.TraitDto[] = activeTraits.filter(trait =>
+	const resultTraits: TFTTraitDto[] = activeTraits.filter(trait =>
 		trait.num_units === topScore.num_units && (trait.style ?? 0) === topScore.style
 	);
 
@@ -101,11 +101,11 @@ export function getTeamRankPositionFromLabel(label: string, lang: string): numbe
 	return en[label] ?? -1;
 }
 
-export function getTeamLevelFromMatch(participants: Dto.MatchV5DTOs.ParticipantDto[], gameDurationSeconds: number, puuid: string, lang: string): string {
-	const participant = participants.find((p: Dto.MatchV5DTOs.ParticipantDto) => p.puuid === puuid);
+export function getTeamLevelFromMatch(participants: V5ParticipantDto[], gameDurationSeconds: number, puuid: string, lang: string): string {
+	const participant = participants.find((p: V5ParticipantDto) => p.puuid === puuid);
 	if (!participant) return "Unknown";
 
-	const scores = participants.map((p: Dto.MatchV5DTOs.ParticipantDto, index: number, array: Dto.MatchV5DTOs.ParticipantDto[]) => computePlayerScore(p, array, gameDurationSeconds));
+	const scores = participants.map((p: V5ParticipantDto, _index: number, array: V5ParticipantDto[]) => computePlayerScore(p, array, gameDurationSeconds));
 
 	const playerTeamId = participant.teamId;
 	const teammateIndex: Array<number> = [];

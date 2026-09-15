@@ -1,14 +1,11 @@
 import { Constants } from "twisted";
 import { AppError, ErrorTypes } from "../error/error";
 import logger from "../logger/logger";
+import type { AccountCluster, Region, RegionGroup } from "./twistedTypes";
 
-// Twisted replaces the @fightmegg/riot-api PlatformId enum. The mapping
-// stays the same in spirit (EUW -> EUROPE cluster, EUW -> EUW1 platform)
-// but the value names come from twisted's Constants.Regions / RegionGroups.
-
-// Cluster routing (used by MatchV5 and TftMatch — region groups like EUROPE/AMERICAS).
-export function getPlatformIdFromRegionString(region: string): Constants.RegionGroups {
-	const mapping: Record<string, Constants.RegionGroups> = {
+// Cluster routing (used by MatchV5 and TftMatch).
+export function getPlatformIdFromRegionString(region: string): RegionGroup {
+	const mapping: Record<string, RegionGroup> = {
 		"EUW": Constants.RegionGroups.EUROPE,
 		"NA": Constants.RegionGroups.AMERICAS,
 	};
@@ -20,15 +17,14 @@ export function getPlatformIdFromRegionString(region: string): Constants.RegionG
 	return result;
 }
 
-// Account-V1 cluster routing. Same mapping as above but Account-V1 doesn't
-// accept SEA, so the return type is narrowed to AccountAPIRegionGroups.
-export function getAccountClusterFromRegionString(region: string): Constants.AccountAPIRegionGroups {
-	return getPlatformIdFromRegionString(region) as Constants.AccountAPIRegionGroups;
+// Account-V1 cluster routing. Same mapping as above, narrowed to AccountCluster.
+export function getAccountClusterFromRegionString(region: string): AccountCluster {
+	return getPlatformIdFromRegionString(region) as AccountCluster;
 }
 
-// Platform IDs (used by League-V4 and TftLeague-V1 — EUW1/NA1).
-export function getLolRegionFromRegionString(region: string): Constants.Regions {
-	const mapping: Record<string, Constants.Regions> = {
+// Platform IDs (used by League-V4 and TftLeague-V1).
+export function getLolRegionFromRegionString(region: string): Region {
+	const mapping: Record<string, Region> = {
 		"EUW": Constants.Regions.EU_WEST,
 		"NA": Constants.Regions.AMERICA_NORTH,
 	};

@@ -1,4 +1,4 @@
-import { RiotAPITypes } from "@fightmegg/riot-api";
+import type { V5ParticipantDto } from "./twistedTypes";
 
 type RoleData = Record<string, number>;
 type RoleBasedData = Record<string, RoleData>;
@@ -84,8 +84,8 @@ const targetStatsByRole: RoleBasedData = {
 };
 
 export function computePlayerScore(
-	player: RiotAPITypes.MatchV5.ParticipantDTO,
-	allPlayers: RiotAPITypes.MatchV5.ParticipantDTO[],
+	player: V5ParticipantDto,
+	allPlayers: V5ParticipantDto[],
 	gameDurationSeconds: number,
 ): number {
 	const minutes = gameDurationSeconds / 60;

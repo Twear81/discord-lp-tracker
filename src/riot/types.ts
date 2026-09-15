@@ -1,5 +1,5 @@
-import { Dto } from "twisted";
-import { GameQueueType } from "../tracking/GameQueueType";
+import type { GameQueueType } from "../tracking/GameQueueType";
+import type { TFTTraitDto, TFTUnitDto, V5ParticipantDto } from "./twistedTypes";
 
 export type PingKeys =
 	| "basicPings"
@@ -16,7 +16,7 @@ export type PingKeys =
 	| "visionClearedPings"
 	| "visionPings";
 
-export type ParticipantWithPings = Dto.MatchV5DTOs.ParticipantDto & {
+export type ParticipantWithPings = V5ParticipantDto & {
 	[key in PingKeys]?: number;
 };
 
@@ -53,8 +53,8 @@ export interface PlayerTFTGameInfo {
 	totalDamageToPlayers: number;
 	goldLeft: number;
 	participantNumber: number;
-	traits: Dto.TraitDto[];
-	units: Dto.UnitDto[];
+	traits: TFTTraitDto[];
+	units: TFTUnitDto[];
 	win: boolean;
 	queueType: GameQueueType;
 	customMessage: string | undefined;

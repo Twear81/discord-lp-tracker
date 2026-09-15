@@ -1,4 +1,3 @@
-import { Dto } from "twisted";
 import { AppError, ErrorTypes } from "../error/error";
 import { GameQueueType } from "../tracking/GameQueueType";
 import logger from "../logger/logger";
@@ -8,6 +7,7 @@ import { PlayerLeagueGameInfo } from "./types";
 import { computePlayerScore } from "./score";
 import { getTotalPings, getTeamLevelFromMatch } from "./matchStats";
 import { generateLeagueCustomMessage } from "./customMessages";
+import type { AccountDto, MatchV5MatchDto, MatchQueryV5Query, SummonerLeagueDto, V5ParticipantDto } from "./twistedTypes";
 
 // Local cache TTLs mirror the old @fightmegg/riot-api config.byMethod values.
 const TTL = {
@@ -19,7 +19,7 @@ const TTL = {
 } as const;
 
 // Account-V1: getByRiotId(gameName, tagLine, region) -> ApiResponseDTO<AccountDto>
-export async function getSummonerByName(accountName: string, tag: string, region: string): Promise<Dto.AccountDto> {
+export async function getSummonerByName(accountName: string, tag: string, region: string): Promise<AccountDto> {
 	try {
 		const cluster = getAccountClusterFromRegionString(region);
 		return await withCache(
@@ -37,7 +37,7 @@ export async function getSummonerByName(accountName: string, tag: string, region
 }
 
 // Account-V1: getByPUUID(puuid, region) -> ApiResponseDTO<AccountDto>
-export async function getAccountByPUUID(puuid: string, region: string): Promise<Dto.AccountDto> {
+export async function getAccountByPUUID(puuid: string, region: string): Promise<AccountDto> {
 	try {
 		const cluster = getAccountClusterFromRegionString(region);
 		return await withCache(
@@ -55,7 +55,7 @@ export async function getAccountByPUUID(puuid: string, region: string): Promise<
 }
 
 // MatchV5: get(matchId, region) -> ApiResponseDTO<MatchV5DTOs.MatchDto>
-export async function getGameDetail(gameID: string, region: string): Promise<Dto.MatchV5DTOs.MatchDto> {
+export async function getGameDetail(gameID: string, region: string): Promise<MatchV5MatchDto> {
 	try {
 		const cluster = getPlatformIdFromRegionString(region);
 		return await withCache(
@@ -74,7 +74,7 @@ export async function getGameDetail(gameID: string, region: string): Promise<Dto
 
 export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID: string, region: string, lang: string): Promise<PlayerLeagueGameInfo> {
 	try {
-		const gameDetail: Dto.MatchV5DTOs.MatchDto = await getGameDetail(gameID, region);
+		const gameDetail: MatchV5MatchDto = await getGameDetail(gameID, region);
 		const { info: { gameDuration, participants, gameEndTimestamp, queueId } } = gameDetail;
 
 		let queueType: GameQueueType;
@@ -95,7 +95,7 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 				throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `Queue type not found for queueId:${queueId} for game:${gameID}`);
 		}
 
-		const participant = participants.find(p => p.puuid === puuid);
+		const participant: V5ParticipantDto | undefined = participants.find((p: V5ParticipantDto) => p.puuid === puuid);
 		if (!participant) {
 			throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No participant found for player:${puuid} in game:${gameID}`);
 		}
@@ -109,7 +109,7 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 			pings: getTotalPings(participant),
 			scoreRating: computePlayerScore(participant, participants, gameDuration),
 			teamRank: getTeamLevelFromMatch(participants, gameDuration, puuid, lang),
-			participantNumber: participants.findIndex(p => p.puuid === puuid) + 1,
+			participantNumber: participants.findIndex((p: V5ParticipantDto) => p.puuid === puuid) + 1,
 			gameEndTimestamp,
 			assists: participant.assists,
 			deaths: participant.deaths,
@@ -132,16 +132,16 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 }
 
 // MatchV5: list(puuid, region, query) -> ApiResponseDTO<string[]>
-// Cached 5s (matches the original GET_IDS_BY_PUUID TTL) to dedupe when
-// the tracking loop calls several times for the same player in a burst.
+// Cached 5s to dedupe rapid polls of the same player.
 export async function getLastRankedLeagueMatch(puuid: string, region: string): Promise<string[]> {
 	try {
 		const cluster = getPlatformIdFromRegionString(region);
+		const query: MatchQueryV5Query = { count: 1 };
 		return await withCache(
 			`matchV5|list|${puuid}|${cluster}`,
 			TTL.MATCH_IDS_MS,
 			() => withRetryOnDuplicateJob(() => limitedRequest(async () => {
-				const { response } = await lolApi.MatchV5.list(puuid, cluster, { count: 1 });
+				const { response } = await lolApi.MatchV5.list(puuid, cluster, query);
 				return response;
 			})),
 		);
@@ -152,7 +152,7 @@ export async function getLastRankedLeagueMatch(puuid: string, region: string): P
 }
 
 // League-V4: byPUUID(puuid, region) -> ApiResponseDTO<SummonerLeagueDto[]>
-export async function getPlayerRankInfo(puuid: string, region: string): Promise<Dto.SummonerLeagueDto[]> {
+export async function getPlayerRankInfo(puuid: string, region: string): Promise<SummonerLeagueDto[]> {
 	try {
 		const lolRegion = getLolRegionFromRegionString(region);
 		return await withCache(
