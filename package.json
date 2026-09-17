@@ -18,9 +18,6 @@
     "url": "https://github.com/Twear81/lp-tracker/issues"
   },
   "homepage": "https://github.com/Twear81/lp-tracker#readme",
-  "overrides": {
-    "@ballaual/riot-rate-limiter": "git+https://github.com/Twear81/riot-rate-limiter.git"
-  },
   "dependencies": {
     "bottleneck": "^2.19.5",
     "discord.js": "^14.25.1",
