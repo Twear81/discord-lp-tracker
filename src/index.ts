@@ -1,7 +1,6 @@
 
 import { CacheType, ChatInputCommandInteraction, Client, Events, GatewayIntentBits, Guild, MessageFlags } from "discord.js";
 import cron from "node-cron";
-import axios from "axios";
 import { promises as fs } from "fs";
 import path from "path";
 import { inspect } from "util";
@@ -180,11 +179,15 @@ const updateTFTTacticianFile = async () => {
 		logger.info(`🆕 New version found! Updating from ${currentVersion} to ${latestVersion}.`);
 
 		const newTacticianDataUrl = `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/data/en_US/tft-tactician.json`;
-		const response = await axios.get(newTacticianDataUrl);
+		const tacticianResponse = await fetch(newTacticianDataUrl);
+		if (!tacticianResponse.ok) {
+			throw new Error(`DDragon tactician fetch failed: ${tacticianResponse.status} ${tacticianResponse.statusText}`);
+		}
+		const tacticianBody = await tacticianResponse.json() as { data: Record<string, unknown> };
 
 		const updatedData = {
 			version: latestVersion,
-			data: response.data.data,
+			data: tacticianBody.data,
 		};
 
 		await fs.writeFile(TACTICIAN_FILE_PATH, JSON.stringify(updatedData));
