@@ -15,12 +15,14 @@ The bot uses Riot APIs:
 
 ### 🛠️ Technologies
 The bot is built using:
-- **Node.js**
-- **TypeScript**
+- **Node.js 22**
+- **TypeScript** (strict mode)
 - **discord.js**
-- **SQLite3**
-- **Sequelize**
-- **[twisted](https://github.com/twirkabir/twisted)** (Riot API client)
+- **SQLite3** via **Sequelize**
+- **[twisted](https://github.com/twirkabir/twisted)** — Riot API client
+- **node-cron** — scheduled jobs
+- **bottleneck** — per-key rate-limiting on Riot API calls
+- **winston** + **winston-daily-rotate-file** — rotating logs
 
 ## 🚀 Features
 - ✅ Real-time match tracking (SoloQ, Flex, Clash, Ranked 5v5, TFT)

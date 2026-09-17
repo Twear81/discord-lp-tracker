@@ -14,7 +14,7 @@ Bot Discord qui suit l'historique de parties **League of Legends** et **Teamfigh
 - **node-cron** — tâches planifiées
 - **winston** + **winston-daily-rotate-file** — logs rotatifs
 - **bottleneck** — rate-limit des appels Riot API
-- **axios** + **dotenv**
+- **dotenv** — chargement des secrets depuis `.env`
 - Build: **tsup** (minify). Dev: **tsx watch**. Lint: **ESLint** flat config + typescript-eslint
 
 > **Note Riot API** : la lib `twisted` remplace l'ancien wrapper `@fightmegg/riot-api`. Deux clés sont toujours nécessaires : `RIOT_API` (LoL + Account-V1) et `RIOT_API_TFT` (TFT + Account-V1) — l'Account-V1 retourne des PUUIDs distincts par clé, et `/addplayer` stocke les deux dans `puuid` et `tftpuuid`.
@@ -72,7 +72,7 @@ src/
 │   ├── databaseHelper.ts # Toutes les queries (CRUD players/servers, getAllServer, listAllPlayerForSpecificServer, etc.)
 │   └── init_database.ts  # sequelize.sync + backfill des tables de queue
 ├── riot/
-│   ├── config.ts         # 2× RiotAPI (LoL & TFT) + Bottleneck limiter + cache local TTL
+│   ├── config.ts         # 4 clients twisted (LolApi / TftApi / 2× RiotApi Account) + Bottleneck limiter + cache local TTL
 │   ├── leagueApi.ts      # Wrappers LoL (summoner, league, matchv5)
 │   ├── tftApi.ts         # Wrappers TFT
 │   ├── matchStats.ts     # Extraction des stats d'une partie
@@ -110,6 +110,7 @@ Fichiers à la racine: `tft-tactician.json` (cache local des tacticiens TFT, MAJ
   - Tables de queue (`SoloQ`, `FlexQ`, `ClashQ`, `Ranked5v5`, `SoloTFT`, `DoubleTFT`) — `hasOne` depuis Player, stockent `currentRank/Tier/LP`, `oldRank/Tier/LP`, et `lastDay*` pour le récap quotidien.
   - `LeagueGame` / `TFTGame` — `hasMany` depuis Player, snapshot détaillé par partie (KDA, CS, score, queueType, lpGain, rank/tier/lp before/after, etc.).
 - Relations en **`CASCADE`** sur la `playerId`: supprimer un Player supprime toutes ses games et entrées de queue.
+- SQLite désactive les FK par défaut — `initDB()` exécute `PRAGMA foreign_keys = ON;` avant le `sync()` pour que les `onDelete: 'CASCADE'` soient respectés.
 - **Init**: `initDB()` fait `sequelize.sync({ force: false })` puis `backfillQueueTables()` pour créer les entrées de queue manquantes pour les joueurs existants (utile après ajout d'un nouveau type de queue).
 - **`Player.lastGameID` / `lastTFTGameID`** servent de pointeur "dernière partie connue" pour ne pas retraiter les anciennes games à chaque cycle.
 
