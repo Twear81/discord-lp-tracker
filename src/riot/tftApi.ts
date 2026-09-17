@@ -12,7 +12,10 @@ import type { MatchTFTDto, TFTAccountDto, TFTLeagueEntryDto, TFTParticipantDto }
 
 // Riot's TFT companion JSON includes `item_ID` (the little legend skin id)
 // but twisted's typed wrapper only exposes content_ID / skin_ID / species.
-// Accessing `item_ID` requires a local widening cast at the callsite.
+// Accessing `item_ID` therefore requires a local widening cast at the
+// callsite. The cast widens *both* the type and the optionality: the API
+// sometimes omits `companion` entirely, so we degrade to skin 0 instead of
+// letting `companion.item_ID` throw a TypeError mid-game-processing.
 type CompanionWithItemId = { item_ID: number };
 
 // Account-V1: getByRiotId(gameName, tagLine, region) -> ApiResponseDTO<AccountDto>
@@ -69,12 +72,13 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 		throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `No participant found for player ${puuid} in game ${gameID}`);
 	}
 
-	const companion = participant.companion as unknown as CompanionWithItemId;
+	const companion = participant.companion as unknown as CompanionWithItemId | undefined;
+	const companionItemId = companion?.item_ID ?? 0;
 
 	return {
 		gameEndTimestamp: game_datetime,
 		gameDurationSeconds: game_length,
-		littleLegendIconUrl: await getLittleLegendIconUrl(companion.item_ID),
+		littleLegendIconUrl: await getLittleLegendIconUrl(companionItemId),
 		placement: participant.placement,
 		mainTraits: getMainTrait(participant.traits),
 		level: participant.level,
