@@ -46,7 +46,11 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 			getSummonerByName(accountname, tag, region),
 			getTFTSummonerByName(accountname, tag, region),
 		]);
-		if (!summoner.puuid || !summonerTFT) {
+		// `summonerTFT?.puuid` covers both the (rare) case of a malformed Riot
+		// response where `summonerTFT` is null/undefined, and a puuid field
+		// that came back as an empty string. The TS type of `summonerTFT` is
+		// non-nullable but the runtime value is not formally guaranteed.
+		if (!summoner.puuid || !summonerTFT?.puuid) {
 			throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, NOT_FOUND_ERROR);
 		}
 
