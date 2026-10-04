@@ -114,7 +114,10 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
 		gameDetails = await getTFTGameDetailForCurrentPlayer(player.tftpuuid, matchId, player.region, server.lang);
 	} catch (error) {
 		if (error instanceof AppError && error.type === ErrorTypes.GAMEDETAIL_NOT_FOUND && error.message.includes("TFT Queue type not found")) {
+			// Match is not in one of our tracked queues (e.g. normal TFT). Update
+			// lastTFTGameID so we don't re-fetch the same match every 5-minute cycle.
 			logger.info(`[TFT] Skipping non-tracked queue match ${matchId} for player ${player.gameName} (Queue ID not recognized).`);
+			await updatePlayerLastGameId(server.serverid, player.tftpuuid, matchId, ManagedGameQueueType.TFT);
 			return;
 		}
 		throw error;
