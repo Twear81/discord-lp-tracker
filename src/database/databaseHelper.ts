@@ -607,14 +607,16 @@ export const saveLeagueGameToDatabase = async (
 			championId: gameInfo.championId,
 			queueType: gameInfo.queueType,
 			lpGain,
-			oldRank,
-			oldTier,
-			oldLP,
-			currentRank,
-			currentTier,
-			currentLP,
+			// The model columns are rankBefore/tierBefore/... (see gameModel.ts);
+			// passing oldRank/currentRank here was silently dropped by Sequelize.
+			rankBefore: oldRank,
+			tierBefore: oldTier,
+			lpBefore: oldLP,
+			rankAfter: currentRank,
+			tierAfter: currentTier,
+			lpAfter: currentLP,
 		});
-		
+
 		if (createdGame && createdGame.dataValues && createdGame.dataValues.id) {
 			logger.info(`✅ League game saved to database for playerId ${playerId}, gameId: ${createdGame.dataValues.id}`);
 		} else {
@@ -663,12 +665,12 @@ export const saveTFTGameToDatabase = async (
 			mainTraits: gameInfo.mainTraits.join(', '),
 			queueType: gameInfo.queueType,
 			lpGain,
-			oldRank,
-			oldTier,
-			oldLP,
-			currentRank,
-			currentTier,
-			currentLP,
+			rankBefore: oldRank,
+			tierBefore: oldTier,
+			lpBefore: oldLP,
+			rankAfter: currentRank,
+			tierAfter: currentTier,
+			lpAfter: currentLP,
 		});
 		
 		if (createdGame && createdGame.dataValues && createdGame.dataValues.id) {
