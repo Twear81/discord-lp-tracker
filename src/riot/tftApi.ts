@@ -25,7 +25,7 @@ export async function getTFTSummonerByName(accountName: string, tag: string, reg
 	try {
 		const platform = regionToPlatform(region);
 		const cluster = Constants.regionToRegionGroupForAccountAPI(platform);
-		return await riotCached(
+		return await riotCached('tft',
 			`account|getByRiotId|${accountName}|${tag}|${cluster}`,
 			TTL.ACCOUNT_BY_RIOT_ID_MS,
 			() => riotApiTft.Account.getByRiotId(accountName, tag, cluster),
@@ -40,7 +40,7 @@ export async function getTFTSummonerByName(accountName: string, tag: string, reg
 export async function getTFTGameDetail(gameID: string, region: string): Promise<MatchTFTDto> {
 	try {
 		const cluster = Constants.regionToRegionGroup(regionToPlatform(region));
-		return await riotCached(
+		return await riotCached('tft',
 			`tftMatch|getById|${gameID}|${cluster}`,
 			TTL.MATCH_BY_ID_MS,
 			() => tftApi.Match.get(gameID, cluster),
@@ -101,7 +101,7 @@ export async function getLastTFTMatch(puuid: string, region: string): Promise<st
 	try {
 		const cluster = Constants.regionToRegionGroup(regionToPlatform(region));
 		const query = { count: 1 };
-		return await riotCachedWithRetry(
+		return await riotCachedWithRetry('tft',
 			`tftMatch|list|${puuid}|${cluster}`,
 			TTL.MATCH_IDS_MS,
 			() => tftApi.Match.list(puuid, cluster, query),
@@ -116,7 +116,7 @@ export async function getLastTFTMatch(puuid: string, region: string): Promise<st
 export async function getTFTPlayerRankInfo(puuid: string, region: string): Promise<TFTLeagueEntryDto[]> {
 	try {
 		const platform = regionToPlatform(region);
-		return await riotCached(
+		return await riotCached('tft',
 			`tftLeague|getByPUUID|${puuid}|${platform}`,
 			TTL.LEAGUE_ENTRIES_MS,
 			() => tftApi.League.getByPUUID(puuid, platform),

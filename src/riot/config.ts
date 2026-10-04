@@ -27,16 +27,28 @@ export const riotApiTft = new RiotApi({ key: process.env.RIOT_API_TFT!, rateLimi
 // Bottleneck configuration for Riot's per-key rate limits.
 // Twisted already handles 429/503 with Retry-After, but Bottleneck prevents
 // the burst that would trigger those responses in the first place.
-const limiter = new Bottleneck({
+//
+// Riot allocates the 100 req / 2 min quota per API key, and the bot holds
+// two keys (RIOT_API for LoL, RIOT_API_TFT for TFT). One limiter per key —
+// sharing a single one would halve the total available throughput.
+const makeLimiter = () => new Bottleneck({
 	minTime: 50, // 1 request per 50ms (ensures < 20 requests per second)
 	reservoir: 100, // Max 100 requests in 2 minutes
 	reservoirRefreshAmount: 100, // Reset to 100 requests
 	reservoirRefreshInterval: 120000, // Every 2 minutes
 });
 
-// Wrapper that schedules the call through Bottleneck without altering its return value.
-export async function limitedRequest<T>(apiCallFn: () => Promise<T>): Promise<T> {
-	const response = await limiter.schedule(() => apiCallFn());
+const limiters = {
+	lol: makeLimiter(), // RIOT_API key
+	tft: makeLimiter(), // RIOT_API_TFT key
+} as const;
+
+export type RiotKey = keyof typeof limiters;
+
+// Wrapper that schedules the call through the key's Bottleneck without
+// altering its return value.
+export async function limitedRequest<T>(key: RiotKey, apiCallFn: () => Promise<T>): Promise<T> {
+	const response = await limiters[key].schedule(() => apiCallFn());
 	return response as T;
 }
 
@@ -99,12 +111,13 @@ export const TTL = {
 // field); the helper unwraps it and returns just the payload, cached
 // under `key` for `ttlMs` and throttled by Bottleneck.
 export async function riotCached<T>(
-	key: string,
+	key: RiotKey,
+	cacheKey: string,
 	ttlMs: number,
 	fn: () => Promise<{ response: T }>,
 ): Promise<T> {
-	return withCache(key, ttlMs, async () => {
-		const { response } = await limitedRequest(fn);
+	return withCache(cacheKey, ttlMs, async () => {
+		const { response } = await limitedRequest(key, fn);
 		return response;
 	});
 }
@@ -114,12 +127,13 @@ export async function riotCached<T>(
 // riotApi.TftMatch.list) where the tracking cron's overlap can race
 // the scheduler.
 export async function riotCachedWithRetry<T>(
-	key: string,
+	key: RiotKey,
+	cacheKey: string,
 	ttlMs: number,
 	fn: () => Promise<{ response: T }>,
 ): Promise<T> {
-	return withCache(key, ttlMs, () =>
-		withRetryOnDuplicateJob(() => limitedRequest(fn)).then(r => r.response),
+	return withCache(cacheKey, ttlMs, () =>
+		withRetryOnDuplicateJob(() => limitedRequest(key, fn)).then(r => r.response),
 	);
 }
 

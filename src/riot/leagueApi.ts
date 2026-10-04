@@ -15,7 +15,7 @@ export async function getSummonerByName(accountName: string, tag: string, region
 	try {
 		const platform = regionToPlatform(region);
 		const cluster = Constants.regionToRegionGroupForAccountAPI(platform);
-		return await riotCached(
+		return await riotCached('lol',
 			`account|getByRiotId|${accountName}|${tag}|${cluster}`,
 			TTL.ACCOUNT_BY_RIOT_ID_MS,
 			() => riotApiLol.Account.getByRiotId(accountName, tag, cluster),
@@ -31,7 +31,7 @@ export async function getAccountByPUUID(puuid: string, region: string): Promise<
 	try {
 		const platform = regionToPlatform(region);
 		const cluster = Constants.regionToRegionGroupForAccountAPI(platform);
-		return await riotCached(
+		return await riotCached('lol',
 			`account|getByPUUID|${puuid}|${cluster}`,
 			TTL.ACCOUNT_BY_PUUID_MS,
 			() => riotApiLol.Account.getByPUUID(puuid, cluster),
@@ -46,7 +46,7 @@ export async function getAccountByPUUID(puuid: string, region: string): Promise<
 export async function getGameDetail(gameID: string, region: string): Promise<MatchV5MatchDto> {
 	try {
 		const cluster = Constants.regionToRegionGroup(regionToPlatform(region));
-		return await riotCached(
+		return await riotCached('lol',
 			`matchV5|getById|${gameID}|${cluster}`,
 			TTL.MATCH_BY_ID_MS,
 			() => lolApi.MatchV5.get(gameID, cluster),
@@ -123,7 +123,7 @@ export async function getLastRankedLeagueMatch(puuid: string, region: string): P
 	try {
 		const cluster = Constants.regionToRegionGroup(regionToPlatform(region));
 		const query = { count: 1 };
-		return await riotCachedWithRetry(
+		return await riotCachedWithRetry('lol',
 			`matchV5|list|${puuid}|${cluster}`,
 			TTL.MATCH_IDS_MS,
 			() => lolApi.MatchV5.list(puuid, cluster, query),
@@ -138,7 +138,7 @@ export async function getLastRankedLeagueMatch(puuid: string, region: string): P
 export async function getPlayerRankInfo(puuid: string, region: string): Promise<SummonerLeagueDto[]> {
 	try {
 		const platform = regionToPlatform(region);
-		return await riotCached(
+		return await riotCached('lol',
 			`league|byPUUID|${puuid}|${platform}`,
 			TTL.LEAGUE_ENTRIES_MS,
 			() => lolApi.League.byPUUID(puuid, platform),

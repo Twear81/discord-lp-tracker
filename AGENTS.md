@@ -127,9 +127,9 @@ Deux clients distincts dans `src/riot/config.ts`:
 - `GET_MATCH_BY_ID`: 30 000
 - `GET_IDS_BY_PUUID` (matchlist): 5 000
 
-**Rate-limit** via `Bottleneck` (`limitedRequest()` wrapper):
+**Rate-limit** via `Bottleneck` (`limitedRequest(key, fn)` wrapper) — **un limiter par clé** (`lol` = RIOT_API, `tft` = RIOT_API_TFT), soit 2 × 100 req / 2 min au total:
 - `minTime: 50ms` (max 20 req/s)
-- `reservoir: 100` requêtes
+- `reservoir: 100` requêtes par limiter
 - refresh toutes les **120 000ms** (2 min)
 
 Tous les appels Riot doivent passer par `limitedRequest(() => api.method(...))`.
