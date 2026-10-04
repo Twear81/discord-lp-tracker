@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { getServer, listAllPlayerForSpecificServer, PlayerInfo } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
+import { getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
@@ -13,25 +14,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		const serverInfo = await getServer(serverId);
 		const accountNameTagPlayerList: PlayerInfo[] = await listAllPlayerForSpecificServer(serverId);
 
-		const lang = serverInfo.lang;
-		const translations = {
-			fr: {
-				title: "📋 Liste des joueurs suivis",
-				description: "Voici la liste des joueurs actuellement suivis :",
-				playerLine: (index: number, name: string, region: string) => `**${index}.** 🎮 **${name}**\n🌍 Région: **${region}**`,
-				total: (count: number) => `Total: ${count} joueur(s)`,
-				noPlayers: "📭 Aucun joueur n'est suivi pour le moment !"
-			},
-			en: {
-				title: "📋 List of Tracked Players",
-				description: "Here is the list of currently tracked players:",
-				playerLine: (index: number, name: string, region: string) => `**${index}.** 🎮 **${name}**\n🌍 Region: **${region}**`,
-				total: (count: number) => `Total: ${count} player(s)`,
-				noPlayers: "📭 No players are being tracked at the moment!"
-			}
-		};
-	
-		const t = translations[lang as keyof typeof translations];
+		const t = getTranslations(serverInfo.lang).list;
 
 		if (accountNameTagPlayerList.length === 0) {
 			await interaction.reply({

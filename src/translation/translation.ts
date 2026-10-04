@@ -1,5 +1,40 @@
 import { GameQueueType } from "../tracking/GameQueueType";
 
+// Emoji par tier, partagé par les implémentations fr/en de leaderboard.playerLine.
+const rankEmojis: Record<string, string> = {
+    "IRON": "⬛",
+    "BRONZE": "🟫",
+    "SILVER": "⬜",
+    "GOLD": "🟨",
+    "PLATINUM": "🟩",
+    "EMERALD": "💚",
+    "DIAMOND": "🔷",
+    "MASTER": "🟣",
+    "GRANDMASTER": "🔴",
+    "CHALLENGER": "👑"
+};
+
+export interface LeaderboardTranslations {
+    description: string;
+    playerLine: (index: number, name: string, tag: string, region: string, rank: string, tier: string, lp: number) => string;
+    total: (count: number) => string;
+    noPlayers: string;
+}
+
+export interface ListTranslations {
+    title: string;
+    description: string;
+    playerLine: (index: number, name: string, region: string) => string;
+    total: (count: number) => string;
+    noPlayers: string;
+}
+
+export interface MonthlyRecapCommandTranslations {
+    futureError: string;
+    success: (month: number, year: number) => string;
+    failure: string;
+}
+
 export interface GameTranslations {
     // Commun
     title: string;
@@ -41,6 +76,12 @@ export interface GameTranslations {
     queueTypeTFTDouble: string;
     goldLeft: string;
     avgPlacement: string;
+
+    // Commandes (/leaderboard, /list, /monthlyrecap)
+    leaderboardTitles: Record<GameQueueType, string>;
+    leaderboard: LeaderboardTranslations;
+    list: ListTranslations;
+    monthlyRecapCommand: MonthlyRecapCommandTranslations;
 }
 
 const allTranslations = {
@@ -99,6 +140,35 @@ const allTranslations = {
         queueTypeTFTDouble: "TFT Double Classé",
         goldLeft: "💰 Or Restant",
         avgPlacement: "🏆 Placement moyen",
+
+        // Commandes
+        leaderboardTitles: {
+            [GameQueueType.RANKED_SOLO_5x5]: "🏆 Classement SoloQ",
+            [GameQueueType.RANKED_FLEX_SR]: "🏆 Classement FlexQ",
+            [GameQueueType.RANKED_CLASH]: "🏆 Classement Clash",
+            [GameQueueType.RANKED_5v5]: "🏆 Classement 5v5",
+            [GameQueueType.RANKED_TFT]: "🏆 Classement TFT",
+            [GameQueueType.RANKED_TFT_DOUBLE_UP]: "🏆 Classement TFT Double",
+        },
+        leaderboard: {
+            description: "Voici les joueurs classés du plus fort au plus faible :",
+            playerLine: (index: number, name: string, tag: string, region: string, rank: string, tier: string, lp: number) =>
+                `**#${index}** **${name}#${tag}**\n🌍 **Région:** ${region} |  **Rang:** ${rankEmojis[tier] || "🏅"} ${tier} ${rank} | 🔥 **LP:** ${lp}`,
+            total: (count: number) => `Total: ${count} joueur(s) classés`,
+            noPlayers: "📭 Aucun joueur classé pour le moment !",
+        },
+        list: {
+            title: "📋 Liste des joueurs suivis",
+            description: "Voici la liste des joueurs actuellement suivis :",
+            playerLine: (index: number, name: string, region: string) => `**${index}.** 🎮 **${name}**\n🌍 Région: **${region}**`,
+            total: (count: number) => `Total: ${count} joueur(s)`,
+            noPlayers: "📭 Aucun joueur n'est suivi pour le moment !",
+        },
+        monthlyRecapCommand: {
+            futureError: "❌ Vous ne pouvez pas générer un récapitulatif pour le futur !",
+            success: (month: number, year: number) => `✅ Récapitulatif mensuel pour ${month}/${year} généré avec succès !`,
+            failure: "❌ Échec de la génération du récapitulatif mensuel. Contactez le développeur.",
+        },
     },
 
     en: {
@@ -156,6 +226,35 @@ const allTranslations = {
         queueTypeTFTDouble: "TFT Double Ranked",
         goldLeft: "💰 Gold Left",
         avgPlacement: "🏆 Avg Placement",
+
+        // Commands
+        leaderboardTitles: {
+            [GameQueueType.RANKED_SOLO_5x5]: "🏆 SoloQ Leaderboard",
+            [GameQueueType.RANKED_FLEX_SR]: "🏆 FlexQ Leaderboard",
+            [GameQueueType.RANKED_CLASH]: "🏆 Clash Leaderboard",
+            [GameQueueType.RANKED_5v5]: "🏆 5v5 Leaderboard",
+            [GameQueueType.RANKED_TFT]: "🏆 TFT Leaderboard",
+            [GameQueueType.RANKED_TFT_DOUBLE_UP]: "🏆 TFT Double Leaderboard",
+        },
+        leaderboard: {
+            description: "Here are the players ranked from strongest to weakest:",
+            playerLine: (index: number, name: string, tag: string, region: string, rank: string, tier: string, lp: number) =>
+                `**#${index}** **${name}#${tag}**\n🌍 **Region:** ${region} | **Rank:** ${rankEmojis[tier] || "🏅"} ${tier} ${rank} | 🔥 **LP:** ${lp}`,
+            total: (count: number) => `Total: ${count} ranked players`,
+            noPlayers: "📭 No ranked players at the moment!",
+        },
+        list: {
+            title: "📋 List of Tracked Players",
+            description: "Here is the list of currently tracked players:",
+            playerLine: (index: number, name: string, region: string) => `**${index}.** 🎮 **${name}**\n🌍 Region: **${region}**`,
+            total: (count: number) => `Total: ${count} player(s)`,
+            noPlayers: "📭 No players are being tracked at the moment!",
+        },
+        monthlyRecapCommand: {
+            futureError: "❌ You cannot generate a recap for the future!",
+            success: (month: number, year: number) => `✅ Monthly recap for ${month}/${year} generated successfully!`,
+            failure: "❌ Failed to generate monthly recap. Contact the developer.",
+        },
     },
 } as const; // Utilisation de 'as const' pour TypeScript pour des types stricts
 

@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags, SlashCommandIntegerOption } from 'discord.js';
 import { getLangServer } from '../database/databaseHelper';
 import { generateMonthlyRecap } from '../tracking/monthlyRecap';
+import { getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
@@ -24,8 +25,10 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
     const serverId = interaction.guildId as string;
     let lang: string = 'en';
+    let t = getTranslations(lang);
     try {
         lang = await getLangServer(serverId);
+        t = getTranslations(lang);
 
 		const month = interaction.options.getInteger('month')!;
 		const year = interaction.options.getInteger('year')!;
@@ -36,11 +39,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		const currentMonth = currentDate.getMonth() + 1;
 
 		if (year > currentYear || (year === currentYear && month > currentMonth)) {
-			const errorMessage = lang === 'fr'
-				? '❌ Vous ne pouvez pas générer un récapitulatif pour le futur !'
-				: '❌ You cannot generate a recap for the future!';
 			await interaction.reply({
-				content: errorMessage,
+				content: t.monthlyRecapCommand.futureError,
 				flags: MessageFlags.Ephemeral,
 			});
 			return;
@@ -52,20 +52,14 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
 		await generateMonthlyRecap(month, year, serverId);
 
-		const successMessage = lang === 'fr'
-			? `✅ Récapitulatif mensuel pour ${month}/${year} généré avec succès !`
-			: `✅ Monthly recap for ${month}/${year} generated successfully!`;
-
 		await interaction.editReply({
-			content: successMessage,
+			content: t.monthlyRecapCommand.success(month, year),
 		});
 
 		logger.info(`✅ Monthly recap for ${month}/${year} sent successfully.`);
 	} catch (error) {
 		logger.error('❌ Failed to generate monthly recap:', error);
-		const errorMessage = lang === 'fr'
-			? '❌ Échec de la génération du récapitulatif mensuel. Contactez le développeur.'
-			: '❌ Failed to generate monthly recap. Contact the developer.';
+		const errorMessage = t.monthlyRecapCommand.failure;
 		try {
 			if (interaction.deferred || interaction.replied) {
 				await interaction.followUp({

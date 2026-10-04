@@ -2,6 +2,7 @@ import { SlashCommandBuilder, CommandInteraction, EmbedBuilder, MessageFlags } f
 import { getServer, listAllPlayerForQueueInfoForSpecificServer, listAllPlayerForSpecificServer, PlayerForQueueInfo, PlayerInfo, sortPlayersByRank } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
 import { GameQueueType } from '../tracking/GameQueueType';
+import { getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
@@ -61,87 +62,51 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 	}
 }
 
+enum QueueColor {
+	RANKED_SOLO_5x5 = 0x0099FF, // Bleu for SoloQ
+	RANKED_FLEX_SR = 0xFFD700,  // Gold for Flex
+	RANKED_CLASH = 0xE74C3C,    // Red for Clash
+	RANKED_5v5 = 0x2ECC71,      // Green for 5v5
+	RANKED_TFT = 0x8A2BE2       // Purple for TFT
+}
+
 const generateLeaderboardMessage = async (interaction: CommandInteraction, lang: string, playersInfos: PlayerInfo[], sortedPlayerForQueueInfos: PlayerForQueueInfo[], queueType: GameQueueType, isSecondMessage: boolean) => {
-	const rankEmojis: Record<string, string> = {
-		"IRON": "⬛",
-		"BRONZE": "🟫",
-		"SILVER": "⬜",
-		"GOLD": "🟨",
-		"PLATINUM": "🟩",
-		"EMERALD": "💚",
-		"DIAMOND": "🔷",
-		"MASTER": "🟣",
-		"GRANDMASTER": "🔴",
-		"CHALLENGER": "👑"
-	};
-	const titleMapFR: Record<GameQueueType, string> = {
-		[GameQueueType.RANKED_SOLO_5x5]: "🏆 Classement SoloQ",
-		[GameQueueType.RANKED_FLEX_SR]: "🏆 Classement FlexQ",
-		[GameQueueType.RANKED_CLASH]: "🏆 Classement Clash",
-		[GameQueueType.RANKED_5v5]: "🏆 Classement 5v5",
-		[GameQueueType.RANKED_TFT]: "🏆 Classement TFT",
-		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "🏆 Classement TFT Double",
-	};
-	const titleMapEN: Record<GameQueueType, string> = {
-		[GameQueueType.RANKED_SOLO_5x5]: "🏆 SoloQ Leaderboard",
-		[GameQueueType.RANKED_FLEX_SR]: "🏆 FlexQ Leaderboard",
-		[GameQueueType.RANKED_CLASH]: "🏆 Clash Leaderboard",
-		[GameQueueType.RANKED_5v5]: "🏆 5v5 Leaderboard",
-		[GameQueueType.RANKED_TFT]: "🏆 TFT Leaderboard",
-		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "🏆 TFT Double Leaderboard",
-	};
-
-	const translations = {
-		fr: {
-			title: titleMapFR[queueType],
-			description: "Voici les joueurs classés du plus fort au plus faible :",
-			playerLine: (index: number, name: string, tag: string, region: string, rank: string, tier: string, lp: number) =>
-				`**#${index}** **${name}#${tag}**\n🌍 **Région:** ${region} |  **Rang:** ${rankEmojis[tier] || "🏅"} ${tier} ${rank} | 🔥 **LP:** ${lp}`,
-			total: (count: number) => `Total: ${count} joueur(s) classés`,
-			noPlayers: "📭 Aucun joueur classé pour le moment !"
-		},
-		en: {
-			title: titleMapEN[queueType],
-			description: "Here are the players ranked from strongest to weakest:",
-			playerLine: (index: number, name: string, tag: string, region: string, rank: string, tier: string, lp: number) =>
-				`**#${index}** **${name}#${tag}**\n🌍 **Region:** ${region} | **Rank:** ${rankEmojis[tier] || "🏅"} ${tier} ${rank} | 🔥 **LP:** ${lp}`,
-			total: (count: number) => `Total: ${count} ranked players`,
-			noPlayers: "📭 No ranked players at the moment!"
-		}
-	};
-
-	const t = translations[lang as keyof typeof translations];
+	const t = getTranslations(lang);
 
 	if (sortedPlayerForQueueInfos.length === 0) {
-		return interaction.editReply({ content: t.noPlayers });
+		return interaction.editReply({ content: t.leaderboard.noPlayers });
 	}
 
-	enum QueueColor {
-		RANKED_SOLO_5x5 = 0x0099FF, // Bleu for SoloQ
-		RANKED_FLEX_SR = 0xFFD700,  // Gold for Flex
-		RANKED_CLASH = 0xE74C3C,    // Red for Clash
-		RANKED_5v5 = 0x2ECC71,      // Green for 5v5
-		RANKED_TFT = 0x8A2BE2       // Purple for TFT
-	}
+	// Join queue rows onto Player rows via a Map; skip (with a warning) any
+	// queue row whose Player no longer exists instead of crashing on a
+	// non-null assertion.
+	const playersById = new Map(playersInfos.map(player => [player.id, player]));
+	let rankIndex = 0;
+	const playerLines = sortedPlayerForQueueInfos.flatMap(player => {
+		const playerInfo = playersById.get(player.playerId);
+		if (!playerInfo) {
+			logger.warn(`No Player row for playerId ${player.playerId}, skipping its leaderboard entry.`);
+			return [];
+		}
+		rankIndex += 1;
+		return [t.leaderboard.playerLine(
+			rankIndex,
+			playerInfo.gameName,
+			playerInfo.tagLine,
+			playerInfo.region,
+			player.currentRank!,
+			player.currentTier!,
+			player.currentLP!
+		)];
+	}).join("\n\n");
 
 	const messageToDisplay = new EmbedBuilder()
-		.setTitle(t.title)
+		.setTitle(t.leaderboardTitles[queueType])
 		.setColor(QueueColor[queueType as keyof typeof QueueColor] || 0xFFFFFF) // default to white
 		.setDescription(
-			`${t.description}\n\n` +
-			sortedPlayerForQueueInfos.map((player, index) =>
-				t.playerLine(
-					index + 1,
-					playersInfos.find((value: PlayerInfo) => value.id === player.playerId)!.gameName,
-					playersInfos.find((value: PlayerInfo) => value.id === player.playerId)!.tagLine,
-					playersInfos.find((value: PlayerInfo) => value.id === player.playerId)!.region,
-					player.currentRank!,
-					player.currentTier!,
-					player.currentLP!
-				)
-			).join("\n\n")
+			`${t.leaderboard.description}\n\n${playerLines}`
 		)
-		.setFooter({ text: t.total(sortedPlayerForQueueInfos.length) })
+		.setFooter({ text: t.leaderboard.total(sortedPlayerForQueueInfos.length) })
 		.setTimestamp();
 
 	if (isSecondMessage) {
