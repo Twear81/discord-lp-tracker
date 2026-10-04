@@ -1,5 +1,5 @@
 import { TextChannel } from 'discord.js';
-import { getAllServer, getServer, listAllPlayerForSpecificServer, getLeagueGamesForPlayerInMonth, getTFTGamesForPlayerInMonth, LeagueGameInfo, TFTGameInfo } from '../database/databaseHelper';
+import { getAllServer, getServer, listAllPlayerForSpecificServer, getLeagueGamesForPlayersInMonth, getTFTGamesForPlayersInMonth, LeagueGameInfo, TFTGameInfo } from '../database/databaseHelper';
 import { GameQueueType } from './GameQueueType';
 import { PlayerInfo } from '../database/databaseHelper';
 import { client } from '../index';
@@ -58,13 +58,21 @@ export const generateMonthlyRecap = async (month: number, year: number, serverId
 				continue;
 			}
 
+			// Fetch the month's games once per game table for the whole server,
+			// then reuse the grouped maps for every queue type below.
+			const playerIds = players.map(player => player.id);
+			const [leagueGamesByPlayer, tftGamesByPlayer] = await Promise.all([
+				getLeagueGamesForPlayersInMonth(playerIds, month, year),
+				getTFTGamesForPlayersInMonth(playerIds, month, year),
+			]);
+
 			// Generate monthly recap for each queue type
-			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_SOLO_5x5);
-			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_FLEX_SR);
-			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_CLASH);
-			await generateLeagueMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_5v5);
-			await generateTFTMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_TFT);
-			await generateTFTMonthlyRecap(channel, players, month, year, server.lang, GameQueueType.RANKED_TFT_DOUBLE_UP);
+			await generateLeagueMonthlyRecap(channel, players, leagueGamesByPlayer, month, year, server.lang, GameQueueType.RANKED_SOLO_5x5);
+			await generateLeagueMonthlyRecap(channel, players, leagueGamesByPlayer, month, year, server.lang, GameQueueType.RANKED_FLEX_SR);
+			await generateLeagueMonthlyRecap(channel, players, leagueGamesByPlayer, month, year, server.lang, GameQueueType.RANKED_CLASH);
+			await generateLeagueMonthlyRecap(channel, players, leagueGamesByPlayer, month, year, server.lang, GameQueueType.RANKED_5v5);
+			await generateTFTMonthlyRecap(channel, players, tftGamesByPlayer, month, year, server.lang, GameQueueType.RANKED_TFT);
+			await generateTFTMonthlyRecap(channel, players, tftGamesByPlayer, month, year, server.lang, GameQueueType.RANKED_TFT_DOUBLE_UP);
 		}
 
 		logger.info(`✅ Monthly recap generation finished successfully.`);
@@ -77,6 +85,7 @@ export const generateMonthlyRecap = async (month: number, year: number, serverId
 const generateLeagueMonthlyRecap = async (
 	channel: TextChannel,
 	players: PlayerInfo[],
+	gamesByPlayer: Map<number, LeagueGameInfo[]>,
 	month: number,
 	year: number,
 	lang: string,
@@ -85,7 +94,7 @@ const generateLeagueMonthlyRecap = async (
 	const playerStats: MonthlyRecapStats[] = [];
 
 	for (const player of players) {
-		const games: LeagueGameInfo[] = await getLeagueGamesForPlayerInMonth(player.id, month, year);
+		const games: LeagueGameInfo[] = gamesByPlayer.get(player.id) ?? [];
 		
 		// Filter games by queue type
 		const filteredGames = games.filter(game => game.queueType === queueType.toString());
@@ -113,6 +122,7 @@ const generateLeagueMonthlyRecap = async (
 const generateTFTMonthlyRecap = async (
 	channel: TextChannel,
 	players: PlayerInfo[],
+	gamesByPlayer: Map<number, TFTGameInfo[]>,
 	month: number,
 	year: number,
 	lang: string,
@@ -121,7 +131,7 @@ const generateTFTMonthlyRecap = async (
 	const playerStats: MonthlyRecapStats[] = [];
 
 	for (const player of players) {
-		const games = await getTFTGamesForPlayerInMonth(player.id, month, year);
+		const games = gamesByPlayer.get(player.id) ?? [];
 		
 		// Filter games by queue type
 		const filteredGames = games.filter(game => game.queueType === queueType.toString());

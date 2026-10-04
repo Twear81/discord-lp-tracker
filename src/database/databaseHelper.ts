@@ -209,16 +209,19 @@ export const updatePlayerCurrentOrLastDayRank = async (serverId: string, puuid: 
 	await updatePlayerRank(playerToUpdate, isCurrent, rank, tier, leaguePoints);
 };
 
+// One model per tracked queue type — shared by the row lookups, the daily
+// reset and the batched list helpers below.
+const QUEUE_MODELS: Record<GameQueueType, typeof SoloQ> = {
+	[GameQueueType.RANKED_FLEX_SR]: FlexQ,
+	[GameQueueType.RANKED_SOLO_5x5]: SoloQ,
+	[GameQueueType.RANKED_CLASH]: ClashQ,
+	[GameQueueType.RANKED_5v5]: Ranked5v5,
+	[GameQueueType.RANKED_TFT]: SoloTFT,
+	[GameQueueType.RANKED_TFT_DOUBLE_UP]: DoubleTFT
+};
+
 const findPlayerToUpdate = async (existingPlayer: Model, queueType: GameQueueType): Promise<Model | null> => {
-	const queueModels = {
-		[GameQueueType.RANKED_FLEX_SR]: FlexQ,
-		[GameQueueType.RANKED_SOLO_5x5]: SoloQ,
-		[GameQueueType.RANKED_CLASH]: ClashQ,
-		[GameQueueType.RANKED_5v5]: Ranked5v5,
-		[GameQueueType.RANKED_TFT]: SoloTFT,
-		[GameQueueType.RANKED_TFT_DOUBLE_UP]: DoubleTFT
-	};
-	const model = queueModels[queueType];
+	const model = QUEUE_MODELS[queueType];
 	if (!model) {
 		logger.error(`❌ Unknown queue type: ${queueType}`);
 		return null;
@@ -309,28 +312,18 @@ export const updatePlayerInfoCurrentAndLastForQueueType = async (serverId: strin
 };
 
 export const resetLastDayOfAllPlayer = async (): Promise<void> => {
-	const existingPlayers = await Player.findAll();
-	for (const existingPlayer of existingPlayers) {
-		for (const queueType of Object.values(GameQueueType)) {
-			try {
-				const playerToUpdate = await findPlayerToUpdate(existingPlayer, queueType);
-				if (!playerToUpdate) continue;
-				await playerToUpdate.update({
-					lastDayWin: null,
-					lastDayLose: null,
-					lastDayRank: null,
-					lastDayTier: null,
-					lastDayLP: null,
-					lastDayDate: null,
-				});
-				logger.info(`Reset queue ${queueType} for ${existingPlayer.dataValues.puuid}`);
-			} catch (error) {
-				if (error instanceof AppError && error.type === ErrorTypes.PLAYER_NOT_FOUND) {
-					continue;
-				}
-				throw error;
-			}
-		}
+	// One bulk UPDATE per queue table instead of a findOne + update per
+	// player per queue — the reset targets every row anyway.
+	for (const model of Object.values(QUEUE_MODELS)) {
+		const [affectedRows] = await model.update({
+			lastDayWin: null,
+			lastDayLose: null,
+			lastDayRank: null,
+			lastDayTier: null,
+			lastDayLP: null,
+			lastDayDate: null,
+		}, { where: {} });
+		logger.info(`Reset lastDay info on ${affectedRows} ${model.getTableName()} row(s).`);
 	}
 };
 
@@ -346,17 +339,21 @@ export const listAllPlayerForSpecificServer = async (serverId: string): Promise<
 };
 
 export const listAllPlayerForQueueInfoForSpecificServer = async (serverId: string, queueType: GameQueueType): Promise<PlayerForQueueInfo[]> => {
-
 	const players = await Player.findAll({ where: { serverid: serverId } });
-	const result: PlayerForQueueInfo[] = [];
-	for (const player of players) {
-		const playerToUpdate = await findPlayerToUpdate(player, queueType);
-		if (playerToUpdate == null) {
-			throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found for listAllPlayerForQueueInfoForSpecificServer');
-		}
-		result.push(playerToUpdate.dataValues as PlayerForQueueInfo);
+	if (players.length === 0) return [];
+
+	const model = QUEUE_MODELS[queueType];
+	if (!model) {
+		throw new AppError(ErrorTypes.MANAGEDGAMEQUEUE_NOT_FOUND, `Unknown queue type: ${queueType}`);
 	}
-	return result;
+
+	// Single IN query instead of one findOne per player. A player whose queue
+	// row is missing simply won't appear in the results (previously this threw
+	// and could abort the whole daily recap).
+	const queueRows = await model.findAll({
+		where: { playerId: { [Op.in]: players.map(player => player.dataValues.id) } },
+	});
+	return queueRows.map(row => row.dataValues as PlayerForQueueInfo);
 };
 
 export const getPlayerForSpecificServer = async (serverId: string, puuid: string): Promise<PlayerInfo> => {
@@ -374,38 +371,6 @@ export const getPlayerForQueueInfoForSpecificServer = async (serverId: string, p
 	const result: PlayerForQueueInfo = playerToUpdate.dataValues;
 	return result;
 };
-
-const tierOrder: Record<string, number> = {
-	"IRON": 1, "BRONZE": 2, "SILVER": 3, "GOLD": 4, "PLATINUM": 5,
-	"EMERALD": 6, "DIAMOND": 7, "MASTER": 8, "GRANDMASTER": 9, "CHALLENGER": 10
-};
-
-const rankOrder: Record<string, number> = { "IV": 1, "III": 2, "II": 3, "I": 4 };
-
-function comparePlayers(a: PlayerForQueueInfo, b: PlayerForQueueInfo): number {
-	const tierA = tierOrder[(a.currentTier || "IRON").toUpperCase()] || 0;
-	const tierB = tierOrder[(b.currentTier || "IRON").toUpperCase()] || 0;
-
-	if (tierA !== tierB) return tierB - tierA;
-
-	const rankA = rankOrder[(a.currentRank || "IV").toUpperCase()] || 0;
-	const rankB = rankOrder[(b.currentRank || "IV").toUpperCase()] || 0;
-
-	if (rankA !== rankB) return rankB - rankA;
-
-	const lpA = a.currentLP || 0;
-	const lpB = b.currentLP || 0;
-
-	return lpB - lpA;
-}
-
-export const sortPlayersByRank = (players: PlayerForQueueInfo[]): PlayerForQueueInfo[] => {
-	// Don't want null info
-	const filteredPlayers = players.filter(player => {
-		return player.currentRank !== null && player.currentTier !== null && player.currentLP !== null;
-	});
-	return filteredPlayers.sort((a, b) => comparePlayers(a, b));
-}
 
 export interface PlayerInfo {
 	id: number;
@@ -623,50 +588,47 @@ export const saveTFTGameToDatabase = async (
 	}
 };
 
-export const getLeagueGamesForPlayerInMonth = async (playerId: number, month: number, year: number): Promise<LeagueGameInfo[]> => {
-	try {
-		const startDate = new Date(year, month - 1, 1).getTime();
-		const endDate = new Date(year, month, 0, 23, 59, 59).getTime();
+// Shared WHERE clause for the monthly recap queries.
+const monthRangeWhere = (playerIds: number[], month: number, year: number) => ({
+	playerId: { [Op.in]: playerIds },
+	gameEndTimestamp: {
+		[Op.gte]: new Date(year, month - 1, 1).getTime(),
+		[Op.lte]: new Date(year, month, 0, 23, 59, 59).getTime(),
+	},
+	gameDurationSeconds: {
+		[Op.gte]: MIN_GAME_DURATION_SECONDS,
+	},
+});
 
-		const games = await LeagueGame.findAll({
-			where: {
-				playerId,
-				gameEndTimestamp: {
-					[Op.gte]: startDate,
-					[Op.lte]: endDate,
-				},
-				gameDurationSeconds: {
-					[Op.gte]: MIN_GAME_DURATION_SECONDS,
-				},
-			},
-		});
-		return games.map(game => game.dataValues as LeagueGameInfo);
+const groupGamesByPlayer = <T extends { playerId: number }>(games: T[]): Map<number, T[]> => {
+	const byPlayer = new Map<number, T[]>();
+	for (const game of games) {
+		const list = byPlayer.get(game.playerId) ?? [];
+		list.push(game);
+		byPlayer.set(game.playerId, list);
+	}
+	return byPlayer;
+};
+
+// One query per game table for all players of a server, grouped by playerId —
+// the monthly recap used to run one query per player per queue type (6x per
+// player) and filter by queue in JS.
+export const getLeagueGamesForPlayersInMonth = async (playerIds: number[], month: number, year: number): Promise<Map<number, LeagueGameInfo[]>> => {
+	try {
+		const games = await LeagueGame.findAll({ where: monthRangeWhere(playerIds, month, year) });
+		return groupGamesByPlayer(games.map(game => game.dataValues as LeagueGameInfo));
 	} catch (error) {
-		logger.error(`❌ Failed to get League games for player ${playerId} in ${month}/${year}:`, error);
+		logger.error(`❌ Failed to get League games in ${month}/${year}:`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to get League games');
 	}
 };
 
-export const getTFTGamesForPlayerInMonth = async (playerId: number, month: number, year: number): Promise<TFTGameInfo[]> => {
+export const getTFTGamesForPlayersInMonth = async (playerIds: number[], month: number, year: number): Promise<Map<number, TFTGameInfo[]>> => {
 	try {
-		const startDate = new Date(year, month - 1, 1).getTime();
-		const endDate = new Date(year, month, 0, 23, 59, 59).getTime();
-
-		const games = await TFTGame.findAll({
-			where: {
-				playerId,
-				gameEndTimestamp: {
-					[Op.gte]: startDate,
-					[Op.lte]: endDate,
-				},
-				gameDurationSeconds: {
-					[Op.gte]: MIN_GAME_DURATION_SECONDS,
-				},
-			},
-		});
-		return games.map(game => game.dataValues as TFTGameInfo);
+		const games = await TFTGame.findAll({ where: monthRangeWhere(playerIds, month, year) });
+		return groupGamesByPlayer(games.map(game => game.dataValues as TFTGameInfo));
 	} catch (error) {
-		logger.error(`❌ Failed to get TFT games for player ${playerId} in ${month}/${year}:`, error);
+		logger.error(`❌ Failed to get TFT games in ${month}/${year}:`, error);
 		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to get TFT games');
 	}
 };

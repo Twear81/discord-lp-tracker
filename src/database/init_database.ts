@@ -3,6 +3,7 @@ import sequelize from './database';
 import { Player, ClashQ, Ranked5v5, SoloQ, FlexQ, SoloTFT, DoubleTFT } from './playerModel';
 import { Server } from './serverModel';
 import { LeagueGame, TFTGame } from './gameModel';
+import { Op } from 'sequelize';
 
 const initDB = async (): Promise<void> => {
 	try {
@@ -44,6 +45,17 @@ const ensureIndexes = async (): Promise<void> => {
 	logger.info('📇 Indexes ensured');
 };
 
+// Queue tables to backfill, with the Player column holding the right puuid
+// (League tables store the LoL puuid, TFT tables the TFT puuid).
+const QUEUE_TABLES: Array<{ model: typeof SoloQ; puuidKey: 'puuid' | 'tftpuuid' }> = [
+	{ model: SoloQ, puuidKey: 'puuid' },
+	{ model: FlexQ, puuidKey: 'puuid' },
+	{ model: ClashQ, puuidKey: 'puuid' },
+	{ model: Ranked5v5, puuidKey: 'puuid' },
+	{ model: SoloTFT, puuidKey: 'tftpuuid' },
+	{ model: DoubleTFT, puuidKey: 'tftpuuid' },
+];
+
 const backfillQueueTables = async (): Promise<void> => {
 	try {
 		const players = await Player.findAll();
@@ -52,33 +64,24 @@ const backfillQueueTables = async (): Promise<void> => {
 			return;
 		}
 
-		for (const player of players) {
-			const playerId = (player as unknown as { dataValues: { id: number; puuid: string; tftpuuid: string } }).dataValues.id;
-			const puuid = (player as unknown as { dataValues: { id: number; puuid: string; tftpuuid: string } }).dataValues.puuid;
-			const tftpuuid = (player as unknown as { dataValues: { id: number; puuid: string; tftpuuid: string } }).dataValues.tftpuuid;
-
-			await ensureQueueEntry(SoloQ, playerId, puuid);
-			await ensureQueueEntry(FlexQ, playerId, puuid);
-			await ensureQueueEntry(ClashQ, playerId, puuid);
-			await ensureQueueEntry(Ranked5v5, playerId, puuid);
-			await ensureQueueEntry(SoloTFT, playerId, tftpuuid);
-			await ensureQueueEntry(DoubleTFT, playerId, tftpuuid);
+		// Two queries per queue table (existing rows, then one bulk insert for
+		// the missing ones) instead of a findOne per player per queue.
+		const playerIds = players.map(player => player.dataValues.id);
+		for (const { model, puuidKey } of QUEUE_TABLES) {
+			const existing = await model.findAll({ where: { playerId: { [Op.in]: playerIds } } });
+			const backfilledIds = new Set(existing.map(row => row.dataValues.playerId));
+			const missing = players.filter(player => !backfilledIds.has(player.dataValues.id));
+			if (missing.length > 0) {
+				await model.bulkCreate(missing.map(player => ({
+					playerId: player.dataValues.id,
+					puuid: player.dataValues[puuidKey],
+				})));
+			}
 		}
 
 		logger.info(`✅ Backfilled queue tables for ${players.length} player(s).`);
 	} catch (error) {
 		logger.error('❌ Failed to backfill queue tables:', error);
-	}
-};
-
-const ensureQueueEntry = async (
-	queueModel: typeof SoloQ,
-	playerId: number,
-	puuid: string,
-): Promise<void> => {
-	const existing = await queueModel.findOne({ where: { playerId } });
-	if (!existing) {
-		await queueModel.create({ playerId, puuid });
 	}
 };
 

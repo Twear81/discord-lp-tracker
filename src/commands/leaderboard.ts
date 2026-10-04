@@ -1,7 +1,8 @@
 import { SlashCommandBuilder, CommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
-import { getServer, listAllPlayerForQueueInfoForSpecificServer, listAllPlayerForSpecificServer, PlayerForQueueInfo, PlayerInfo, sortPlayersByRank } from '../database/databaseHelper';
+import { getServer, listAllPlayerForQueueInfoForSpecificServer, listAllPlayerForSpecificServer, PlayerForQueueInfo, PlayerInfo } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
 import { GameQueueType } from '../tracking/GameQueueType';
+import { sortPlayersByRank } from '../tracking/rank';
 import { getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
 
