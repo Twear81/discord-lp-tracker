@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import { TACTICIAN_FILE_PATH } from "..";
 import logger from "../logger/logger";
-import { lolApi } from "./config";
+import { getLatestDDragonVersion } from "./ddragon";
 
 interface TacticianImage {
 	full: string;
@@ -26,31 +26,50 @@ interface TacticianDataFile {
 	data: Record<string, Tactician>;
 }
 
-export async function getLittleLegendIconUrl(skinId: number): Promise<string> {
-	const skinIdStr = skinId.toString();
+// The tactician file is several hundred KB — read and parse it once, then
+// serve every icon lookup from memory. The daily DDragon refresh in
+// index.ts calls invalidateTacticianCache() after rewriting the file.
+let tacticianDataPromise: Promise<TacticianDataFile | null> | null = null;
 
-	let tacticianData: TacticianDataFile | undefined;
-
-	if (await fs.stat(TACTICIAN_FILE_PATH).then(() => true).catch(() => false)) {
+async function loadTacticianData(): Promise<TacticianDataFile | null> {
+	try {
 		const raw = await fs.readFile(TACTICIAN_FILE_PATH, "utf-8");
-		tacticianData = JSON.parse(raw);
+		return JSON.parse(raw);
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+			logger.error("⚠️ tft-tactician.json not found.");
+			return null;
+		}
+		throw error;
 	}
+}
 
+export function invalidateTacticianCache(): void {
+	tacticianDataPromise = null;
+}
+
+function getTacticianData(): Promise<TacticianDataFile | null> {
+	if (!tacticianDataPromise) {
+		tacticianDataPromise = loadTacticianData();
+		// Don't memoize a transient read failure — retry on next call.
+		tacticianDataPromise.catch(() => { tacticianDataPromise = null; });
+	}
+	return tacticianDataPromise;
+}
+
+export async function getLittleLegendIconUrl(skinId: number): Promise<string> {
+	const tacticianData = await getTacticianData();
 	if (!tacticianData) {
-		logger.error("⚠️ tft-tactician.json not found.");
 		return "";
 	}
 
-	const tactician = (tacticianData.data as { [key: string]: Tactician })[skinIdStr];
+	const tactician = tacticianData.data[skinId.toString()];
 
 	if (!tactician) {
 		logger.error(`No companion found for skinId: ${skinId}`);
 		return "";
 	}
 
-	const baseImageName = tactician.image.full;
-	const versions = await lolApi.DataDragon.getVersions();
-	const latestVersion = versions[0];
-	const littleLegendUrl = `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/img/tft-tactician/${baseImageName}`;
-	return littleLegendUrl;
+	const latestVersion = await getLatestDDragonVersion();
+	return `https://ddragon.leagueoflegends.com/cdn/${latestVersion}/img/tft-tactician/${tactician.image.full}`;
 }

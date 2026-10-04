@@ -6,7 +6,8 @@ import path from "path";
 import { inspect } from "util";
 import dotenv from 'dotenv';
 import { commands } from "./commands";
-import { lolApi } from "./riot/config";
+import { getLatestDDragonVersion } from "./riot/ddragon";
+import { invalidateTacticianCache } from "./riot/tactician";
 import { deployCommands } from "./deploy-commands";
 import { initDB } from './database/init_database';
 import { generateRecapOfTheDay, initLastDayInfo, trackPlayers } from "./tracking/tracking";
@@ -151,7 +152,7 @@ const updateTFTTacticianFile = async () => {
 	try {
 		logger.info("➡️ Starting the daily update of tft-tactician.json...");
 
-		const latestVersion = (await lolApi.DataDragon.getVersions())[0];
+		const latestVersion = await getLatestDDragonVersion();
 		let currentVersion = null;
 		// Try to read the file
 		try {
@@ -191,6 +192,7 @@ const updateTFTTacticianFile = async () => {
 		};
 
 		await fs.writeFile(TACTICIAN_FILE_PATH, JSON.stringify(updatedData));
+		invalidateTacticianCache();
 		logger.info("✅ tft-tactician.json has been successfully updated!");
 	} catch (error) {
 		logger.error("❌ An error occurred during the update of tft-tactician.json:", error);

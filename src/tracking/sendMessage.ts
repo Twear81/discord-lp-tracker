@@ -6,7 +6,7 @@ import { calculateLPDifference, getDisplayRank, getDurationString } from './util
 import logger from '../logger/logger';
 import { getTranslations } from '../translation/translation';
 import { MonthlyRecapStats } from './monthlyRecap';
-import { lolApi } from '../riot/config';
+import { getLatestDDragonVersion } from '../riot/ddragon';
 
 /**
  * Template unique pour les messages de fin de partie League of Legends.
@@ -35,8 +35,7 @@ export const sendLeagueGameResultMessage = async (channel: TextChannel, gameName
 	const matchUrl = `https://www.leagueofgraphs.com/match/${region.toLowerCase()}/${currentGameId}#participant${gameInfo.participantNumber}`;
 	const dpmUrl = `https://dpm.lol/${encodeURI(gameName)}-${tagline}`;
 
-	const versions = await lolApi.DataDragon.getVersions();
-	const latestVersion = versions[0];
+	const latestVersion = await getLatestDDragonVersion();
 
 	const embed = new EmbedBuilder()
 		.setColor(gameInfo.win ? '#00FF00' : '#FF0000')
