@@ -64,7 +64,7 @@ Welcome! Here are the commands to use the bot properly:
 
 ## 📦 Installation
 ```bash
-git clone https://github.com/@twear81/discord-lp-tracker.git
+git clone https://github.com/Twear81/discord-lp-tracker.git
 cd discord-lp-tracker
 npm install
 ```

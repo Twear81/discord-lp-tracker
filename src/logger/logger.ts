@@ -5,7 +5,7 @@ import 'winston-daily-rotate-file'; // Required for the daily rotate transport
 const fileRotateTransport = new transports.DailyRotateFile({
 	filename: 'logs/%DATE%.log', // File name format: logs/YYYY-MM-DD.log
 	datePattern: 'YYYY-MM-DD',
-	maxFiles: '2d', // Keep logs for a maximum of 1 day (your requirement)
+	maxFiles: '2d', // Keep log files for 2 days
 	maxSize: '20m', // Maximum size of each log file (e.g., 20 megabytes)
 	level: 'info', // Minimum level to log to the file (info, warn, error)
 	format: format.combine(

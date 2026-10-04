@@ -219,31 +219,33 @@ client.on(Events.GuildDelete, (guild: Guild) => {
 client.on(Events.InteractionCreate, (interaction) => {
 	void (async () => {
 		if (!interaction.isCommand()) {
-			logger.error(`No command matching ${interaction.valueOf()} was found.`);
+			logger.warn(`Ignoring non-command interaction (type ${interaction.type}).`);
 			return;
 		}
 		const { commandName } = interaction;
 		const command = commands[commandName as keyof typeof commands];
-		if (command) {
+		if (!command) {
+			logger.warn(`Received unknown command "${commandName}", ignoring.`);
+			return;
+		}
+		try {
+			await command.execute(interaction as ChatInputCommandInteraction<CacheType>);
+		} catch (error) {
+			logger.error(`❌ Unhandled error in command ${commandName}:`, error);
 			try {
-				await command.execute(interaction as ChatInputCommandInteraction<CacheType>);
-			} catch (error) {
-				logger.error(`❌ Unhandled error in command ${commandName}:`, error);
-				try {
-					if (interaction.deferred || interaction.replied) {
-						await interaction.followUp({
-							content: 'An unexpected error occurred, contact the dev',
-							flags: MessageFlags.Ephemeral,
-						});
-					} else {
-						await interaction.reply({
-							content: 'An unexpected error occurred, contact the dev',
-							flags: MessageFlags.Ephemeral,
-						});
-					}
-				} catch {
-					// interaction token expired or already acknowledged — nothing more to do
+				if (interaction.deferred || interaction.replied) {
+					await interaction.followUp({
+						content: 'An unexpected error occurred, contact the dev',
+						flags: MessageFlags.Ephemeral,
+					});
+				} else {
+					await interaction.reply({
+						content: 'An unexpected error occurred, contact the dev',
+						flags: MessageFlags.Ephemeral,
+					});
 				}
+			} catch {
+				// interaction token expired or already acknowledged — nothing more to do
 			}
 		}
 	})();

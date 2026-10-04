@@ -2,7 +2,7 @@
   "name": "lp-tracker",
   "version": "1.0.0",
   "description": "LP tracker for league of legend",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
