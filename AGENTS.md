@@ -177,7 +177,7 @@ Toutes les commandes sont déployées **globalement** (`Routes.applicationComman
 
 - Source unique dans `src/translation/translation.ts`.
 - `getTranslations(lang: string): GameTranslations` — retourne FR ou EN, fallback EN si langue inconnue.
-- `GameTranslations` couvre: titres d'embeds, labels de stats, queues, placements TFT, winrate, etc.
+- `GameTranslations` couvre: titres d'embeds, labels de stats, queues, placements TFT, winrate, etc., ainsi que les textes des commandes `/leaderboard`, `/list` et `/monthlyrecap` (groupes `leaderboard*`, `list`, `monthlyRecapCommand`).
 - Pour ajouter une langue: ajouter une entrée dans `allTranslations` avec la même structure que `fr` / `en`, et typer la clé dans les `addChoices` du `language.ts` (et de `init.ts` si pertinent).
 - La langue est stockée par serveur dans `Server.lang`.
 
@@ -198,14 +198,15 @@ Toutes les commandes sont déployées **globalement** (`Routes.applicationComman
 - **GuildDelete** → nettoyage complet (players + server). Pas besoin de gérer manuellement.
 - **Toggles par serveur**: `Server.flextoggle` contrôle le tracking Flex, `Server.tfttoggle` contrôle TFT et TFT Double. SoloQ, Clash et Ranked 5v5 toujours actifs.
 - **Pas de `console.log`** dans le code applicatif — toujours `logger.info/warn/error`.
-- **ESLint flat config** présent (`eslint.config.mjs`) avec `typescript-eslint` recommended, `eqeqeq` (null ignoré) et `no-floating-promises` — script `npm run lint` (`eslint src`). Pas de test runner.
+- **ESLint flat config** présent (`eslint.config.mjs`) avec `typescript-eslint` recommended, `eqeqeq` (null ignoré) et `no-floating-promises` — script `npm run lint` (`eslint src`). Tests unitaires: **vitest** (`npm test`), fichiers `*.test.ts` à côté des modules.
 
 ## Verification
 
-Aucune commande de test n'est configurée dans `package.json`. Les commandes de vérif:
+Les commandes de vérif:
 
 ```bash
 npm run lint     # ESLint (flat config, typescript-eslint)
+npm test         # vitest — tests unitaires (logique pure: LP, score, tri, i18n)
 npm run build    # tsc --noEmit (type-check strict) + tsup (bundle)
 ```
 
