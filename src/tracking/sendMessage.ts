@@ -8,6 +8,20 @@ import { getTranslations } from '../translation/translation';
 import { MonthlyRecapStats } from './monthlyRecap';
 import { getLatestDDragonVersion } from '../riot/ddragon';
 
+// One accent color per queue type, shared by the daily and monthly recaps.
+const QUEUE_COLORS: Record<GameQueueType, ColorResolvable> = {
+	[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
+	[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
+	[GameQueueType.RANKED_CLASH]: "#E74C3C",
+	[GameQueueType.RANKED_5v5]: "#2ECC71",
+	[GameQueueType.RANKED_TFT]: "#1DB954",
+	[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
+};
+
+const getMonthNames = (lang: string): string[] => lang === 'fr'
+	? ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+	: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
 /**
  * Template unique pour les messages de fin de partie League of Legends.
  * Utilisé pour toutes les queues LoL classées : SoloQ, Flex, Clash, Ranked 5v5.
@@ -122,20 +136,10 @@ export const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: P
 		return;
 	}
 
-	const queueColors: Record<GameQueueType, ColorResolvable> = {
-		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
-		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
-		[GameQueueType.RANKED_CLASH]: "#E74C3C",
-		[GameQueueType.RANKED_5v5]: "#2ECC71",
-		[GameQueueType.RANKED_TFT]: "#1DB954",
-		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
-	};
-
-
 	const t = getTranslations(lang);
 
 	const queueTitle = t.recapTitles[queueType];
-	const recapColor = queueColors[queueType] || "#808080";
+	const recapColor = QUEUE_COLORS[queueType];
 
 	const embed = new EmbedBuilder()
 		.setTitle(queueTitle)
@@ -179,19 +183,27 @@ export const generatePlayerRecapInfo = (players: PlayerInfo[], playersQueue: Pla
 		playerQueue.currentLP !== null
 	);
 
-	// Map playerInfo to PlayerRecapInfo
-	const playerRecaps = completePlayers.map<PlayerRecapInfo>(playerQueueToMap => ({
-		player: players.find((value: PlayerInfo) => value.id === playerQueueToMap.playerId)!,
-		playerQueue: playerQueueToMap,
-		lpChange: calculateLPDifference(
-			playerQueueToMap.lastDayRank!,
-			playerQueueToMap.currentRank!,
-			playerQueueToMap.lastDayTier!,
-			playerQueueToMap.currentTier!,
-			playerQueueToMap.lastDayLP!,
-			playerQueueToMap.currentLP!
-		),
-	}));
+	// Map playerInfo to PlayerRecapInfo, skipping queue rows whose Player no
+	// longer exists (the non-null assertion used to crash the recap send).
+	const playerRecaps = completePlayers.flatMap<PlayerRecapInfo>(playerQueueToMap => {
+		const player = players.find((value: PlayerInfo) => value.id === playerQueueToMap.playerId);
+		if (!player) {
+			logger.warn(`No Player row for playerId ${playerQueueToMap.playerId}, skipping its recap entry.`);
+			return [];
+		}
+		return [{
+			player,
+			playerQueue: playerQueueToMap,
+			lpChange: calculateLPDifference(
+				playerQueueToMap.lastDayRank!,
+				playerQueueToMap.currentRank!,
+				playerQueueToMap.lastDayTier!,
+				playerQueueToMap.currentTier!,
+				playerQueueToMap.lastDayLP!,
+				playerQueueToMap.currentLP!
+			),
+		}];
+	});
 
 	const sortedPlayerRecaps = playerRecaps.sort((a, b) => b.lpChange - a.lpChange);
 	return sortedPlayerRecaps;
@@ -221,21 +233,9 @@ const getPlacementBadge = (place: number): string => {
 
 export const sendLeagueMonthlyRecapMessage = async (channel: TextChannel, playerStats: MonthlyRecapStats[], month: number, year: number, queueType: GameQueueType, lang: string): Promise<void> => {
 	const t = getTranslations(lang);
-	const queueColors: Record<GameQueueType, ColorResolvable> = {
-		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
-		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
-		[GameQueueType.RANKED_CLASH]: "#E74C3C",
-		[GameQueueType.RANKED_5v5]: "#2ECC71",
-		[GameQueueType.RANKED_TFT]: "#1DB954",
-		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
-	};
 
-	const monthNames = lang === 'fr'
-		? ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
-		: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-	const monthName = monthNames[month - 1];
-	const recapColor = queueColors[queueType] || "#808080";
+	const monthName = getMonthNames(lang)[month - 1];
+	const recapColor = QUEUE_COLORS[queueType];
 
 	const embed = new EmbedBuilder()
 		.setTitle(`${t.monthlyRecapTitles[queueType]} - ${monthName} ${year}`)
@@ -295,21 +295,9 @@ ${t.visionPerMin}: **${averageVisionPerMin?.toFixed(2)}**`;
 
 export const sendTFTMonthlyRecapMessage = async (channel: TextChannel, playerStats: MonthlyRecapStats[], month: number, year: number, queueType: GameQueueType, lang: string): Promise<void> => {
 	const t = getTranslations(lang);
-	const queueColors: Record<GameQueueType, ColorResolvable> = {
-		[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
-		[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
-		[GameQueueType.RANKED_CLASH]: "#E74C3C",
-		[GameQueueType.RANKED_5v5]: "#2ECC71",
-		[GameQueueType.RANKED_TFT]: "#1DB954",
-		[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
-	};
 
-	const monthNames = lang === 'fr'
-		? ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
-		: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-	const monthName = monthNames[month - 1];
-	const recapColor = queueColors[queueType] || "#808080";
+	const monthName = getMonthNames(lang)[month - 1];
+	const recapColor = QUEUE_COLORS[queueType];
 
 	const embed = new EmbedBuilder()
 		.setTitle(`${t.monthlyRecapTitles[queueType]} - ${monthName} ${year}`)
