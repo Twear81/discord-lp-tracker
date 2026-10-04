@@ -42,7 +42,6 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
 				await interaction.editReply({
 					content: 'You have to init the bot first',
-					flags: MessageFlags.Ephemeral,
 				});
 			}
 		} else {
@@ -114,7 +113,7 @@ const generateLeaderboardMessage = async (interaction: CommandInteraction, lang:
 	const t = translations[lang as keyof typeof translations];
 
 	if (sortedPlayerForQueueInfos.length === 0) {
-		return interaction.editReply({ content: t.noPlayers, ephemeral: true });
+		return interaction.editReply({ content: t.noPlayers });
 	}
 
 	enum QueueColor {
@@ -153,7 +152,6 @@ const generateLeaderboardMessage = async (interaction: CommandInteraction, lang:
 	} else {
 		await interaction.editReply({
 			embeds: [messageToDisplay],
-			flags: MessageFlags.Ephemeral,
 		});
 	}
 

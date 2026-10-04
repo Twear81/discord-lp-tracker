@@ -208,7 +208,7 @@ Aucune commande de test ni de lint dédiée n'est configurée dans `package.json
 npm run build
 ```
 
-Cette commande passe par `tsup` qui compile le projet avec **TypeScript strict mode** (`tsconfig.json`); toute erreur de type y sera remontée. À lancer après toute modification pour valider la compilation.
+Cette commande lance d'abord `tsc --noEmit` (**TypeScript strict mode**, `tsconfig.json`) qui remonte toute erreur de type, puis `tsup` qui bundle vers `dist/`. À lancer après toute modification pour valider la compilation. (Note: `tsup`/esbuild ne type-check pas — c'est le `tsc --noEmit` qui joue ce rôle.)
 
 Pour vérifier le runtime manuellement: `npm run dev` (hot-reload) ou `npm start` après `npm run build`.
 
