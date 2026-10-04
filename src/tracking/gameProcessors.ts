@@ -60,9 +60,13 @@ async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, match
 		return;
 	}
 
-	const channel = await client.channels.fetch(server.channelid) as TextChannel;
-	if (!channel) {
-		logger.error(`❌ [League] Failed to find channel with ID ${server.channelid} for server ${server.serverid}.`);
+	// channels.fetch() throws (Unknown Channel) instead of returning null when
+	// the channel was deleted — bail out of this notification only.
+	let channel: TextChannel;
+	try {
+		channel = await client.channels.fetch(server.channelid) as TextChannel;
+	} catch (error) {
+		logger.error(`❌ [League] Failed to find channel with ID ${server.channelid} for server ${server.serverid}.`, error);
 		return;
 	}
 
@@ -143,9 +147,13 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
 		return;
 	}
 
-	const channel = await client.channels.fetch(server.channelid) as TextChannel;
-	if (!channel) {
-		logger.error(`❌ [TFT] Failed to find channel with ID ${server.channelid} for server ${server.serverid}.`);
+	// channels.fetch() throws (Unknown Channel) instead of returning null when
+	// the channel was deleted — bail out of this notification only.
+	let channel: TextChannel;
+	try {
+		channel = await client.channels.fetch(server.channelid) as TextChannel;
+	} catch (error) {
+		logger.error(`❌ [TFT] Failed to find channel with ID ${server.channelid} for server ${server.serverid}.`, error);
 		return;
 	}
 

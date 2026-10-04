@@ -123,17 +123,21 @@ export const generateRecapOfTheDay = async (): Promise<void> => {
 		const servers = await getAllServer();
 		for (const server of servers) {
 			const currentServerID = server.serverid;
-			const channel = await client.channels.fetch(server.channelid) as TextChannel;
 
-			if (!channel) {
-				logger.error(`❌ Failed to find channel with ID ${server.channelid} for server ${currentServerID}. Skipping recap.`);
-				return;
+			// channels.fetch() throws (Unknown Channel) instead of returning null
+			// when the channel was deleted — catch and skip this server only.
+			let channel: TextChannel;
+			try {
+				channel = await client.channels.fetch(server.channelid) as TextChannel;
+			} catch (error) {
+				logger.error(`❌ Failed to find channel with ID ${server.channelid} for server ${currentServerID}. Skipping recap.`, error);
+				continue;
 			}
 
 			const players = await listAllPlayerForSpecificServer(currentServerID);
 			if (players.length === 0) {
 				logger.info(`No players to send recap for on server ${currentServerID}.`);
-				return;
+				continue;
 			}
 
 			// Define a function to process a specific queue type

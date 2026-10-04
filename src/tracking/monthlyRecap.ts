@@ -40,10 +40,15 @@ export const generateMonthlyRecap = async (month: number, year: number, serverId
 
 		for (const server of servers) {
 			const currentServerID = server.serverid;
-			const channel = await client.channels.fetch(server.channelid) as TextChannel;
 
-			if (!channel) {
-				logger.error(`❌ Failed to find channel with ID ${server.channelid} for server ${currentServerID}. Skipping monthly recap.`);
+			// channels.fetch() throws (Unknown Channel) instead of returning null
+			// when the channel was deleted — catch and skip this server only,
+			// otherwise the remaining servers would lose their monthly recap too.
+			let channel: TextChannel;
+			try {
+				channel = await client.channels.fetch(server.channelid) as TextChannel;
+			} catch (error) {
+				logger.error(`❌ Failed to find channel with ID ${server.channelid} for server ${currentServerID}. Skipping monthly recap.`, error);
 				continue;
 			}
 
