@@ -237,7 +237,7 @@ const findPlayerToUpdate = async (existingPlayer: Model, queueType: GameQueueTyp
 const updatePlayerRank = async (playerToUpdate: Model | null, isCurrent: boolean, rank: string, tier: string, leaguePoints: number): Promise<void> => {
 	if (!playerToUpdate) return;
 
-	if (isCurrent == true) {
+	if (isCurrent) {
 		await playerToUpdate.update({
 			oldRank: playerToUpdate.dataValues.currentRank,
 			oldTier: playerToUpdate.dataValues.currentTier,
@@ -276,7 +276,7 @@ const updatePlayerLastDayWinLoseDatabase = async (playerToUpdate: Model | null, 
 	if (!playerToUpdate) return;
 	let lastDayWin: number = playerToUpdate.dataValues.lastDayWin != null ? playerToUpdate.dataValues.lastDayWin : 0;
 	let lastDayLose: number = playerToUpdate.dataValues.lastDayLose != null ? playerToUpdate.dataValues.lastDayLose : 0;
-	if (isWin == true) {
+	if (isWin) {
 		lastDayWin += 1;
 	} else {
 		lastDayLose += 1;

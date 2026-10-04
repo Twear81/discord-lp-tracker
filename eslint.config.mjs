@@ -19,6 +19,10 @@ export default [
     rules: {
       "@typescript-eslint/no-floating-promises": "error",
       "@typescript-eslint/no-misused-promises": "error",
+      // `_`-prefixed identifiers are the project's convention for
+      // "exists only to derive a type" (see riot/twistedTypes.ts).
+      "@typescript-eslint/no-unused-vars": ["error", { varsIgnorePattern: "^_", argsIgnorePattern: "^_" }],
+      "eqeqeq": ["error", "always", { "null": "ignore" }],
       "no-console": "warn",
     },
   },

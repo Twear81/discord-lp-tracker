@@ -198,14 +198,15 @@ Toutes les commandes sont déployées **globalement** (`Routes.applicationComman
 - **GuildDelete** → nettoyage complet (players + server). Pas besoin de gérer manuellement.
 - **Toggles par serveur**: `Server.flextoggle` contrôle le tracking Flex, `Server.tfttoggle` contrôle TFT et TFT Double. SoloQ, Clash et Ranked 5v5 toujours actifs.
 - **Pas de `console.log`** dans le code applicatif — toujours `logger.info/warn/error`.
-- **ESLint flat config** présent (`eslint.config.mjs`) avec `typescript-eslint` recommended — mais **pas de script `lint`** dans `package.json`. Pas de test runner non plus.
+- **ESLint flat config** présent (`eslint.config.mjs`) avec `typescript-eslint` recommended, `eqeqeq` (null ignoré) et `no-floating-promises` — script `npm run lint` (`eslint src`). Pas de test runner.
 
 ## Verification
 
-Aucune commande de test ni de lint dédiée n'est configurée dans `package.json`. La seule commande de vérif couvrant l'ensemble est:
+Aucune commande de test n'est configurée dans `package.json`. Les commandes de vérif:
 
 ```bash
-npm run build
+npm run lint     # ESLint (flat config, typescript-eslint)
+npm run build    # tsc --noEmit (type-check strict) + tsup (bundle)
 ```
 
 Cette commande lance d'abord `tsc --noEmit` (**TypeScript strict mode**, `tsconfig.json`) qui remonte toute erreur de type, puis `tsup` qui bundle vers `dist/`. À lancer après toute modification pour valider la compilation. (Note: `tsup`/esbuild ne type-check pas — c'est le `tsc --noEmit` qui joue ce rôle.)

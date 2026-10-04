@@ -27,7 +27,7 @@ export const trackPlayers = async (firstRun: boolean): Promise<void> => {
 			// Add classic game processor by default because is always active
 			const gameProcessors: Promise<void>[] = [processGameType(server, players, leagueGameProcessor, firstRun)];
 
-			if (server.tfttoggle == true) {
+			if (server.tfttoggle) {
 				gameProcessors.push(processGameType(server, players, tftGameProcessor, firstRun));
 			}
 

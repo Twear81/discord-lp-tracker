@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "build": "tsc --noEmit && tsup src/index.ts --minify"
+    "build": "tsc --noEmit && tsup src/index.ts --minify",
+    "lint": "eslint src"
   },
   "repository": {
     "type": "git",

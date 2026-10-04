@@ -23,7 +23,7 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 		const playerSortForTFT: PlayerForQueueInfo[] = sortPlayersByRank(await listAllPlayerForQueueInfoForSpecificServer(serverId, GameQueueType.RANKED_TFT));
 
 		let hasAlreadySentAMessage = false;
-		if (serverInfo.flextoggle == true) {
+		if (serverInfo.flextoggle) {
 			await generateLeaderboardMessage(interaction, serverInfo.lang, playerInfoList, playerSortForFlex, GameQueueType.RANKED_FLEX_SR, hasAlreadySentAMessage);
 			hasAlreadySentAMessage = true;
 		}
@@ -31,7 +31,7 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 		hasAlreadySentAMessage = true;
 		await generateLeaderboardMessage(interaction, serverInfo.lang, playerInfoList, playerSortFor5v5, GameQueueType.RANKED_5v5, hasAlreadySentAMessage);
 		hasAlreadySentAMessage = true;
-		if (serverInfo.tfttoggle == true) {
+		if (serverInfo.tfttoggle) {
 			await generateLeaderboardMessage(interaction, serverInfo.lang, playerInfoList, playerSortForTFT, GameQueueType.RANKED_TFT, hasAlreadySentAMessage);
 			hasAlreadySentAMessage = true;
 		}
@@ -132,9 +132,9 @@ const generateLeaderboardMessage = async (interaction: CommandInteraction, lang:
 			sortedPlayerForQueueInfos.map((player, index) =>
 				t.playerLine(
 					index + 1,
-					playersInfos.find((value: PlayerInfo) => value.id == player.playerId)!.gameName,
-					playersInfos.find((value: PlayerInfo) => value.id == player.playerId)!.tagLine,
-					playersInfos.find((value: PlayerInfo) => value.id == player.playerId)!.region,
+					playersInfos.find((value: PlayerInfo) => value.id === player.playerId)!.gameName,
+					playersInfos.find((value: PlayerInfo) => value.id === player.playerId)!.tagLine,
+					playersInfos.find((value: PlayerInfo) => value.id === player.playerId)!.region,
 					player.currentRank!,
 					player.currentTier!,
 					player.currentLP!
@@ -144,7 +144,7 @@ const generateLeaderboardMessage = async (interaction: CommandInteraction, lang:
 		.setFooter({ text: t.total(sortedPlayerForQueueInfos.length) })
 		.setTimestamp();
 
-	if (isSecondMessage == true) {
+	if (isSecondMessage) {
 		await interaction.followUp({
 			embeds: [messageToDisplay],
 			flags: MessageFlags.Ephemeral,
