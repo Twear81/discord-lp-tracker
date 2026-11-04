@@ -38,6 +38,8 @@ RIOT_API=...
 RIOT_API_TFT=...
 ```
 
+`TZ` (optionnel) — fuseau des crons et de la fenêtre du récap quotidien. `src/index.ts` le fixe à `Europe/Paris` s'il n'est pas défini.
+
 ### Scripts npm
 
 | Script          | Commande                          | Usage                              |
@@ -142,7 +144,7 @@ Tous déclarés dans `src/index.ts` au `Events.ClientReady`:
 
 | Cron          | Action                                              |
 |---------------|-----------------------------------------------------|
-| `*/5 * * * *` | `trackPlayers(false)` — vérif des nouvelles games  |
+| `*/5 * * * *` | `trackPlayers(false)` — vérif des nouvelles games (`noOverlap`: un cycle encore en cours fait sauter le suivant) |
 | `33 6 * * *`  | `generateRecapOfTheDay()` + `initLastDayInfo(true)` — récap quotidien du matin + reset des compteurs |
 | `0 10 * * *`  | `updateTFTTacticianFile()` — MAJ DDragon            |
 | `0 8 1 * *`   | `generateMonthlyRecap()` — récap mensuel du mois précédent |

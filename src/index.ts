@@ -18,6 +18,12 @@ import logger from "./logger/logger";
 import { purgeOldGames } from "./tracking/purge";
 
 dotenv.config();
+
+// Crons and the recap window (isTimestampInRecapRange) use local time. Pin it
+// so the 6:33 recap doesn't depend on the host's timezone; set TZ in .env to
+// override.
+process.env.TZ ||= 'Europe/Paris';
+
 export const client = new Client({
 	// The bot only answers slash commands and posts to a channel: it never
 	// reads messages, so it needs neither GuildMessages nor the privileged
@@ -66,16 +72,20 @@ client.once(Events.ClientReady, () => {
 			logger.info("First tracking end");
 
 			// Tracking each 5 min
-			cron.schedule("*/5 * * * *", () => {
-				void (async () => {
-					try {
-						logger.info("Tracking start");
-						await trackPlayers(false);
-						logger.info("Tracking end");
-					} catch (error) {
-						logger.error("❌ An error occurred during player tracking:", error);
-					}
-				})();
+			// noOverlap: a cycle can outlast 5 min under the Riot rate limit;
+			// starting a second one would read the same lastGameID and send
+			// every new game notification twice.
+			const trackingTask = cron.schedule("*/5 * * * *", async () => {
+				try {
+					logger.info("Tracking start");
+					await trackPlayers(false);
+					logger.info("Tracking end");
+				} catch (error) {
+					logger.error("❌ An error occurred during player tracking:", error);
+				}
+			}, { noOverlap: true });
+			trackingTask.on('execution:overlap', () => {
+				logger.warn("⏭️ Previous tracking cycle still running, skipping this one.");
 			});
 			// Daily recap
 			cron.schedule(`${RECAP_CUTOFF_MINUTE} ${RECAP_CUTOFF_HOUR} * * *`, () => {
