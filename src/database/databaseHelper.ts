@@ -6,7 +6,7 @@ import { Model, Op } from 'sequelize';
 import { GameQueueType, ManagedGameQueueType } from '../tracking/GameQueueType';
 import { PlayerLeagueGameInfo, PlayerTFTGameInfo } from '../riot';
 import logger from '../logger/logger';
-import { calculateLPDifference, MIN_GAME_DURATION_SECONDS } from '../tracking/util';
+import { MIN_GAME_DURATION_SECONDS } from '../tracking/util';
 
 // SERVER PART
 export const addOrUpdateServer = async (serverId: string, channelId: string, flexToggle: boolean, tftToggle: boolean, lang: string): Promise<void> => {
@@ -513,6 +513,7 @@ export const saveLeagueGameToDatabase = async (
 	playerQueueInfo: PlayerForQueueInfo,
 	gameInfo: PlayerLeagueGameInfo,
 	riotMatchId: string,
+	lpGain: number,
 ): Promise<void> => {
 	try {
 		const { playerId, currentRank, currentTier, currentLP, oldRank, oldTier, oldLP } = playerQueueInfo;
@@ -521,13 +522,6 @@ export const saveLeagueGameToDatabase = async (
 		if (existingGame) {
 			logger.info(`Game ${riotMatchId} already exists in database for player ${playerId}. Skipping.`);
 			return;
-		}
-		
-		let lpGain = 0;
-		if (currentRank != null && oldRank != null) {
-			lpGain = calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
-		} else {
-			logger.warn("Can't calculateRRDifference because there is a null info");
 		}
 
 		const createdGame = await LeagueGame.create({
@@ -575,6 +569,7 @@ export const saveTFTGameToDatabase = async (
 	playerQueueInfo: PlayerForQueueInfo,
 	gameInfo: PlayerTFTGameInfo,
 	riotMatchId: string,
+	lpGain: number,
 ): Promise<void> => {
 	try {
 		const { playerId, currentRank, currentTier, currentLP, oldRank, oldTier, oldLP } = playerQueueInfo;
@@ -583,13 +578,6 @@ export const saveTFTGameToDatabase = async (
 		if (existingGame) {
 			logger.info(`TFT game ${riotMatchId} already exists in database for player ${playerId}. Skipping.`);
 			return;
-		}
-
-		let lpGain = 0;
-		if (currentRank != null && oldRank != null) {
-			lpGain = calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
-		} else {
-			logger.warn("Can't calculateRRDifference because there is a null info");
 		}
 
 		const createdGame = await TFTGame.create({

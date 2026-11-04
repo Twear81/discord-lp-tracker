@@ -49,6 +49,25 @@ export const calculateLPDifference = (beforeRank: string, afterRank: string, bef
 	return afterAbsoluteLP - beforeAbsoluteLP;
 };
 
+export interface RankSnapshot {
+	currentRank: string | null;
+	currentTier: string | null;
+	currentLP: number | null;
+	oldRank: string | null;
+	oldTier: string | null;
+	oldLP: number | null;
+}
+
+// LP won or lost by the last rank change (old* -> current*), or null when
+// either side is unknown (first ranked game, unranked player…).
+export const getLPGainFromSnapshot = (snapshot: RankSnapshot): number | null => {
+	const { currentRank, currentTier, currentLP, oldRank, oldTier, oldLP } = snapshot;
+	if (currentRank == null || oldRank == null) {
+		return null;
+	}
+	return calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
+};
+
 export const getAbsoluteLP = (tier: string, rank: string, lp: number): number => {
 	const tierOrder: string[] = ["IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER"];
 	const rankOrder: string[] = ["IV", "III", "II", "I"];

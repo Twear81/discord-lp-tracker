@@ -77,7 +77,7 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 				queueType = GameQueueType.RANKED_5v5;
 				break;
 			default:
-				throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `Queue type not found for queueId:${queueId} for game:${gameID}`);
+				throw new AppError(ErrorTypes.UNTRACKED_QUEUE, `Queue type not found for queueId:${queueId} for game:${gameID}`);
 		}
 
 		const participant: V5ParticipantDto | undefined = participants.find((p: V5ParticipantDto) => p.puuid === puuid);

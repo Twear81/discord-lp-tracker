@@ -7,6 +7,8 @@ export const ErrorTypes = {
 	LASTMATCH_NOT_FOUND: 'LASTMATCH_NOT_FOUND',
 	PLAYERRANKINFO_NOT_FOUND: 'PLAYERRANKINFO_NOT_FOUND',
 	GAMEDETAIL_NOT_FOUND: 'GAMEDETAIL_NOT_FOUND',
+	// The match exists but is not in a tracked queue (normals, ARAM, Hyper Roll…).
+	UNTRACKED_QUEUE: 'UNTRACKED_QUEUE',
 } as const;
 
 export type ErrorType = keyof typeof ErrorTypes;

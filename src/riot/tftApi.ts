@@ -64,7 +64,7 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 			queueType = GameQueueType.RANKED_TFT_DOUBLE_UP;
 			break;
 		default:
-			throw new AppError(ErrorTypes.GAMEDETAIL_NOT_FOUND, `TFT Queue type not found for queueId:${queue_id} for game:${gameID}`);
+			throw new AppError(ErrorTypes.UNTRACKED_QUEUE, `TFT Queue type not found for queueId:${queue_id} for game:${gameID}`);
 	}
 
 	const participant: TFTParticipantDto | undefined = participants.find(p => p.puuid === puuid);

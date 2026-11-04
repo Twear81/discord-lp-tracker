@@ -5,6 +5,7 @@ import {
 	getDisplayRank,
 	getDurationString,
 	getPurgeCutoffDate,
+	getLPGainFromSnapshot,
 	isGameDurationValid,
 	isTimestampInRecapRange,
 	MIN_GAME_DURATION_SECONDS,
@@ -133,5 +134,17 @@ describe('getPurgeCutoffDate', () => {
 
 	it('cuts on the 1st of the month whatever the current day', () => {
 		expect(getPurgeCutoffDate(new Date(2026, 0, 31, 23, 59), 2)).toEqual(new Date(2024, 0, 1));
+	});
+});
+
+describe('getLPGainFromSnapshot', () => {
+	const snapshot = { oldRank: 'IV', oldTier: 'GOLD', oldLP: 80, currentRank: 'III', currentTier: 'GOLD', currentLP: 2 };
+
+	it('computes the gain across a division', () => {
+		expect(getLPGainFromSnapshot(snapshot)).toBe(22);
+	});
+
+	it('returns null when the previous rank is unknown', () => {
+		expect(getLPGainFromSnapshot({ ...snapshot, oldRank: null, oldTier: null, oldLP: null })).toBeNull();
 	});
 });
