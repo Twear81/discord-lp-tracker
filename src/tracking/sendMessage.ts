@@ -8,8 +8,8 @@ import { getTranslations } from '../translation/translation';
 import { MonthlyRecapStats } from './monthlyRecap';
 import { getLatestDDragonVersion } from '../riot/ddragon';
 
-// One accent color per queue type, shared by the daily and monthly recaps.
-const QUEUE_COLORS: Record<GameQueueType, ColorResolvable> = {
+// One accent color per queue type, shared by the daily/monthly recaps and /leaderboard.
+export const QUEUE_COLORS: Record<GameQueueType, ColorResolvable> = {
 	[GameQueueType.RANKED_SOLO_5x5]: "#0078D4",
 	[GameQueueType.RANKED_FLEX_SR]: "#7247A4",
 	[GameQueueType.RANKED_CLASH]: "#E74C3C",
