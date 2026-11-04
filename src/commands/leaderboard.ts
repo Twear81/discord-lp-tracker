@@ -4,6 +4,7 @@ import { replyCommandError } from './commandError';
 import { GameQueueType } from '../tracking/GameQueueType';
 import { sortPlayersByRank } from '../tracking/rank';
 import { QUEUE_COLORS } from '../tracking/sendMessage';
+import { EMBED_LIMITS, paginateLines } from '../tracking/embedPages';
 import { GameTranslations, getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
 
@@ -37,7 +38,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		]);
 
 		// Queues nobody is ranked in are skipped instead of each printing "no players".
-		const embeds = rankings.flatMap(({ queueType, ranked }) => buildLeaderboardEmbed(t, players, ranked, queueType) ?? []);
+		const embeds = rankings.flatMap(({ queueType, ranked }) => buildLeaderboardEmbeds(t, players, ranked, queueType));
 		if (embeds.length === 0) {
 			await interaction.editReply({ content: t.leaderboard.noPlayers });
 			return;
@@ -45,6 +46,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
 		// One message per embed: Discord caps the combined size of a message's
 		// embeds at 6000 characters, which a few full leaderboards can exceed.
+		// A long leaderboard is itself split over several embeds.
 		const [first, ...rest] = embeds;
 		await interaction.editReply({ embeds: [first] });
 		for (const embed of rest) {
@@ -56,7 +58,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 	}
 }
 
-const buildLeaderboardEmbed = (t: GameTranslations, players: PlayerInfo[], ranked: PlayerForQueueInfo[], queueType: GameQueueType): EmbedBuilder | null => {
+const buildLeaderboardEmbeds = (t: GameTranslations, players: PlayerInfo[], ranked: PlayerForQueueInfo[], queueType: GameQueueType): EmbedBuilder[] => {
 	// Join queue rows onto Player rows via a Map; skip (with a warning) any
 	// queue row whose Player no longer exists.
 	const playersById = new Map(players.map(player => [player.id, player]));
@@ -77,14 +79,13 @@ const buildLeaderboardEmbed = (t: GameTranslations, players: PlayerInfo[], ranke
 			entry.currentLP!,
 		));
 	}
-	if (playerLines.length === 0) {
-		return null;
-	}
 
-	return new EmbedBuilder()
+	const intro = `${t.leaderboard.description}\n\n`;
+	const pages = paginateLines(playerLines, "\n\n", EMBED_LIMITS.description - intro.length);
+	return pages.map(page => new EmbedBuilder()
 		.setTitle(t.leaderboardTitles[queueType])
 		.setColor(QUEUE_COLORS[queueType])
-		.setDescription(`${t.leaderboard.description}\n\n${playerLines.join("\n\n")}`)
+		.setDescription(`${intro}${page}`)
 		.setFooter({ text: t.leaderboard.total(playerLines.length) })
-		.setTimestamp();
+		.setTimestamp());
 };

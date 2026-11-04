@@ -7,6 +7,7 @@ import logger from '../logger/logger';
 import { getTranslations } from '../translation/translation';
 import { MonthlyRecapStats } from './monthlyRecap';
 import { getLatestDDragonVersion } from '../riot/ddragon';
+import { EmbedField, paginateFields } from './embedPages';
 
 // One accent color per queue type, shared by the daily/monthly recaps and /leaderboard.
 export const QUEUE_COLORS: Record<GameQueueType, ColorResolvable> = {
@@ -21,6 +22,22 @@ export const QUEUE_COLORS: Record<GameQueueType, ColorResolvable> = {
 const getMonthNames = (lang: string): string[] => lang === 'fr'
 	? ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 	: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+const embedHeaderLength = (embed: EmbedBuilder): number =>
+	(embed.data.title?.length ?? 0) +
+	(embed.data.description?.length ?? 0) +
+	(embed.data.footer?.text.length ?? 0) +
+	(embed.data.author?.name.length ?? 0);
+
+// Sends one player per field under copies of the header built by
+// `makeHeader`, one message per page so each stays within Discord's
+// 25-field / 6000-character limits however many players there are.
+const sendPagedFieldEmbeds = async (channel: TextChannel, makeHeader: () => EmbedBuilder, fields: EmbedField[]): Promise<void> => {
+	const pages = paginateFields(fields, embedHeaderLength(makeHeader()));
+	for (const page of pages) {
+		await channel.send({ embeds: [makeHeader().addFields(page).setTimestamp()] });
+	}
+};
 
 /**
  * Template unique pour les messages de fin de partie League of Legends.
@@ -141,11 +158,11 @@ export const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: P
 	const queueTitle = t.recapTitles[queueType];
 	const recapColor = QUEUE_COLORS[queueType];
 
-	const embed = new EmbedBuilder()
+	const makeHeader = () => new EmbedBuilder()
 		.setTitle(queueTitle)
 		.setColor(recapColor);
 
-	playerRecapInfos.forEach(currentPlayerRecap => {
+	const fields: EmbedField[] = playerRecapInfos.map(currentPlayerRecap => {
 		const { currentTier, currentRank, lastDayTier, lastDayRank, lastDayWin, lastDayLose, lastDayLP, currentLP } = currentPlayerRecap.playerQueue;
 		const { gameName, tagLine } = currentPlayerRecap.player;
 
@@ -160,14 +177,14 @@ export const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: P
 		const winsLossesLine = `🏆 ${t.wins}: **${lastDayWin}** | ❌ ${t.losses}: **${lastDayLose}**`;
 		const rankProgressionLine = `**${lastDayTier}${displayLastDayRank} ${lastDayLP} ${t.league}** ➡️ **${currentTier}${displayCurrentRank} ${currentLP} ${t.league}**`;
 
-		embed.addFields({
+		return {
 			name: `${gameName}#${tagLine} - ${lpEmoji} ${lpChangeText}`,
 			value: `${winsLossesLine}\n${rankProgressionLine}`,
 			inline: false,
-		});
+		};
 	});
 
-	await channel.send({ embeds: [embed] });
+	await sendPagedFieldEmbeds(channel, makeHeader, fields);
 }
 
 export const generatePlayerRecapInfo = (players: PlayerInfo[], playersQueue: PlayerForQueueInfo[]): PlayerRecapInfo[] => {
@@ -237,17 +254,12 @@ export const sendLeagueMonthlyRecapMessage = async (channel: TextChannel, player
 	const monthName = getMonthNames(lang)[month - 1];
 	const recapColor = QUEUE_COLORS[queueType];
 
-	const embed = new EmbedBuilder()
+	const makeHeader = () => new EmbedBuilder()
 		.setTitle(`${t.monthlyRecapTitles[queueType]} - ${monthName} ${year}`)
 		.setColor(recapColor)
 		.setDescription(lang === 'fr' ? 'Statistiques du mois' : 'Monthly statistics');
 
-	// Format similaire au récap quotidien avec des infos en plus - regroupé dans un embed
-	// Si le message est trop grand, on le découpe en plusieurs messages
-	let currentEmbed = embed;
-	let playerCount = 0;
-
-	for (const stats of playerStats) {
+	const fields: EmbedField[] = playerStats.map(stats => {
 		const { player, totalGames, totalTimePlayed, totalLPGain, totalCS, totalPing, wins, losses, winrate, averageKDA, averageScore, averageDamage, averageVisionPerMin, averageTeamRank, averageTeamRankLabel } = stats;
 		const { gameName, tagLine } = player;
 
@@ -266,31 +278,14 @@ ${t.totalCs}: **${totalCS?.toFixed(0)}**
 ${t.pings}: **${totalPing?.toFixed(0)}**
 ${t.visionPerMin}: **${averageVisionPerMin?.toFixed(2)}**`;
 
-		currentEmbed.addFields({
+		return {
 			name: `${gameName}#${tagLine} - ${lpEmoji} ${lpChangeText}`,
 			value: playerStatsText,
 			inline: false,
-		});
+		};
+	});
 
-		playerCount++;
-
-		// Vérifier si l'embed dépasse la limite (25 fields)
-		if (currentEmbed.data && currentEmbed.data.fields && currentEmbed.data.fields.length > 24) {
-			// Envoyer l'embed actuel et en créer un nouveau
-			await channel.send({ embeds: [currentEmbed] });
-			currentEmbed = new EmbedBuilder()
-				.setTitle(`${t.monthlyRecapTitles[queueType]} - ${monthName} ${year}`)
-				.setColor(recapColor)
-				.setDescription(lang === 'fr' ? 'Statistiques du mois' : 'Monthly statistics');
-			playerCount = 0;
-		}
-	}
-
-	// Envoyer le dernier embed
-	if (playerCount > 0) {
-		currentEmbed.setTimestamp();
-		await channel.send({ embeds: [currentEmbed] });
-	}
+	await sendPagedFieldEmbeds(channel, makeHeader, fields);
 };
 
 export const sendTFTMonthlyRecapMessage = async (channel: TextChannel, playerStats: MonthlyRecapStats[], month: number, year: number, queueType: GameQueueType, lang: string): Promise<void> => {
@@ -299,17 +294,12 @@ export const sendTFTMonthlyRecapMessage = async (channel: TextChannel, playerSta
 	const monthName = getMonthNames(lang)[month - 1];
 	const recapColor = QUEUE_COLORS[queueType];
 
-	const embed = new EmbedBuilder()
+	const makeHeader = () => new EmbedBuilder()
 		.setTitle(`${t.monthlyRecapTitles[queueType]} - ${monthName} ${year}`)
 		.setColor(recapColor)
 		.setDescription(lang === 'fr' ? 'Statistiques du mois' : 'Monthly statistics');
 
-	// Format similaire au récap quotidien avec des infos en plus - regroupé dans un embed
-	// Si le message est trop grand, on le découpe en plusieurs messages
-	let currentEmbed = embed;
-	let playerCount = 0;
-
-	for (const stats of playerStats) {
+	const fields: EmbedField[] = playerStats.map(stats => {
 		const { player, totalGames, totalTimePlayed, totalLPGain, wins, losses, winrate, averagePlacement, averageLevel } = stats;
 		const { gameName, tagLine } = player;
 
@@ -324,29 +314,12 @@ export const sendTFTMonthlyRecapMessage = async (channel: TextChannel, playerSta
 ${t.avgPlacement}: **${averagePlacement?.toFixed(1)}**
 ${t.level}: **${averageLevel?.toFixed(1)}**`;
 
-		currentEmbed.addFields({
+		return {
 			name: `${gameName}#${tagLine} - ${lpEmoji} ${lpChangeText}`,
 			value: playerStatsText,
 			inline: false,
-		});
+		};
+	});
 
-		playerCount++;
-
-		// Vérifier si l'embed dépasse la limite (25 fields)
-		if (currentEmbed.data && currentEmbed.data.fields && currentEmbed.data.fields.length > 24) {
-			// Envoyer l'embed actuel et en créer un nouveau
-			await channel.send({ embeds: [currentEmbed] });
-			currentEmbed = new EmbedBuilder()
-				.setTitle(`${t.monthlyRecapTitles[queueType]} - ${monthName} ${year}`)
-				.setColor(recapColor)
-				.setDescription(lang === 'fr' ? 'Statistiques du mois' : 'Monthly statistics');
-			playerCount = 0;
-		}
-	}
-
-	// Envoyer le dernier embed
-	if (playerCount > 0) {
-		currentEmbed.setTimestamp();
-		await channel.send({ embeds: [currentEmbed] });
-	}
+	await sendPagedFieldEmbeds(channel, makeHeader, fields);
 };

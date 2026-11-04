@@ -3,6 +3,7 @@ import { getServer, listAllPlayerForSpecificServer, PlayerInfo } from '../databa
 import { replyCommandError } from './commandError';
 import { getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
+import { EMBED_LIMITS, paginateLines } from '../tracking/embedPages';
 
 export const data = new SlashCommandBuilder()
 	.setName('list')
@@ -23,20 +24,24 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 				flags: MessageFlags.Ephemeral,
 			})
 		} else {
-			const messageToDisplay = new EmbedBuilder()
+			const intro = `${t.description}\n\n`;
+			const lines = accountNameTagPlayerList.map((acc, index) => t.playerLine(index + 1, `${acc.gameName}#${acc.tagLine}`, acc.region));
+			// A long list is split over several embeds, one message each.
+			const embeds = paginateLines(lines, "\n\n", EMBED_LIMITS.description - intro.length).map(page => new EmbedBuilder()
 				.setTitle(t.title)
 				.setColor(0x0099FF)
-				.setDescription(
-					`${t.description}\n\n` +
-					accountNameTagPlayerList.map((acc, index) => t.playerLine(index + 1, `${acc.gameName}#${acc.tagLine}`, acc.region)).join("\n\n")
-				)
+				.setDescription(`${intro}${page}`)
 				.setFooter({ text: t.total(accountNameTagPlayerList.length) })
-				.setTimestamp();
+				.setTimestamp());
 
+			const [first, ...rest] = embeds;
 			await interaction.reply({
-				embeds: [messageToDisplay],
+				embeds: [first],
 				flags: MessageFlags.Ephemeral,
 			});
+			for (const embed of rest) {
+				await interaction.followUp({ embeds: [embed], flags: MessageFlags.Ephemeral });
+			}
 		}
 		logger.info('The list has been demanded');
 	} catch (error) {
