@@ -35,6 +35,11 @@ export interface MonthlyRecapCommandTranslations {
     failure: string;
 }
 
+export interface HelpTranslations {
+    title: string;
+    description: string;
+}
+
 export interface GameTranslations {
     // Commun
     title: string;
@@ -82,6 +87,7 @@ export interface GameTranslations {
     leaderboard: LeaderboardTranslations;
     list: ListTranslations;
     monthlyRecapCommand: MonthlyRecapCommandTranslations;
+    help: HelpTranslations;
 }
 
 const allTranslations = {
@@ -169,6 +175,41 @@ const allTranslations = {
             success: (month: number, year: number) => `✅ Récapitulatif mensuel pour ${month}/${year} généré avec succès !`,
             failure: "❌ Échec de la génération du récapitulatif mensuel. Contactez le développeur.",
         },
+        help: {
+            title: "📌 Guide d'utilisation du Bot",
+            description: [
+                "Bienvenue ! Voici les commandes pour bien utiliser le bot :",
+                "",
+                "🔹 **Initialisation**",
+                "➜ `/init` : Initialise le bot pour votre serveur (salon, suivi Flex/TFT, langue).",
+                "",
+                "🔹 **Ajout de joueurs**",
+                "➜ `/addplayer accountname:<nom> tag:<tag> region:<région>` : Ajoute un joueur à la liste de suivi.",
+                "",
+                "🔹 **Gestion des joueurs**",
+                "➜ `/deleteplayer accountname:<nom> tag:<tag> region:<région>` : Supprime un joueur de la liste.",
+                "➜ `/list` : Affiche la liste des joueurs suivis.",
+                "➜ `/leaderboard` : Affiche le classement général des joueurs.",
+                "",
+                "🔹 **Configuration**",
+                "➜ `/flextoggle` : Active ou désactive le suivi des parties Flex.",
+                "➜ `/tfttoggle` : Active ou désactive le suivi des parties TFT (solo et double).",
+                "➜ `/language` : Change la langue du bot (fr/en).",
+                "",
+                "🔹 **Récapitulatif mensuel manuel**",
+                "➜ `/monthlyrecap month:<mois> year:<année>` : Génère manuellement un récapitulatif mensuel des joueurs.",
+                "",
+                "🔹 **Récapitulatif quotidien**",
+                "📢 Tous les matins, le bot envoie un résumé des performances :",
+                "- Victoires / Défaites 🎉💀",
+                "- LP gagnés / perdus 📈📉",
+                "",
+                "🔹 **Récapitulatif mensuel automatique**",
+                "📢 Le 1er de chaque mois, le bot envoie automatiquement le récapitulatif du mois précédent pour tous les joueurs.",
+                "",
+                "*Besoin d'aide ? N'hésitez pas à demander !*",
+            ].join("\n"),
+        },
     },
 
     en: {
@@ -254,6 +295,41 @@ const allTranslations = {
             futureError: "❌ You cannot generate a recap for the future!",
             success: (month: number, year: number) => `✅ Monthly recap for ${month}/${year} generated successfully!`,
             failure: "❌ Failed to generate monthly recap. Contact the developer.",
+        },
+        help: {
+            title: "📌 Bot Usage Guide",
+            description: [
+                "Welcome! Here are the commands to use the bot properly:",
+                "",
+                "🔹 **Initialization**",
+                "➜ `/init` : Initializes the bot for your server (channel, Flex/TFT tracking, language).",
+                "",
+                "🔹 **Adding Players**",
+                "➜ `/addplayer accountname:<name> tag:<tag> region:<region>` : Adds a player to the tracking list.",
+                "",
+                "🔹 **Player Management**",
+                "➜ `/deleteplayer accountname:<name> tag:<tag> region:<region>` : Removes a player from the list.",
+                "➜ `/list` : Displays the list of tracked players.",
+                "➜ `/leaderboard` : Shows the general ranking of players.",
+                "",
+                "🔹 **Settings**",
+                "➜ `/flextoggle` : Enables or disables Flex game tracking.",
+                "➜ `/tfttoggle` : Enables or disables TFT game tracking (solo and double up).",
+                "➜ `/language` : Changes the bot language (fr/en).",
+                "",
+                "🔹 **Manual Monthly Recap**",
+                "➜ `/monthlyrecap month:<month> year:<year>` : Manually generates a monthly recap for players.",
+                "",
+                "🔹 **Daily Recap**",
+                "📢 Every morning, the bot sends a performance summary:",
+                "- Wins / Losses 🎉💀",
+                "- LP gained / lost 📈📉",
+                "",
+                "🔹 **Automatic Monthly Recap**",
+                "📢 On the 1st of each month, the bot automatically sends a recap of the previous month for all players.",
+                "",
+                "*Need help? Feel free to ask!*",
+            ].join("\n"),
         },
     },
 } as const; // Utilisation de 'as const' pour TypeScript pour des types stricts

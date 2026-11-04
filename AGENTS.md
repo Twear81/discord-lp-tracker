@@ -169,7 +169,7 @@ Au démarrage (pre-run):
 | `/flextoggle`   | Toggle tracking Flex pour le serveur                                 | `commands/flexToggle.ts` |
 | `/tfttoggle`    | Toggle tracking TFT pour le serveur                                  | `commands/tftToggle.ts` |
 | `/language`     | Change la langue du serveur (FR/EN)                                  | `commands/language.ts` |
-| `/help`         | Affiche le guide d'utilisation (embed dans la langue du serveur)     | `commands/help.ts`   |
+| `/help`         | Affiche le guide d'utilisation (langue du serveur, `en` avant `/init`) | `commands/help.ts`   |
 
 Toutes les commandes sont déployées **globalement** (`Routes.applicationCommands`), pas par-guild.
 
@@ -177,7 +177,7 @@ Toutes les commandes sont déployées **globalement** (`Routes.applicationComman
 
 - Source unique dans `src/translation/translation.ts`.
 - `getTranslations(lang: string): GameTranslations` — retourne FR ou EN, fallback EN si langue inconnue.
-- `GameTranslations` couvre: titres d'embeds, labels de stats, queues, placements TFT, winrate, etc., ainsi que les textes des commandes `/leaderboard`, `/list` et `/monthlyrecap` (groupes `leaderboard*`, `list`, `monthlyRecapCommand`).
+- `GameTranslations` couvre: titres d'embeds, labels de stats, queues, placements TFT, winrate, etc., ainsi que les textes des commandes `/leaderboard`, `/list`, `/monthlyrecap` et `/help` (groupes `leaderboard*`, `list`, `monthlyRecapCommand`, `help`).
 - Pour ajouter une langue: ajouter une entrée dans `allTranslations` avec la même structure que `fr` / `en`, et typer la clé dans les `addChoices` du `language.ts` (et de `init.ts` si pertinent).
 - La langue est stockée par serveur dans `Server.lang`.
 
