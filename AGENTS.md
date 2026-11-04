@@ -82,7 +82,7 @@ src/
 │   ├── tactician.ts      # Mapping des tacticiens TFT (via tft-tactician.json)
 │   ├── customMessages.ts # Templates d'embeds custom
 │   ├── types.ts          # Types partagés Riot
-│   ├── region.ts         # Helpers de mapping de région
+│   ├── region.ts         # Régions supportées (EUW, EUNE, NA, KR, BR, LAN, LAS, OCE, TR, RU, JP) + REGION_CHOICES + mapping vers la plateforme Riot
 │   └── index.ts          # Barrel export
 ├── tracking/
 │   ├── tracking.ts       # Orchestration: trackPlayers(), initLastDayInfo(), generateRecapOfTheDay()

@@ -3,6 +3,7 @@ import { deletePlayer } from '../database/databaseHelper';
 import { ErrorTypes } from '../error/error';
 import { replyCommandError } from './commandError';
 import logger from '../logger/logger';
+import { REGION_CHOICES } from '../riot/region';
 
 export const data = new SlashCommandBuilder()
 	.setName('deleteplayer')
@@ -23,10 +24,7 @@ export const data = new SlashCommandBuilder()
 		option.setName('region')
 			.setDescription('Region of the account')
 			.setRequired(true)
-			.addChoices(
-				{ name: 'EUW', value: 'EUW' },
-				{ name: 'NA', value: 'NA' }
-			)
+			.addChoices(...REGION_CHOICES)
 	);
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {

@@ -5,6 +5,7 @@ import { replyCommandError } from './commandError';
 import { getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, getSummonerByName, getTFTPlayerRankInfo, getTFTSummonerByName } from '../riot';
 import { GameQueueType, ManagedGameQueueType } from '../tracking/GameQueueType';
 import logger from '../logger/logger';
+import { REGION_CHOICES } from '../riot/region';
 
 const API_ERROR_MESSAGE = 'The player was not found. Please check the name and tag.';
 const GENERIC_ERROR_MESSAGE = 'Failed to add the player, contact the dev.';
@@ -28,10 +29,7 @@ export const data = new SlashCommandBuilder()
 		option.setName('region')
 			.setDescription('Region of the account')
 			.setRequired(true)
-			.addChoices(
-				{ name: 'EUW', value: 'EUW' },
-				{ name: 'NA', value: 'NA' }
-			)
+			.addChoices(...REGION_CHOICES)
 	);
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
