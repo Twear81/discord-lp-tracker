@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, MessageFlags, InteractionContextType } from 'discord.js';
 import { getServer, listAllPlayerForQueueInfoForSpecificServer, listAllPlayerForSpecificServer, PlayerForQueueInfo, PlayerInfo } from '../database/databaseHelper';
-import { replyCommandError } from './commandError';
+import { getCommandLang, replyCommandError } from './commandError';
 import { GameQueueType } from '../tracking/GameQueueType';
 import { sortPlayersByRank } from '../tracking/rank';
 import { QUEUE_COLORS } from '../tracking/sendMessage';
@@ -15,10 +15,10 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
 	const serverId = interaction.guildId as string;
+	const t = getTranslations(await getCommandLang(serverId));
 	try {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		const serverInfo = await getServer(serverId);
-		const t = getTranslations(serverInfo.lang);
 
 		// SoloQ goes last so it ends up closest to the input box.
 		const queueTypes: GameQueueType[] = [
@@ -54,7 +54,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		}
 		logger.info('The leaderboard has been demanded');
 	} catch (error) {
-		await replyCommandError(interaction, error, 'Failed to display the leaderboard, contact the dev');
+		await replyCommandError(interaction, error, t);
 	}
 }
 

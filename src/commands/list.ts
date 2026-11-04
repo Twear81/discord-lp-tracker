@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction, InteractionContextType } from 'discord.js';
 import { getServer, listAllPlayerForSpecificServer, PlayerInfo } from '../database/databaseHelper';
-import { replyCommandError } from './commandError';
+import { getCommandLang, replyCommandError } from './commandError';
 import { getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
 import { EMBED_LIMITS, paginateLines } from '../tracking/embedPages';
@@ -11,12 +11,14 @@ export const data = new SlashCommandBuilder()
 	.setDescription('List all players watched!');
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
+	const serverId = interaction.guildId as string;
+	const translations = getTranslations(await getCommandLang(serverId));
 	try {
-		const serverId = interaction.guildId as string;
-		const serverInfo = await getServer(serverId);
+		// Surfaces SERVER_NOT_INITIALIZE.
+		await getServer(serverId);
 		const accountNameTagPlayerList: PlayerInfo[] = await listAllPlayerForSpecificServer(serverId);
 
-		const t = getTranslations(serverInfo.lang).list;
+		const t = translations.list;
 
 		if (accountNameTagPlayerList.length === 0) {
 			await interaction.reply({
@@ -45,6 +47,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		}
 		logger.info('The list has been demanded');
 	} catch (error) {
-		await replyCommandError(interaction, error, 'Failed to display the list, contact the dev');
+		await replyCommandError(interaction, error, translations);
 	}
 }

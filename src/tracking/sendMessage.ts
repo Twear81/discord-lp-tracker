@@ -19,9 +19,6 @@ export const QUEUE_COLORS: Record<GameQueueType, ColorResolvable> = {
 	[GameQueueType.RANKED_TFT_DOUBLE_UP]: "#FFC72C",
 };
 
-const getMonthNames = (lang: string): string[] => lang === 'fr'
-	? ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
-	: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 const embedHeaderLength = (embed: EmbedBuilder): number =>
 	(embed.data.title?.length ?? 0) +
@@ -251,13 +248,13 @@ const getPlacementBadge = (place: number): string => {
 export const sendLeagueMonthlyRecapMessage = async (channel: TextChannel, playerStats: MonthlyRecapStats[], month: number, year: number, queueType: GameQueueType, lang: string): Promise<void> => {
 	const t = getTranslations(lang);
 
-	const monthName = getMonthNames(lang)[month - 1];
+	const monthName = t.monthNames[month - 1];
 	const recapColor = QUEUE_COLORS[queueType];
 
 	const makeHeader = () => new EmbedBuilder()
 		.setTitle(`${t.monthlyRecapTitles[queueType]} - ${monthName} ${year}`)
 		.setColor(recapColor)
-		.setDescription(lang === 'fr' ? 'Statistiques du mois' : 'Monthly statistics');
+		.setDescription(t.monthlyStats);
 
 	const fields: EmbedField[] = playerStats.map(stats => {
 		const { player, totalGames, totalTimePlayed, totalLPGain, totalCS, totalPing, wins, losses, winrate, averageKDA, averageScore, averageDamage, averageVisionPerMin, averageTeamRank, averageTeamRankLabel } = stats;
@@ -291,13 +288,13 @@ ${t.visionPerMin}: **${averageVisionPerMin?.toFixed(2)}**`;
 export const sendTFTMonthlyRecapMessage = async (channel: TextChannel, playerStats: MonthlyRecapStats[], month: number, year: number, queueType: GameQueueType, lang: string): Promise<void> => {
 	const t = getTranslations(lang);
 
-	const monthName = getMonthNames(lang)[month - 1];
+	const monthName = t.monthNames[month - 1];
 	const recapColor = QUEUE_COLORS[queueType];
 
 	const makeHeader = () => new EmbedBuilder()
 		.setTitle(`${t.monthlyRecapTitles[queueType]} - ${monthName} ${year}`)
 		.setColor(recapColor)
-		.setDescription(lang === 'fr' ? 'Statistiques du mois' : 'Monthly statistics');
+		.setDescription(t.monthlyStats);
 
 	const fields: EmbedField[] = playerStats.map(stats => {
 		const { player, totalGames, totalTimePlayed, totalLPGain, wins, losses, winrate, averagePlacement, averageLevel } = stats;

@@ -181,7 +181,7 @@ Toutes les commandes sont limitées aux serveurs (`setContexts(InteractionContex
 
 - Source unique dans `src/translation/translation.ts`.
 - `getTranslations(lang: string): GameTranslations` — retourne FR ou EN, fallback EN si langue inconnue.
-- `GameTranslations` couvre: titres d'embeds, labels de stats, queues, placements TFT, winrate, etc., ainsi que les textes des commandes `/leaderboard`, `/list`, `/monthlyrecap` et `/help` (groupes `leaderboard*`, `list`, `monthlyRecapCommand`, `help`).
+- `GameTranslations` couvre: titres d'embeds, labels de stats, queues, placements TFT, winrate, etc., ainsi que toutes les réponses des commandes (groupes `leaderboard*`, `list`, `monthlyRecapCommand`, `help`, `commands`). Les commandes résolvent la langue via `getCommandLang(guildId)` (`commands/commandError.ts`, `en` si le serveur n'est pas initialisé) et passent les traductions à `replyCommandError`.
 - Pour ajouter une langue: ajouter une entrée dans `allTranslations` avec la même structure que `fr` / `en`, et typer la clé dans les `addChoices` du `language.ts` (et de `init.ts` si pertinent).
 - La langue est stockée par serveur dans `Server.lang`.
 

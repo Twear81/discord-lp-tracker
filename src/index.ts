@@ -1,11 +1,13 @@
 
-import { CacheType, ChatInputCommandInteraction, Client, Events, GatewayIntentBits, Guild, MessageFlags } from "discord.js";
+import { CacheType, ChatInputCommandInteraction, Client, Events, GatewayIntentBits, Guild } from "discord.js";
 import cron from "node-cron";
 import { promises as fs } from "fs";
 import path from "path";
 import { inspect } from "util";
 import dotenv from 'dotenv';
 import { commands } from "./commands";
+import { getCommandLang, replyCommandError } from "./commands/commandError";
+import { getTranslations } from "./translation/translation";
 import { getLatestDDragonVersion } from "./riot/ddragon";
 import { invalidateTacticianCache } from "./riot/tactician";
 import { deployCommands } from "./deploy-commands";
@@ -247,22 +249,9 @@ client.on(Events.InteractionCreate, (interaction) => {
 		try {
 			await command.execute(interaction as ChatInputCommandInteraction<CacheType>);
 		} catch (error) {
-			logger.error(`❌ Unhandled error in command ${commandName}:`, error);
-			try {
-				if (interaction.deferred || interaction.replied) {
-					await interaction.followUp({
-						content: 'An unexpected error occurred, contact the dev',
-						flags: MessageFlags.Ephemeral,
-					});
-				} else {
-					await interaction.reply({
-						content: 'An unexpected error occurred, contact the dev',
-						flags: MessageFlags.Ephemeral,
-					});
-				}
-			} catch {
-				// interaction token expired or already acknowledged — nothing more to do
-			}
+			// Commands handle their own errors; this only catches what escapes them.
+			const t = getTranslations(await getCommandLang(interaction.guildId));
+			await replyCommandError(interaction, error, t);
 		}
 	})();
 });

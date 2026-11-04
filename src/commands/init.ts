@@ -1,6 +1,7 @@
 import { ChannelType, SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags, InteractionContextType, PermissionFlagsBits } from 'discord.js';
 import { addOrUpdateServer } from '../database/databaseHelper';
 import logger from '../logger/logger';
+import { getTranslations } from '../translation/translation';
 import { replyCommandError } from './commandError';
 
 export const data = new SlashCommandBuilder()
@@ -40,6 +41,8 @@ export const data = new SlashCommandBuilder()
 	);
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
+	const lang: string = interaction.options.getString('lang', true);
+	const t = getTranslations(lang);
 	try {
 		const serverId: string = interaction.guildId as string;
 		const channel = interaction.options.getChannel('channel', true);
@@ -47,17 +50,15 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		const flexToggle: boolean = interaction.options.getBoolean('flextoggle', true);
 		const tftToggle: boolean = interaction.options.getBoolean('tfttoggle', true);
 		// const tftDoubleToggle: boolean = interaction.options.getBoolean('tftdoubletoggle', true);
-		const lang: string = interaction.options.getString('lang', true);
 
 		await addOrUpdateServer(serverId, channelId, flexToggle, tftToggle, lang);
 
-		const flexMessage: string = flexToggle ? 'it will watch for flex game' : 'it will not watch for flex game';
 		await interaction.reply({
-			content: `The bot has been setup in ${channel.name}/${channelId}, ${flexMessage} and has been set to "${lang}" language.`,
+			content: t.commands.init(channel.name ?? channelId, flexToggle, tftToggle),
 			flags: MessageFlags.Ephemeral,
 		});
 		logger.info(`Bot has been setup for serverId: ${serverId}`);
 	} catch (error) {
-		await replyCommandError(interaction, error, 'Failed to init, contact the dev');
+		await replyCommandError(interaction, error, t);
 	}
 }

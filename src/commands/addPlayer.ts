@@ -1,15 +1,13 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, InteractionContextType, MessageFlags } from 'discord.js';
 import { addPlayer, getServer, QueueRank } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
-import { replyCommandError } from './commandError';
+import { getCommandLang, replyCommandError } from './commandError';
 import { getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, getSummonerByName, getTFTPlayerRankInfo, getTFTSummonerByName } from '../riot';
 import { GameQueueType } from '../tracking/GameQueueType';
+import { getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
 import { REGION_CHOICES } from '../riot/region';
 
-const API_ERROR_MESSAGE = 'The player was not found. Please check the name and tag.';
-const GENERIC_ERROR_MESSAGE = 'Failed to add the player, contact the dev.';
-const NOT_FOUND_ERROR = 'Not Found';
 
 export const data = new SlashCommandBuilder()
 	.setName('addplayer')
@@ -38,6 +36,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 	const accountname = interaction.options.getString('accountname')!;
 	const tag = interaction.options.getString('tag')!;
 	const region = interaction.options.getString('region')!;
+	const t = getTranslations(await getCommandLang(serverId));
 	try {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -54,7 +53,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		// that came back as an empty string. The TS type of `summonerTFT` is
 		// non-nullable but the runtime value is not formally guaranteed.
 		if (!summoner.puuid || !summonerTFT?.puuid) {
-			throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, NOT_FOUND_ERROR);
+			throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `No PUUID returned for ${accountname}#${tag}`);
 		}
 
 		// Fetch everything before writing anything: a Riot failure must not
@@ -93,13 +92,13 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		}, ranks);
 
 		await interaction.editReply({
-			content: `The player "${accountname}#${tag}" for region ${region} has been added.`
+			content: t.commands.addPlayer.added(`${summoner.gameName}#${summoner.tagLine}`, region),
 		});
 		logger.info(`The player ${accountname}#${tag} has been added for serverId: ${serverId}`);
 	} catch (error: unknown) {
-		await replyCommandError(interaction, error, GENERIC_ERROR_MESSAGE, {
-			[ErrorTypes.DATABASE_ALREADY_INSIDE]: 'Player already added',
-			[ErrorTypes.PLAYER_NOT_FOUND]: API_ERROR_MESSAGE,
+		await replyCommandError(interaction, error, t, {
+			[ErrorTypes.DATABASE_ALREADY_INSIDE]: t.commands.addPlayer.alreadyAdded,
+			[ErrorTypes.PLAYER_NOT_FOUND]: t.commands.addPlayer.notFound,
 		});
 	}
 }

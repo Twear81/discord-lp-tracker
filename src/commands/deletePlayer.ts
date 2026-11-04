@@ -1,8 +1,9 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, AutocompleteInteraction, InteractionContextType, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { deletePlayer, getServer, listAllPlayerForSpecificServer } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
-import { replyCommandError } from './commandError';
+import { getCommandLang, replyCommandError } from './commandError';
 import { formatPlayerLabel, resolvePlayer, suggestPlayers } from './playerLookup';
+import { getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
@@ -31,6 +32,7 @@ export async function autocomplete(interaction: AutocompleteInteraction): Promis
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
 	const serverId = interaction.guildId as string;
 	const input = interaction.options.getString('player', true);
+	const t = getTranslations(await getCommandLang(serverId));
 	logger.info(`Deleting a player for serverId: ${serverId}`);
 
 	try {
@@ -47,12 +49,12 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
 		const label = formatPlayerLabel(player);
 		await interaction.editReply({
-			content: `The player "${label}" has been deleted.`
+			content: t.commands.deletePlayer.deleted(label),
 		});
 		logger.info(`The player ${label} has been deleted for serverId: ${serverId}`);
 	} catch (error: unknown) {
-		await replyCommandError(interaction, error, 'Failed to delete the player, contact the dev', {
-			[ErrorTypes.PLAYER_NOT_FOUND]: 'Player not found',
+		await replyCommandError(interaction, error, t, {
+			[ErrorTypes.PLAYER_NOT_FOUND]: t.commands.deletePlayer.notFound,
 		});
 	}
 }

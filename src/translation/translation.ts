@@ -35,6 +35,24 @@ export interface MonthlyRecapCommandTranslations {
     failure: string;
 }
 
+export interface CommandTranslations {
+    initRequired: string;
+    unexpectedError: string;
+    init: (channelName: string, flexTracked: boolean, tftTracked: boolean) => string;
+    addPlayer: {
+        added: (riotId: string, region: string) => string;
+        alreadyAdded: string;
+        notFound: string;
+    };
+    deletePlayer: {
+        deleted: (label: string) => string;
+        notFound: string;
+    };
+    flexToggle: (enabled: boolean) => string;
+    tftToggle: (enabled: boolean) => string;
+    languageChanged: string;
+}
+
 export interface HelpTranslations {
     title: string;
     description: string;
@@ -88,6 +106,11 @@ export interface GameTranslations {
     list: ListTranslations;
     monthlyRecapCommand: MonthlyRecapCommandTranslations;
     help: HelpTranslations;
+    commands: CommandTranslations;
+
+    // Récap mensuel
+    monthlyStats: string;
+    monthNames: readonly string[];
 }
 
 const allTranslations = {
@@ -210,6 +233,26 @@ const allTranslations = {
                 "*Besoin d'aide ? N'hésitez pas à demander !*",
             ].join("\n"),
         },
+        commands: {
+            initRequired: "⚠️ Le bot n'est pas encore configuré sur ce serveur : lancez d'abord `/init`.",
+            unexpectedError: "❌ Une erreur inattendue est survenue, contactez le développeur.",
+            init: (channelName: string, flexTracked: boolean, tftTracked: boolean) =>
+                `✅ Bot configuré dans #${channelName}. Flex : ${flexTracked ? "suivie" : "non suivie"} · TFT : ${tftTracked ? "suivi" : "non suivi"} · Langue : français.`,
+            addPlayer: {
+                added: (riotId: string, region: string) => `✅ ${riotId} (${region}) est maintenant suivi.`,
+                alreadyAdded: "ℹ️ Ce joueur est déjà suivi sur ce serveur.",
+                notFound: "❌ Joueur introuvable. Vérifiez le nom, le tag et la région.",
+            },
+            deletePlayer: {
+                deleted: (label: string) => `🗑️ ${label} n'est plus suivi.`,
+                notFound: "❌ Aucun joueur suivi ne correspond. Choisissez-le dans les suggestions.",
+            },
+            flexToggle: (enabled: boolean) => enabled ? "✅ Les parties Flex sont maintenant suivies." : "⏸️ Les parties Flex ne sont plus suivies.",
+            tftToggle: (enabled: boolean) => enabled ? "✅ Les parties TFT (solo et double) sont maintenant suivies." : "⏸️ Les parties TFT (solo et double) ne sont plus suivies.",
+            languageChanged: "✅ Le bot parle maintenant français.",
+        },
+        monthlyStats: "Statistiques du mois",
+        monthNames: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
     },
 
     en: {
@@ -331,6 +374,26 @@ const allTranslations = {
                 "*Need help? Feel free to ask!*",
             ].join("\n"),
         },
+        commands: {
+            initRequired: "⚠️ The bot is not set up on this server yet: run `/init` first.",
+            unexpectedError: "❌ An unexpected error occurred, contact the developer.",
+            init: (channelName: string, flexTracked: boolean, tftTracked: boolean) =>
+                `✅ Bot set up in #${channelName}. Flex: ${flexTracked ? "tracked" : "not tracked"} · TFT: ${tftTracked ? "tracked" : "not tracked"} · Language: English.`,
+            addPlayer: {
+                added: (riotId: string, region: string) => `✅ ${riotId} (${region}) is now tracked.`,
+                alreadyAdded: "ℹ️ This player is already tracked on this server.",
+                notFound: "❌ Player not found. Please check the name, tag and region.",
+            },
+            deletePlayer: {
+                deleted: (label: string) => `🗑️ ${label} is no longer tracked.`,
+                notFound: "❌ No tracked player matches. Pick one from the suggestions.",
+            },
+            flexToggle: (enabled: boolean) => enabled ? "✅ Flex games are now tracked." : "⏸️ Flex games are no longer tracked.",
+            tftToggle: (enabled: boolean) => enabled ? "✅ TFT games (solo and double up) are now tracked." : "⏸️ TFT games (solo and double up) are no longer tracked.",
+            languageChanged: "✅ The bot now speaks English.",
+        },
+        monthlyStats: "Monthly statistics",
+        monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
     },
 } as const; // Utilisation de 'as const' pour TypeScript pour des types stricts
 

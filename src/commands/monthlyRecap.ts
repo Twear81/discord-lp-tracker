@@ -1,9 +1,8 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags, SlashCommandIntegerOption, InteractionContextType, PermissionFlagsBits } from 'discord.js';
-import { getLangServer } from '../database/databaseHelper';
 import { generateMonthlyRecap } from '../tracking/monthlyRecap';
 import { getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
-import { replyCommandError } from './commandError';
+import { getCommandLang, replyCommandError } from './commandError';
 
 export const data = new SlashCommandBuilder()
 	.setName('monthlyrecap')
@@ -27,12 +26,9 @@ export const data = new SlashCommandBuilder()
 	);
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
-    const serverId = interaction.guildId as string;
-    let lang: string = 'en';
-    let t = getTranslations(lang);
-    try {
-        lang = await getLangServer(serverId);
-        t = getTranslations(lang);
+	const serverId = interaction.guildId as string;
+	const t = getTranslations(await getCommandLang(serverId));
+	try {
 
 		const month = interaction.options.getInteger('month')!;
 		const year = interaction.options.getInteger('year')!;
@@ -62,6 +58,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
 		logger.info(`✅ Monthly recap for ${month}/${year} sent successfully.`);
 	} catch (error) {
-		await replyCommandError(interaction, error, t.monthlyRecapCommand.failure);
+		await replyCommandError(interaction, error, t, {}, t.monthlyRecapCommand.failure);
 	}
 }
