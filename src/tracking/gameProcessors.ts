@@ -54,6 +54,25 @@ async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, match
 	await updatePlayerLastGameId(server.serverid, player.puuid, matchId, ManagedGameQueueType.LEAGUE);
 	logger.info(`[League] DB updated for player ${player.gameName} with match ${matchId}.`);
 
+	const playerQueueInfo = await getPlayerForQueueInfoForSpecificServer(server.serverid, player.puuid, gameDetails.queueType);
+
+	const { currentRank, currentTier, currentLP, oldRank, oldTier, oldLP } = playerQueueInfo;
+	let lpGain = 0;
+	if (currentRank != null && oldRank != null) {
+		lpGain = calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
+	} else {
+		logger.warn("Can't calculateRRDifference because there is a null info");
+	}
+
+	// Save game details to database for monthly recap — before the
+	// first-run / channel checks below, so a game detected at startup or on a
+	// server whose channel was deleted still counts in the monthly recap.
+	await saveLeagueGameToDatabase(
+		playerQueueInfo,
+		gameDetails,
+		matchId
+	);
+
 	// 3. Send notification if not the first run
 	if (firstRun) {
 		logger.info(`[League] First run: skipping notification for ${player.gameName}.`);
@@ -69,23 +88,6 @@ async function handleNewLeagueGame(server: ServerInfo, player: PlayerInfo, match
 		logger.error(`❌ [League] Failed to find channel with ID ${server.channelid} for server ${server.serverid}.`, error);
 		return;
 	}
-
-	const playerQueueInfo = await getPlayerForQueueInfoForSpecificServer(server.serverid, player.puuid, gameDetails.queueType);
-
-	const { currentRank, currentTier, currentLP, oldRank, oldTier, oldLP } = playerQueueInfo;
-	let lpGain = 0;
-	if (currentRank != null && oldRank != null) {
-		lpGain = calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
-	} else {
-		logger.warn("Can't calculateRRDifference because there is a null info");
-	}
-
-	// Save game details to database for monthly recap
-	await saveLeagueGameToDatabase(
-		playerQueueInfo,
-		gameDetails,
-		matchId
-	);
 
 	await sendLeagueGameResultMessage(
 		channel,
@@ -144,6 +146,24 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
 	await updatePlayerLastGameId(server.serverid, player.tftpuuid, matchId, ManagedGameQueueType.TFT);
 	logger.info(`[TFT] DB updated for player ${player.gameName} with match ${matchId}.`);
 
+	const playerQueueInfo = await getPlayerForQueueInfoForSpecificServer(server.serverid, player.tftpuuid, gameDetails.queueType);
+	const { currentRank, currentTier, currentLP, oldRank, oldTier, oldLP } = playerQueueInfo;
+	let lpGain = 0;
+	if (currentRank != null && oldRank != null) {
+		lpGain = calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
+	} else {
+		logger.warn("Can't calculateRRDifference because there is a null info");
+	}
+
+	// Save game details to database for monthly recap — before the
+	// first-run / channel checks below, so a game detected at startup or on a
+	// server whose channel was deleted still counts in the monthly recap.
+	await saveTFTGameToDatabase(
+		playerQueueInfo,
+		gameDetails,
+		matchId
+	);
+
 	// 3. Send notification
 	if (firstRun) {
 		logger.info(`[TFT] First run: skipping notification for ${player.gameName}.`);
@@ -159,22 +179,6 @@ async function handleNewTFTGame(server: ServerInfo, player: PlayerInfo, matchId:
 		logger.error(`❌ [TFT] Failed to find channel with ID ${server.channelid} for server ${server.serverid}.`, error);
 		return;
 	}
-
-	const playerQueueInfo = await getPlayerForQueueInfoForSpecificServer(server.serverid, player.tftpuuid, gameDetails.queueType);
-	const { currentRank, currentTier, currentLP, oldRank, oldTier, oldLP } = playerQueueInfo;
-	let lpGain = 0;
-	if (currentRank != null && oldRank != null) {
-		lpGain = calculateLPDifference(oldRank, currentRank, oldTier!, currentTier!, oldLP!, currentLP!);
-	} else {
-		logger.warn("Can't calculateRRDifference because there is a null info");
-	}
-
-	// Save game details to database for monthly recap
-	await saveTFTGameToDatabase(
-		playerQueueInfo,
-		gameDetails,
-		matchId
-	);
 
 	await sendTFTGameResultMessage(
 		channel,
