@@ -125,7 +125,33 @@ const findPlayerByPuuid = async (serverId: string, puuid: string): Promise<Model
 	return existingPlayer;
 };
 
-export const addPlayer = async (serverId: string, puuid: string, tftpuuid: string, accountName: string, tag: string, region: string): Promise<void> => {
+export interface NewPlayer {
+	serverId: string;
+	puuid: string;
+	tftpuuid: string;
+	gameName: string;
+	tagLine: string;
+	region: string;
+	lastGameID: string | null;
+	lastTFTGameID: string | null;
+}
+
+export interface QueueRank {
+	queueType: GameQueueType;
+	leaguePoints: number;
+	rank: string;
+	tier: string;
+}
+
+const TFT_QUEUE_TYPES: ReadonlySet<GameQueueType> = new Set([GameQueueType.RANKED_TFT, GameQueueType.RANKED_TFT_DOUBLE_UP]);
+
+// Inserts the Player with everything it needs to be tracked (last game ids,
+// one row per queue with the current rank) in one go, so a Riot failure can
+// no longer leave a half-initialized player behind: the caller fetches all
+// Riot data first. Should a queue-row insert fail, the Player is removed
+// again (its rows follow through ON DELETE CASCADE).
+export const addPlayer = async (newPlayer: NewPlayer, ranks: QueueRank[]): Promise<void> => {
+	const { serverId, puuid, tftpuuid } = newPlayer;
 	const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
 	if (existingServer == null) {
 		throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
@@ -136,14 +162,42 @@ export const addPlayer = async (serverId: string, puuid: string, tftpuuid: strin
 		throw new AppError(ErrorTypes.DATABASE_ALREADY_INSIDE, 'Player already exists');
 	}
 
-	const player = await Player.create({ serverid: serverId, puuid: puuid, tftpuuid: tftpuuid, gameName: accountName, tagLine: tag, region: region });
-	// Create all sub table entry
-	await SoloQ.create({ playerId: player.dataValues.id, puuid: player.dataValues.puuid });
-	await FlexQ.create({ playerId: player.dataValues.id, puuid: player.dataValues.puuid });
-	await ClashQ.create({ playerId: player.dataValues.id, puuid: player.dataValues.puuid });
-	await Ranked5v5.create({ playerId: player.dataValues.id, puuid: player.dataValues.puuid });
-	await SoloTFT.create({ playerId: player.dataValues.id, puuid: player.dataValues.tftpuuid });
-	await DoubleTFT.create({ playerId: player.dataValues.id, puuid: player.dataValues.tftpuuid });
+	const player = await Player.create({
+		serverid: serverId,
+		puuid,
+		tftpuuid,
+		gameName: newPlayer.gameName,
+		tagLine: newPlayer.tagLine,
+		region: newPlayer.region,
+		lastGameID: newPlayer.lastGameID,
+		lastTFTGameID: newPlayer.lastTFTGameID,
+	});
+	const playerId: number = player.dataValues.id;
+
+	try {
+		const now = new Date();
+		for (const [queueType, model] of Object.entries(QUEUE_MODELS) as [GameQueueType, typeof SoloQ][]) {
+			const rank = ranks.find(r => r.queueType === queueType);
+			await model.create({
+				playerId,
+				puuid: TFT_QUEUE_TYPES.has(queueType) ? tftpuuid : puuid,
+				// Same snapshot as updatePlayerInfoCurrentAndLastForQueueType on
+				// a fresh row: current = last day, nothing before it.
+				...(rank && {
+					currentRank: rank.rank,
+					currentTier: rank.tier,
+					currentLP: rank.leaguePoints,
+					lastDayRank: rank.rank,
+					lastDayTier: rank.tier,
+					lastDayLP: rank.leaguePoints,
+					lastDayDate: now,
+				}),
+			});
+		}
+	} catch (error) {
+		await Player.destroy({ where: { id: playerId } });
+		throw error;
+	}
 };
 
 // Delete by Player.id, scoped to the server so a guild can only delete its
