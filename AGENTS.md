@@ -148,7 +148,7 @@ Tous déclarés dans `src/index.ts` au `Events.ClientReady`:
 | `33 6 * * *`  | `generateRecapOfTheDay()` + `initLastDayInfo(true)` — récap quotidien du matin + reset des compteurs |
 | `0 10 * * *`  | `updateTFTTacticianFile()` — MAJ DDragon            |
 | `0 8 1 * *`   | `generateMonthlyRecap()` — récap mensuel du mois précédent |
-| `0 0 1 * *`   | `purgeOldGames(2)` — supprime les games > 24 mois   |
+| `0 0 1 * *`   | `purgeOldGames(2)` — supprime les games > 24 mois (avant le 1er du mois courant, N-2) |
 
 Au démarrage (pre-run):
 1. `deployCommands()` — enregistre les slash commands globalement

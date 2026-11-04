@@ -1,12 +1,12 @@
 import { deleteOldLeagueGames, deleteOldTFTGames } from '../database/databaseHelper';
 import logger from '../logger/logger';
+import { getPurgeCutoffDate } from './util';
 
 export const purgeOldGames = async (yearsToKeep: number = 1): Promise<void> => {
 	logger.info(`🗑️ Starting old games purge (keeping last ${yearsToKeep} year(s))...`);
 	
 	try {
-		const currentDate = new Date();
-		const purgeDate = new Date(currentDate.getFullYear() - yearsToKeep, 0, 1); // January 1st of the year to purge
+		const purgeDate = getPurgeCutoffDate(new Date(), yearsToKeep);
 
 		logger.info(`🗓️ Purging games older than ${purgeDate.toISOString()}`);
 

@@ -4,6 +4,7 @@ import {
 	getAbsoluteLP,
 	getDisplayRank,
 	getDurationString,
+	getPurgeCutoffDate,
 	isGameDurationValid,
 	isTimestampInRecapRange,
 	MIN_GAME_DURATION_SECONDS,
@@ -120,5 +121,17 @@ describe('getDisplayRank', () => {
 
 	it('shows the division for regular tiers', () => {
 		expect(getDisplayRank('GOLD', 'II')).toBe(' II');
+	});
+});
+
+describe('getPurgeCutoffDate', () => {
+	it('keeps the last 24 full months, not everything since January of N-2', () => {
+		// Cron fires on the 1st of the month at 00:00.
+		const cutoff = getPurgeCutoffDate(new Date(2026, 10, 1, 0, 0), 2);
+		expect(cutoff).toEqual(new Date(2024, 10, 1));
+	});
+
+	it('cuts on the 1st of the month whatever the current day', () => {
+		expect(getPurgeCutoffDate(new Date(2026, 0, 31, 23, 59), 2)).toEqual(new Date(2024, 0, 1));
 	});
 });

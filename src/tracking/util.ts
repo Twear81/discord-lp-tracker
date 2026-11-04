@@ -7,6 +7,13 @@ export const MIN_GAME_DURATION_SECONDS = 13 * 60;
 export const RECAP_CUTOFF_HOUR = 6;
 export const RECAP_CUTOFF_MINUTE = 33;
 
+// Games strictly older than the returned date are purged. The cutoff is the
+// 1st of the current month, `yearsToKeep` years back: the purge keeps the last
+// `yearsToKeep * 12` full months (plus the current one), so a monthly recap
+// never loses part of a month.
+export const getPurgeCutoffDate = (now: Date, yearsToKeep: number): Date =>
+	new Date(now.getFullYear() - yearsToKeep, now.getMonth(), 1);
+
 export const isGameDurationValid = (durationSeconds: number): boolean => durationSeconds >= MIN_GAME_DURATION_SECONDS;
 
 export function isTimestampInRecapRange(timestamp: number): boolean {
