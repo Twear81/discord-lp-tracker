@@ -96,7 +96,7 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 }
 
 // TftMatch: list(puuid, region, query) -> ApiResponseDTO<string[]>
-// Cached 5s and goes through the duplicate-job retry path.
+// Cached 60s (TTL.MATCH_IDS_MS) and goes through the duplicate-job retry path.
 export async function getLastTFTMatch(puuid: string, region: string): Promise<string[]> {
 	try {
 		const cluster = Constants.regionToRegionGroup(regionToPlatform(region));

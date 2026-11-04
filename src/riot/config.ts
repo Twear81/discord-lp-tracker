@@ -56,8 +56,12 @@ export async function limitedRequest<T>(key: RiotKey, apiCallFn: () => Promise<T
 // @fightmegg/riot-api had built-in. Each call site keys its cache by
 // the method name + primitive args instead of relying on the
 // library's METHOD_KEY constants.
-type CacheEntry<T> = { value: T; expires: number };
-const cache = new Map<string, CacheEntry<unknown>>();
+// Entries hold the loader's Promise rather than its resolved value, so
+// concurrent callers on the same key (e.g. the same player tracked on two
+// servers) share a single in-flight Riot request instead of each missing
+// the cache and firing their own.
+type CacheEntry = { promise: Promise<unknown>; expires: number };
+const cache = new Map<string, CacheEntry>();
 
 // Cap the cache so the Map can't grow unbounded across the bot's
 // lifetime. The key universe is roughly O(players × tracked queues +
@@ -67,25 +71,32 @@ const cache = new Map<string, CacheEntry<unknown>>();
 // Riot payload bodies.
 const MAX_CACHE_ENTRIES = 1000;
 
-export async function withCache<T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
+export function withCache<T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
 	const now = Date.now();
-	const hit = cache.get(key) as CacheEntry<T> | undefined;
+	const hit = cache.get(key);
 	if (hit && hit.expires > now) {
-		return hit.value;
+		return hit.promise as Promise<T>;
 	}
 	// Evict the oldest entry when at capacity. Map iteration order is
 	// insertion order, so the first key is the oldest. FIFO is fine here:
 	// a hit on an expired key overwrites it in place (no size change), and
 	// a cache miss just bumps size by one — which is exactly when we evict.
-	if (cache.size >= MAX_CACHE_ENTRIES) {
+	if (!hit && cache.size >= MAX_CACHE_ENTRIES) {
 		const oldestKey = cache.keys().next().value;
 		if (oldestKey !== undefined) {
 			cache.delete(oldestKey);
 		}
 	}
-	const value = await loader();
-	cache.set(key, { value, expires: now + ttlMs });
-	return value;
+	const promise = loader();
+	cache.set(key, { promise, expires: now + ttlMs });
+	// Never cache failures: drop the entry (if it is still ours) so the next
+	// caller retries. The caller still receives the rejection via `promise`.
+	promise.catch(() => {
+		if (cache.get(key)?.promise === promise) {
+			cache.delete(key);
+		}
+	});
+	return promise;
 }
 
 export function clearRiotCache(): void {
@@ -97,7 +108,10 @@ export const TTL = {
 	ACCOUNT_BY_RIOT_ID_MS: 60_000,
 	ACCOUNT_BY_PUUID_MS: 60_000,
 	MATCH_BY_ID_MS: 30_000,
-	MATCH_IDS_MS: 5_000,
+	// Long enough for every server of a tracking cycle to share one matchlist
+	// call per player, well below the 5-minute cycle so a new game is never
+	// hidden for more than one cycle.
+	MATCH_IDS_MS: 60_000,
 	LEAGUE_ENTRIES_MS: 30_000,
 } as const;
 
@@ -109,14 +123,18 @@ export const TTL = {
 
 // `fn` must return a Twisted ApiResponseDTO (any object with a `response`
 // field); the helper unwraps it and returns just the payload, cached
-// under `key` for `ttlMs` and throttled by Bottleneck.
+// under `cacheKey` for `ttlMs` and throttled by Bottleneck.
+//
+// The cache key is namespaced by the Riot API key: Account-V1 returns a
+// different (encrypted) PUUID per API key, so the LoL and TFT lookups of
+// the same Riot ID must never share an entry.
 export async function riotCached<T>(
 	key: RiotKey,
 	cacheKey: string,
 	ttlMs: number,
 	fn: () => Promise<{ response: T }>,
 ): Promise<T> {
-	return withCache(cacheKey, ttlMs, async () => {
+	return withCache(`${key}|${cacheKey}`, ttlMs, async () => {
 		const { response } = await limitedRequest(key, fn);
 		return response;
 	});
@@ -132,7 +150,7 @@ export async function riotCachedWithRetry<T>(
 	ttlMs: number,
 	fn: () => Promise<{ response: T }>,
 ): Promise<T> {
-	return withCache(cacheKey, ttlMs, () =>
+	return withCache(`${key}|${cacheKey}`, ttlMs, () =>
 		withRetryOnDuplicateJob(() => limitedRequest(key, fn)).then(r => r.response),
 	);
 }

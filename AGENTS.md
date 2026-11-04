@@ -121,11 +121,11 @@ Deux clients distincts dans `src/riot/config.ts`:
 - `riotApi` (clé `RIOT_API`) — LoL: `summoner`, `account`, `league`, `matchv5`.
 - `riotApiTFT` (clé `RIOT_API_TFT`) — TFT: `tft-summoner-v1`, `tft-match-v1`, `tft-league-v1`, `account`.
 
-**Cache local** activé avec TTL par méthode (en ms):
+**Cache local** activé avec TTL par méthode (en ms). Les clés de cache sont préfixées par la clé API (`lol` / `tft`), et la `Promise` en cours est partagée entre appelants concurrents (les échecs ne sont pas mis en cache):
 - `GET_BY_PUUID` (summoner / account): 60 000
 - `GET_ENTRIES_BY_PUUID` (league): 30 000
 - `GET_MATCH_BY_ID`: 30 000
-- `GET_IDS_BY_PUUID` (matchlist): 5 000
+- `GET_IDS_BY_PUUID` (matchlist): 60 000 (partagé par tous les serveurs d'un même cycle)
 
 **Rate-limit** via `Bottleneck` (`limitedRequest(key, fn)` wrapper) — **un limiter par clé** (`lol` = RIOT_API, `tft` = RIOT_API_TFT), soit 2 × 100 req / 2 min au total:
 - `minTime: 50ms` (max 20 req/s)

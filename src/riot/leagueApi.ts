@@ -117,7 +117,7 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 }
 
 // MatchV5: list(puuid, region, query) -> ApiResponseDTO<string[]>
-// Cached 5s and goes through the duplicate-job retry path because the
+// Cached 60s (TTL.MATCH_IDS_MS) and goes through the duplicate-job retry path because the
 // tracking cron can overlap itself on redeploys.
 export async function getLastRankedLeagueMatch(puuid: string, region: string): Promise<string[]> {
 	try {
