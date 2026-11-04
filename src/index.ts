@@ -210,10 +210,6 @@ const updateTFTTacticianFile = async () => {
 	}
 };
 
-// client.on(Events.GuildCreate, async (guild: Guild) => {
-// 	await deployCommands({ guildId: guild.id });
-// });
-
 client.on(Events.GuildDelete, (guild: Guild) => {
 	void (async () => {
 		try {

@@ -69,7 +69,7 @@ src/
 ├── database/
 │   ├── database.ts       # Instance Sequelize (SQLite, fichier database.sqlite)
 │   ├── playerModel.ts    # Player + 6 tables de queue (SoloQ/FlexQ/ClashQ/Ranked5v5/SoloTFT/DoubleTFT)
-│   ├── serverModel.ts    # Server (serverid, channelid, flextoggle, tfttoggle, tftdoubletoggle, lang)
+│   ├── serverModel.ts    # Server (serverid, channelid, flextoggle, tfttoggle, lang)
 │   ├── gameModel.ts      # LeagueGame + TFTGame (snapshots détaillés par partie)
 │   ├── databaseHelper.ts # Toutes les queries (CRUD players/servers, getAllServer, listAllPlayerForSpecificServer, etc.)
 │   └── init_database.ts  # sequelize.sync + backfill des tables de queue
@@ -113,7 +113,7 @@ Fichiers à la racine: `tft-tactician.json` (cache local des tacticiens TFT, MAJ
   - `LeagueGame` / `TFTGame` — `hasMany` depuis Player, snapshot détaillé par partie (KDA, CS, score, queueType, lpGain, rank/tier/lp before/after, etc.).
 - Relations en **`CASCADE`** sur la `playerId`: supprimer un Player supprime toutes ses games et entrées de queue.
 - SQLite désactive les FK par défaut — `initDB()` exécute `PRAGMA foreign_keys = ON;` avant le `sync()` pour que les `onDelete: 'CASCADE'` soient respectés.
-- **Init**: `initDB()` fait `sequelize.sync({ force: false })` puis `backfillQueueTables()` pour créer les entrées de queue manquantes pour les joueurs existants (utile après ajout d'un nouveau type de queue).
+- **Init**: `initDB()` fait `sequelize.sync({ force: false })`, `dropLegacyColumns()` (colonnes retirées des modèles mais encore en base — `sync` ne les supprime jamais), puis `backfillQueueTables()` pour créer les entrées de queue manquantes pour les joueurs existants (utile après ajout d'un nouveau type de queue).
 - **`Player.lastGameID` / `lastTFTGameID`** servent de pointeur "dernière partie connue" pour ne pas retraiter les anciennes games à chaque cycle.
 
 ## Riot API
@@ -220,7 +220,7 @@ Pour vérifier le runtime manuellement: `npm run dev` (hot-reload) ou `npm start
 
 ## Gotchas
 
-- **SoloQ, Clash et Ranked 5v5 toujours actifs** au récap quotidien, indépendamment du jour de la semaine ou des toggles serveur. Flex est contrôlé par `Server.flextoggle`, TFT et TFT Double par `Server.tfttoggle`. `Server.tftdoubletoggle` existe en DB mais n'est pas exposé via `/init` (commenté dans `commands/init.ts`).
+- **SoloQ, Clash et Ranked 5v5 toujours actifs** au récap quotidien, indépendamment du jour de la semaine ou des toggles serveur. Flex est contrôlé par `Server.flextoggle`, TFT et TFT Double par `Server.tfttoggle`. L'ancienne colonne `Server.tftdoubletoggle` (jamais exposée) est supprimée au démarrage par `dropLegacyColumns()` (`init_database.ts`).
 - **TFT Double** partage le toggle TFT (`server.tfttoggle`), pas un toggle séparé.
 - **Déploiement global des commands** (`Routes.applicationCommands` dans `deploy-commands.ts`) — la propagation aux serveurs peut prendre jusqu'à 1h après changement de définition.
 - **Logs quotidiens** dans `logs/` — bien que non listés explicitement dans `.gitignore`, ils ne sont **pas** versionnés (`*.log` et `logs/` y figurent).

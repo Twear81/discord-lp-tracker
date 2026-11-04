@@ -1,7 +1,6 @@
 import { LolApi, TftApi, RiotApi } from "twisted";
 import dotenv from "dotenv";
 import Bottleneck from "bottleneck";
-import logger from "../logger/logger";
 
 dotenv.config();
 
@@ -138,45 +137,4 @@ export async function riotCached<T>(
 		const { response } = await limitedRequest(key, fn);
 		return response;
 	});
-}
-
-// Same as riotCached but wraps Bottleneck's `withRetryOnDuplicateJob`
-// on top. Used by match-listing endpoints (riotApi.MatchV5.list and
-// riotApi.TftMatch.list) where the tracking cron's overlap can race
-// the scheduler.
-export async function riotCachedWithRetry<T>(
-	key: RiotKey,
-	cacheKey: string,
-	ttlMs: number,
-	fn: () => Promise<{ response: T }>,
-): Promise<T> {
-	return withCache(`${key}|${cacheKey}`, ttlMs, () =>
-		withRetryOnDuplicateJob(() => limitedRequest(key, fn)).then(r => r.response),
-	);
-}
-
-const DUPLICATE_JOB_MESSAGE = 'A job with the same id already exists';
-const MAX_RETRIES = 3;
-const BASE_DELAY_MS = 100;
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-export async function withRetryOnDuplicateJob<T>(apiCallFn: () => Promise<T>): Promise<T> {
-	let lastError: unknown;
-	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-		try {
-			return await apiCallFn();
-		} catch (error) {
-			lastError = error;
-			const message = error instanceof Error ? error.message : String(error);
-			const isDuplicate = message.includes(DUPLICATE_JOB_MESSAGE);
-			if (!isDuplicate || attempt === MAX_RETRIES) {
-				throw error;
-			}
-			const delay = BASE_DELAY_MS * (attempt + 1) + Math.floor(Math.random() * 50);
-			logger.warn(`⚠️ Bottleneck duplicate job, retry ${attempt + 1}/${MAX_RETRIES} dans ${delay}ms`);
-			await sleep(delay);
-		}
-	}
-	throw lastError;
 }

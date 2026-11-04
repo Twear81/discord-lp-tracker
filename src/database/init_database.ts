@@ -16,11 +16,30 @@ const initDB = async (): Promise<void> => {
 		await sequelize.sync({ force: false });
 		logger.info('📦 Database synced');
 
+		await dropLegacyColumns();
 		await ensureIndexes();
 		await backfillQueueTables();
 	} catch (error) {
 		logger.error('❌ Failed to initialize the database:', error);
 		throw error;
+	}
+};
+
+// Columns removed from the models but still present in existing databases.
+// sync({ force: false }) never drops columns, and these are NOT NULL without
+// a default, so inserts that no longer set them would fail.
+const LEGACY_COLUMNS: Array<{ table: string; column: string }> = [
+	// TFT Double always shared tfttoggle; the column was never exposed.
+	{ table: 'Servers', column: 'tftdoubletoggle' },
+];
+
+const dropLegacyColumns = async (): Promise<void> => {
+	for (const { table, column } of LEGACY_COLUMNS) {
+		const [columns] = await sequelize.query(`PRAGMA table_info(${table})`) as [Array<{ name: string }>, unknown];
+		if (columns.some(c => c.name === column)) {
+			await sequelize.query(`ALTER TABLE ${table} DROP COLUMN ${column}`);
+			logger.info(`🧹 Dropped legacy column ${table}.${column}`);
+		}
 	}
 };
 

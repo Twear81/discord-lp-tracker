@@ -25,11 +25,6 @@ export const data = new SlashCommandBuilder()
 			.setDescription('Whether or not the tft games are tracked')
 			.setRequired(true)
 	)
-	// .addBooleanOption(option =>
-	// 	option.setName('tftdoubletoggle')
-	// 		.setDescription('Whether or not the double tft games are tracked')
-	// 		.setRequired(true)
-	// )
 	.addStringOption(option =>
 		option.setName('lang')
 			.setDescription('The language used by the bot')
@@ -49,7 +44,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		const channelId: string = channel.id;
 		const flexToggle: boolean = interaction.options.getBoolean('flextoggle', true);
 		const tftToggle: boolean = interaction.options.getBoolean('tfttoggle', true);
-		// const tftDoubleToggle: boolean = interaction.options.getBoolean('tftdoubletoggle', true);
 
 		await addOrUpdateServer(serverId, channelId, flexToggle, tftToggle, lang);
 

@@ -13,10 +13,10 @@ export const addOrUpdateServer = async (serverId: string, channelId: string, fle
 	try {
 		const existingServer = await Server.findOne({ where: { serverid: serverId } });
 		if (existingServer) {
-			await existingServer.update({ channelid: channelId, flextoggle: flexToggle, tfttoggle: tftToggle, tftdoubletoggle: false, lang: lang });
+			await existingServer.update({ channelid: channelId, flextoggle: flexToggle, tfttoggle: tftToggle, lang: lang });
 			logger.info(`The server ${serverId} has been updated`);
 		} else {
-			await Server.create({ serverid: serverId, channelid: channelId, flextoggle: flexToggle, tfttoggle: tftToggle, tftdoubletoggle: false, lang: lang });
+			await Server.create({ serverid: serverId, channelid: channelId, flextoggle: flexToggle, tfttoggle: tftToggle, lang: lang });
 			logger.info(`The server ${serverId} has been added`);
 		}
 	} catch (error) {

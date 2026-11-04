@@ -2,7 +2,7 @@ import { Constants } from "twisted";
 import { AppError, ErrorTypes } from "../error/error";
 import { GameQueueType } from "../tracking/GameQueueType";
 import logger from "../logger/logger";
-import { riotApiTft, riotCached, riotCachedWithRetry, tftApi, TTL } from "./config";
+import { riotApiTft, riotCached, tftApi, TTL } from "./config";
 import { regionToPlatform } from "./region";
 import { PlayerTFTGameInfo } from "./types";
 import { getMainTrait, getStageFromRound } from "./matchStats";
@@ -96,12 +96,12 @@ export async function getTFTGameDetailForCurrentPlayer(puuid: string, gameID: st
 }
 
 // TftMatch: list(puuid, region, query) -> ApiResponseDTO<string[]>
-// Cached 60s (TTL.MATCH_IDS_MS) and goes through the duplicate-job retry path.
+// Cached 60s (TTL.MATCH_IDS_MS), like the League matchlist.
 export async function getLastTFTMatch(puuid: string, region: string): Promise<string[]> {
 	try {
 		const cluster = Constants.regionToRegionGroup(regionToPlatform(region));
 		const query = { count: 1 };
-		return await riotCachedWithRetry('tft',
+		return await riotCached('tft',
 			`tftMatch|list|${puuid}|${cluster}`,
 			TTL.MATCH_IDS_MS,
 			() => tftApi.Match.list(puuid, cluster, query),

@@ -2,7 +2,7 @@ import { Constants } from "twisted";
 import { AppError, ErrorTypes } from "../error/error";
 import { GameQueueType } from "../tracking/GameQueueType";
 import logger from "../logger/logger";
-import { lolApi, riotApiLol, riotCached, riotCachedWithRetry, TTL } from "./config";
+import { lolApi, riotApiLol, riotCached, TTL } from "./config";
 import { regionToPlatform } from "./region";
 import { PlayerLeagueGameInfo } from "./types";
 import { computePlayerScore } from "./score";
@@ -117,13 +117,13 @@ export async function getLeagueGameDetailForCurrentPlayer(puuid: string, gameID:
 }
 
 // MatchV5: list(puuid, region, query) -> ApiResponseDTO<string[]>
-// Cached 60s (TTL.MATCH_IDS_MS) and goes through the duplicate-job retry path because the
-// tracking cron can overlap itself on redeploys.
+// Cached 60s (TTL.MATCH_IDS_MS) so every server of a tracking cycle shares
+// one call per player.
 export async function getLastRankedLeagueMatch(puuid: string, region: string): Promise<string[]> {
 	try {
 		const cluster = Constants.regionToRegionGroup(regionToPlatform(region));
 		const query = { count: 1 };
-		return await riotCachedWithRetry('lol',
+		return await riotCached('lol',
 			`matchV5|list|${puuid}|${cluster}`,
 			TTL.MATCH_IDS_MS,
 			() => lolApi.MatchV5.list(puuid, cluster, query),
