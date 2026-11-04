@@ -1,10 +1,12 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags, InteractionContextType, PermissionFlagsBits } from 'discord.js';
 import { updateLangServer } from '../database/databaseHelper';
 import { replyCommandError } from './commandError';
 import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('language')
+	.setContexts(InteractionContextType.Guild)
+	.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 	.setDescription('Change the message language!')
 	.addStringOption(option =>
 		option.setName('lang')

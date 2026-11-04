@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, InteractionContextType, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { deletePlayer } from '../database/databaseHelper';
 import { ErrorTypes } from '../error/error';
 import { replyCommandError } from './commandError';
@@ -6,6 +6,8 @@ import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('deleteplayer')
+	.setContexts(InteractionContextType.Guild)
+	.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 	.setDescription('Delete player to the watch list!')
 	.addStringOption(option =>
 		option.setName('accountname')
@@ -35,7 +37,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 	const region = interaction.options.getString('region')!;
 
 	try {
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 		await deletePlayer(serverId, accountname, tag, region);
 

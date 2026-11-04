@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags, SlashCommandIntegerOption } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags, SlashCommandIntegerOption, InteractionContextType, PermissionFlagsBits } from 'discord.js';
 import { getLangServer } from '../database/databaseHelper';
 import { generateMonthlyRecap } from '../tracking/monthlyRecap';
 import { getTranslations } from '../translation/translation';
@@ -7,6 +7,8 @@ import { replyCommandError } from './commandError';
 
 export const data = new SlashCommandBuilder()
 	.setName('monthlyrecap')
+	.setContexts(InteractionContextType.Guild)
+	.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 	.setDescription('Generate a monthly recap of all tracked players')
 	.addIntegerOption((option: SlashCommandIntegerOption) =>
 		option

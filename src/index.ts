@@ -19,11 +19,10 @@ import { purgeOldGames } from "./tracking/purge";
 
 dotenv.config();
 export const client = new Client({
-	intents: [
-		GatewayIntentBits.Guilds,
-		GatewayIntentBits.GuildMessages,
-		GatewayIntentBits.MessageContent
-	]
+	// The bot only answers slash commands and posts to a channel: it never
+	// reads messages, so it needs neither GuildMessages nor the privileged
+	// MessageContent intent.
+	intents: [GatewayIntentBits.Guilds]
 });
 
 export const TACTICIAN_FILE_PATH = path.resolve(__dirname, "../tft-tactician.json");

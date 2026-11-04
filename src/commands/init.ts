@@ -1,10 +1,12 @@
-import { ChannelType, SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from 'discord.js';
+import { ChannelType, SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags, InteractionContextType, PermissionFlagsBits } from 'discord.js';
 import { addOrUpdateServer } from '../database/databaseHelper';
 import logger from '../logger/logger';
 import { replyCommandError } from './commandError';
 
 export const data = new SlashCommandBuilder()
 	.setName('init')
+	.setContexts(InteractionContextType.Guild)
+	.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 	.setDescription('Init the bot for your server!')
 	.addChannelOption(option =>
 		option.setName('channel')

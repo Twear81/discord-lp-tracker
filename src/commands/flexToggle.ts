@@ -1,10 +1,12 @@
-import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction, InteractionContextType, PermissionFlagsBits } from 'discord.js';
 import { updateFlexToggleServer } from '../database/databaseHelper';
 import { replyCommandError } from './commandError';
 import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('flextoggle')
+	.setContexts(InteractionContextType.Guild)
+	.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 	.setDescription('Whether or not the flex games are tracked!')
 	.addBooleanOption(option =>
 		option.setName('flextoggle')

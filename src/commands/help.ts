@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction, InteractionContextType } from 'discord.js';
 import { getLangServer } from '../database/databaseHelper';
 import { getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
@@ -6,6 +6,7 @@ import { replyCommandError } from './commandError';
 
 export const data = new SlashCommandBuilder()
 	.setName('help')
+	.setContexts(InteractionContextType.Guild)
 	.setDescription('I will explain you how to setup the bot on your server!');
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {

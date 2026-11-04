@@ -173,6 +173,8 @@ Au démarrage (pre-run):
 
 Toutes les commandes sont déployées **globalement** (`Routes.applicationCommands`), pas par-guild.
 
+Toutes les commandes sont limitées aux serveurs (`setContexts(InteractionContextType.Guild)`, pas de MP). `/init`, `/deleteplayer`, `/flextoggle`, `/tfttoggle`, `/language` et `/monthlyrecap` exigent par défaut la permission **Gérer le serveur** (`setDefaultMemberPermissions(ManageGuild)`) — les admins peuvent l'ajuster dans Paramètres du serveur → Intégrations. Le client ne demande que l'intent `Guilds` (le bot ne lit aucun message).
+
 ## i18n
 
 - Source unique dans `src/translation/translation.ts`.

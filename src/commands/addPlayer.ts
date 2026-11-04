@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, InteractionContextType, MessageFlags } from 'discord.js';
 import { addPlayer, getPlayerForSpecificServer, updatePlayerInfoCurrentAndLastForQueueType, updatePlayerLastGameId } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
 import { replyCommandError } from './commandError';
@@ -12,6 +12,7 @@ const NOT_FOUND_ERROR = 'Not Found';
 
 export const data = new SlashCommandBuilder()
 	.setName('addplayer')
+	.setContexts(InteractionContextType.Guild)
 	.setDescription('Add player to the watch list!')
 	.addStringOption(option =>
 		option.setName('accountname')
@@ -40,7 +41,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 	const tag = interaction.options.getString('tag')!;
 	const region = interaction.options.getString('region')!;
 	try {
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 		// LoL and TFT account lookups hit different keys → fire in parallel.
 		const [summoner, summonerTFT] = await Promise.all([

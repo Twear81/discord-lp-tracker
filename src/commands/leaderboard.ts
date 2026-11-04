@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, CommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, CommandInteraction, EmbedBuilder, MessageFlags, InteractionContextType } from 'discord.js';
 import { getServer, listAllPlayerForQueueInfoForSpecificServer, listAllPlayerForSpecificServer, PlayerForQueueInfo, PlayerInfo } from '../database/databaseHelper';
 import { replyCommandError } from './commandError';
 import { GameQueueType } from '../tracking/GameQueueType';
@@ -8,12 +8,13 @@ import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('leaderboard')
+	.setContexts(InteractionContextType.Guild)
 	.setDescription('Check who is the best from player watched!');
 
 export async function execute(interaction: CommandInteraction): Promise<void> {
 	const serverId = interaction.guildId as string;
 	try {
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		const serverInfo = await getServer(serverId);
 
 		const playerInfoList: PlayerInfo[] = await listAllPlayerForSpecificServer(serverId);

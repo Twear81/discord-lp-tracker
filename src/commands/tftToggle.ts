@@ -1,10 +1,12 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, InteractionContextType, PermissionFlagsBits, MessageFlags } from 'discord.js';
 import { replyCommandError } from './commandError';
 import { updateTFTToggleServer } from '../database/databaseHelper';
 import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('tfttoggle')
+	.setContexts(InteractionContextType.Guild)
+	.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 	.setDescription('Whether or not the tft games are tracked!')
 	.addBooleanOption(option =>
 		option.setName('tfttoggle')
@@ -16,7 +18,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 	const serverId = interaction.guildId as string;
 	const tftToggle = interaction.options.getBoolean('tfttoggle')!;
 	try {
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 		await updateTFTToggleServer(serverId, tftToggle);
 

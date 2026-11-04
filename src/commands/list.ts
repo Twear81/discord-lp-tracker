@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction, InteractionContextType } from 'discord.js';
 import { getServer, listAllPlayerForSpecificServer, PlayerInfo } from '../database/databaseHelper';
 import { replyCommandError } from './commandError';
 import { getTranslations } from '../translation/translation';
@@ -6,6 +6,7 @@ import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
 	.setName('list')
+	.setContexts(InteractionContextType.Guild)
 	.setDescription('List all players watched!');
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
