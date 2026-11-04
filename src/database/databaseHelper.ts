@@ -146,31 +146,13 @@ export const addPlayer = async (serverId: string, puuid: string, tftpuuid: strin
 	await DoubleTFT.create({ playerId: player.dataValues.id, puuid: player.dataValues.tftpuuid });
 };
 
-export const deletePlayer = async (serverId: string, accountName: string, tag: string, region: string): Promise<void> => {
-	const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
-	if (existingServer == null) {
-		throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not init');
-	}
-
-	const existingPlayer: Model | null = await Player.findOne({
-		where: {
-			serverid: serverId,
-			gameName: accountName,
-			tagLine: tag,
-			region: region,
-		},
-	});
-	if (existingPlayer == null) {
+// Delete by Player.id, scoped to the server so a guild can only delete its
+// own rows. Queue rows and saved games follow through ON DELETE CASCADE.
+export const deletePlayer = async (serverId: string, playerId: number): Promise<void> => {
+	const deletedRows = await Player.destroy({ where: { serverid: serverId, id: playerId } });
+	if (deletedRows === 0) {
 		throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, 'Player not found');
 	}
-
-	const puuid = existingPlayer.dataValues.puuid;
-	await Player.destroy({
-		where: {
-			serverid: serverId,
-			puuid: puuid,
-		},
-	});
 };
 
 export const deleteAllPlayersOfServer = async (serverId: string): Promise<void> => {

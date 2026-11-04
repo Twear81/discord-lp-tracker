@@ -1,9 +1,9 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, InteractionContextType, PermissionFlagsBits, MessageFlags } from 'discord.js';
-import { deletePlayer } from '../database/databaseHelper';
-import { ErrorTypes } from '../error/error';
+import { SlashCommandBuilder, ChatInputCommandInteraction, AutocompleteInteraction, InteractionContextType, PermissionFlagsBits, MessageFlags } from 'discord.js';
+import { deletePlayer, getServer, listAllPlayerForSpecificServer } from '../database/databaseHelper';
+import { AppError, ErrorTypes } from '../error/error';
 import { replyCommandError } from './commandError';
+import { formatPlayerLabel, resolvePlayer, suggestPlayers } from './playerLookup';
 import logger from '../logger/logger';
-import { REGION_CHOICES } from '../riot/region';
 
 export const data = new SlashCommandBuilder()
 	.setName('deleteplayer')
@@ -11,38 +11,45 @@ export const data = new SlashCommandBuilder()
 	.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 	.setDescription('Delete player to the watch list!')
 	.addStringOption(option =>
-		option.setName('accountname')
-			.setDescription('The account name')
+		option.setName('player')
+			.setDescription('The tracked player (name#tag)')
 			.setRequired(true)
-	)
-	.addStringOption(option =>
-		option.setName('tag')
-			.setDescription('The account tag (after the "#")')
-			.setRequired(true)
-	)
-	.addStringOption(option =>
-		option.setName('region')
-			.setDescription('Region of the account')
-			.setRequired(true)
-			.addChoices(...REGION_CHOICES)
+			.setAutocomplete(true)
 	);
+
+export async function autocomplete(interaction: AutocompleteInteraction): Promise<void> {
+	try {
+		const players = await listAllPlayerForSpecificServer(interaction.guildId as string);
+		const suggestions = suggestPlayers(players, interaction.options.getFocused());
+		await interaction.respond(suggestions.map(player => ({ name: formatPlayerLabel(player), value: String(player.id) })));
+	} catch (error) {
+		logger.error('Failed to autocomplete /deleteplayer:', error);
+		await interaction.respond([]).catch(() => undefined);
+	}
+}
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
 	const serverId = interaction.guildId as string;
+	const input = interaction.options.getString('player', true);
 	logger.info(`Deleting a player for serverId: ${serverId}`);
-	const accountname = interaction.options.getString('accountname')!;
-	const tag = interaction.options.getString('tag')!;
-	const region = interaction.options.getString('region')!;
 
 	try {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-		await deletePlayer(serverId, accountname, tag, region);
+		// Surfaces SERVER_NOT_INITIALIZE before looking the player up.
+		await getServer(serverId);
+		const player = resolvePlayer(await listAllPlayerForSpecificServer(serverId), input);
+		if (!player) {
+			throw new AppError(ErrorTypes.PLAYER_NOT_FOUND, `No tracked player matches "${input}"`);
+		}
 
+		await deletePlayer(serverId, player.id);
+
+		const label = formatPlayerLabel(player);
 		await interaction.editReply({
-			content: `The player "${accountname}#${tag}" for region ${region} has been deleted.`
+			content: `The player "${label}" has been deleted.`
 		});
-		logger.info(`The player ${accountname}#${tag} has been deleted for serverId: ${serverId}`);
+		logger.info(`The player ${label} has been deleted for serverId: ${serverId}`);
 	} catch (error: unknown) {
 		await replyCommandError(interaction, error, 'Failed to delete the player, contact the dev', {
 			[ErrorTypes.PLAYER_NOT_FOUND]: 'Player not found',

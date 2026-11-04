@@ -227,6 +227,13 @@ client.on(Events.GuildDelete, (guild: Guild) => {
 
 client.on(Events.InteractionCreate, (interaction) => {
 	void (async () => {
+		if (interaction.isAutocomplete()) {
+			const command = commands[interaction.commandName as keyof typeof commands];
+			if (command && 'autocomplete' in command) {
+				await command.autocomplete(interaction);
+			}
+			return;
+		}
 		if (!interaction.isCommand()) {
 			logger.warn(`Ignoring non-command interaction (type ${interaction.type}).`);
 			return;

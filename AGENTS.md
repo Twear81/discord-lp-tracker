@@ -164,7 +164,7 @@ Au démarrage (pre-run):
 |-----------------|----------------------------------------------------------------------|----------------------|
 | `/init`         | Setup serveur: channel + toggles Flex/TFT + langue                   | `commands/init.ts`   |
 | `/addplayer`    | Ajoute un joueur au suivi (`accountname`, `tag`, `region`)           | `commands/addPlayer.ts` |
-| `/deleteplayer` | Supprime un joueur                                                   | `commands/deletePlayer.ts` |
+| `/deleteplayer` | Supprime un joueur (`player`, autocomplétion sur les joueurs suivis — seule commande avec un handler `autocomplete`) | `commands/deletePlayer.ts` |
 | `/list`         | Liste les joueurs suivis du serveur                                  | `commands/list.ts`   |
 | `/leaderboard`  | Classement général des joueurs                                       | `commands/leaderboard.ts` |
 | `/monthlyrecap` | Génère manuellement un récap mensuel (`month`, `year`)               | `commands/monthlyRecap.ts` |
