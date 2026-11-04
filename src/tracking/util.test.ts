@@ -6,6 +6,8 @@ import {
 	getDurationString,
 	getPurgeCutoffDate,
 	getLPGainFromSnapshot,
+	isRankUpdatePending,
+	RANK_UPDATE_GRACE_MS,
 	isGameDurationValid,
 	isTimestampInRecapRange,
 	MIN_GAME_DURATION_SECONDS,
@@ -146,5 +148,33 @@ describe('getLPGainFromSnapshot', () => {
 
 	it('returns null when the previous rank is unknown', () => {
 		expect(getLPGainFromSnapshot({ ...snapshot, oldRank: null, oldTier: null, oldLP: null })).toBeNull();
+	});
+});
+
+describe('isRankUpdatePending', () => {
+	const stored = { currentRank: 'II', currentTier: 'GOLD', currentLP: 50 };
+	const now = Date.UTC(2026, 10, 4, 20, 0);
+	const endedFiveMinAgo = now - 5 * 60 * 1000;
+
+	it('waits while Riot still returns the pre-game rank', () => {
+		expect(isRankUpdatePending(stored, { rank: 'II', tier: 'GOLD', leaguePoints: 50 }, endedFiveMinAgo, now)).toBe(true);
+	});
+
+	it('proceeds once the LP changed', () => {
+		expect(isRankUpdatePending(stored, { rank: 'II', tier: 'GOLD', leaguePoints: 72 }, endedFiveMinAgo, now)).toBe(false);
+	});
+
+	it('gives up waiting after the grace window', () => {
+		const endedLongAgo = now - RANK_UPDATE_GRACE_MS - 1;
+		expect(isRankUpdatePending(stored, { rank: 'II', tier: 'GOLD', leaguePoints: 50 }, endedLongAgo, now)).toBe(false);
+	});
+
+	it('accepts game end timestamps in seconds', () => {
+		expect(isRankUpdatePending(stored, { rank: 'II', tier: 'GOLD', leaguePoints: 50 }, Math.floor(endedFiveMinAgo / 1000), now)).toBe(true);
+	});
+
+	it('does not wait for unranked players or players in placements', () => {
+		expect(isRankUpdatePending(stored, undefined, endedFiveMinAgo, now)).toBe(false);
+		expect(isRankUpdatePending({ currentRank: null, currentTier: null, currentLP: null }, { rank: 'IV', tier: 'IRON', leaguePoints: 0 }, endedFiveMinAgo, now)).toBe(false);
 	});
 });

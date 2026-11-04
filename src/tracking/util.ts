@@ -14,6 +14,35 @@ export const RECAP_CUTOFF_MINUTE = 33;
 export const getPurgeCutoffDate = (now: Date, yearsToKeep: number): Date =>
 	new Date(now.getFullYear() - yearsToKeep, now.getMonth(), 1);
 
+// League-V4 / TFT-League often lag a few minutes behind match-v5: a game can
+// be listed while the rank still shows the pre-game LP. Within this window
+// after the end of the game, an unchanged rank means "not updated yet".
+export const RANK_UPDATE_GRACE_MS = 20 * 60 * 1000;
+
+/**
+ * True when the rank Riot returns for the game's queue is still exactly the
+ * one stored before the game, and the game ended less than
+ * RANK_UPDATE_GRACE_MS ago: processing now would announce +0 LP and credit
+ * the real change to the next game. Past the window the game is processed
+ * anyway (the LP can legitimately stay the same, e.g. a loss at 0 LP).
+ */
+export const isRankUpdatePending = (
+	stored: { currentRank: string | null; currentTier: string | null; currentLP: number | null },
+	fetched: { rank?: string; tier?: string; leaguePoints?: number } | undefined,
+	gameEndTimestamp: number,
+	now: number,
+): boolean => {
+	// Unranked / in placements: there is no previous rank to compare with.
+	if (!fetched || stored.currentTier == null) {
+		return false;
+	}
+	const gameEndMs = gameEndTimestamp < 1e12 ? gameEndTimestamp * 1000 : gameEndTimestamp;
+	if (now - gameEndMs > RANK_UPDATE_GRACE_MS) {
+		return false;
+	}
+	return fetched.tier === stored.currentTier && fetched.rank === stored.currentRank && fetched.leaguePoints === stored.currentLP;
+};
+
 export const isGameDurationValid = (durationSeconds: number): boolean => durationSeconds >= MIN_GAME_DURATION_SECONDS;
 
 export function isTimestampInRecapRange(timestamp: number): boolean {

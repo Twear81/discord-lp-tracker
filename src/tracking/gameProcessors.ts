@@ -4,7 +4,7 @@ import { getLeagueGameDetailForCurrentPlayer, getLastRankedLeagueMatch, getLastT
 import { client } from '../index';
 import { GameQueueType, ManagedGameQueueType } from './GameQueueType';
 import { sendLeagueGameResultMessage, sendTFTGameResultMessage } from './sendMessage';
-import { getLPGainFromSnapshot, isGameDurationValid, isTimestampInRecapRange } from './util';
+import { getLPGainFromSnapshot, isGameDurationValid, isRankUpdatePending, isTimestampInRecapRange } from './util';
 import logger from '../logger/logger';
 import { AppError, ErrorTypes } from '../error/error';
 
@@ -109,12 +109,23 @@ async function handleNewGame<TGame extends TrackedGame>(processor: GameProcessor
 
 	// 2. Update the daily counters and the rank
 	const rankStats = await processor.fetchRanks(puuid, player.region);
+	const rankStat = rankStats.find(r => r.queueType === game.queueType);
+
+	// Riot hasn't applied the LP change yet: leave lastGameID untouched (and
+	// write nothing) so the next cycle processes this match again. Not on the
+	// first run, which only catches up silently.
+	if (!firstRun) {
+		const storedRank = await getPlayerForQueueInfoForSpecificServer(server.serverid, puuid, game.queueType);
+		if (isRankUpdatePending(storedRank, rankStat, game.gameEndTimestamp, Date.now())) {
+			logger.info(`${tag} Rank of ${player.gameName} not updated by Riot yet for match ${matchId}, retrying next cycle.`);
+			return;
+		}
+	}
 
 	if (isTimestampInRecapRange(game.gameEndTimestamp)) {
 		await updatePlayerLastDayWinLose(server.serverid, puuid, game.queueType, game.win);
 	}
 
-	const rankStat = rankStats.find(r => r.queueType === game.queueType);
 	if (rankStat) {
 		await updatePlayerCurrentOrLastDayRank(server.serverid, puuid, true, game.queueType, rankStat.leaguePoints!, rankStat.rank!, rankStat.tier!);
 	}
