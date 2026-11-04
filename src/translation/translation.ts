@@ -94,7 +94,7 @@ const allTranslations = {
     fr: {
         // Commun
         title: "[📜 Résultat de partie ⚔️]",
-        lpChange: (lp: number) => lp > 0 ? "Gain de" : "Perte de",
+        lpChange: (lp: number) => lp >= 0 ? "Gain de" : "Perte de",
         recapTitles: {
             [GameQueueType.RANKED_SOLO_5x5]: "[📈 Résumé Quotidien SoloQ]",
             [GameQueueType.RANKED_FLEX_SR]: "[📊 Résumé Quotidien Flex]",
@@ -215,7 +215,7 @@ const allTranslations = {
     en: {
         // Common
         title: "[📜 Match Result ⚔️]",
-        lpChange: (lp: number) => lp > 0 ? "Gained" : "Lost",
+        lpChange: (lp: number) => lp >= 0 ? "Gained" : "Lost",
         recapTitles: {
             [GameQueueType.RANKED_SOLO_5x5]: "[📈 SoloQ Daily Recap]",
             [GameQueueType.RANKED_FLEX_SR]: "[📊 Flex Daily Recap]",

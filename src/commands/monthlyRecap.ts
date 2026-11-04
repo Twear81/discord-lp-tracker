@@ -23,6 +23,7 @@ export const data = new SlashCommandBuilder()
 			.setName('year')
 			.setDescription('The year')
 			.setRequired(true)
+			.setMinValue(2020)
 	);
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {

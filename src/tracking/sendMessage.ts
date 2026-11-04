@@ -151,7 +151,7 @@ export const sendRecapMessage = async (channel: TextChannel, playerRecapInfos: P
 
 		const lpChange = currentPlayerRecap.lpChange;
 
-		const lpEmoji = lpChange > 0 ? '📈' : '📉';
+		const lpEmoji = lpChange > 0 ? '📈' : lpChange < 0 ? '📉' : '➡️';
 		const lpChangeText = `${lpChange > 0 ? '+' : ''}${lpChange} ${t.league}`;
 
 		const displayCurrentRank = getDisplayRank(currentTier!, currentRank!);
