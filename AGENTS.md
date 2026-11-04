@@ -226,3 +226,6 @@ Pour vérifier le runtime manuellement: `npm run dev` (hot-reload) ou `npm start
 - **Logs quotidiens** dans `logs/` — bien que non listés explicitement dans `.gitignore`, ils ne sont **pas** versionnés (`*.log` et `logs/` y figurent).
 - **Fichier `database.sqlite`** créé au runtime à la racine — gitignoré, ne pas le commit.
 - **Credentials DB** dans `database.ts` — factices (SQLite local, pas d'auth réelle), mais à ignorer/retirer si jamais on migre vers un vrai SGBD.- **Rang Riot en retard sur match-v5** : quand une nouvelle game apparaît mais que league-v4 / tft-league renvoie encore exactement le rang stocké, `handleNewGame` (`tracking/gameProcessors.ts`) ne fait rien (ni `lastGameID`, ni compteurs) et la game est retraitée au cycle suivant. Au-delà de `RANK_UPDATE_GRACE_MS` (20 min après la fin de la game) elle est traitée telle quelle — voir `isRankUpdatePending` (`tracking/util.ts`). Pas d'attente au `firstRun`.
+- **TypeScript épinglé en `~6.0`** : typescript-eslint 8 exige `typescript < 6.1`. Passer à TS 6.1+/7 attendra une version de typescript-eslint qui le supporte.
+- **Override `minimatch` `^11.0.4`** (`package.json`) : ESLint 10 et typescript-estree tirent `minimatch` 10.x, vulnérable (GHSA-g3hv-75wg-m249, dev uniquement). À retirer quand ils dépendront d'une version corrigée.
+- **tsup 9** requiert Node `^22.18` (ou 24.11+) pour builder.

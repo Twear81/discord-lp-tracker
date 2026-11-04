@@ -3,7 +3,7 @@ import { commands } from "./commands";
 import dotenv from 'dotenv';
 import logger from "./logger/logger";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const commandsData = Object.values(commands).map((command) => command.data);
 

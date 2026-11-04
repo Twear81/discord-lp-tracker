@@ -57,15 +57,10 @@ export const updateTFTToggleServer = async (serverId: string, tftToggle: boolean
 
 export const getLangServer = async (serverId: string): Promise<string> => {
 	const existingServer: Model | null = await Server.findOne({ where: { serverid: serverId } });
-
-	let lang = 'en';
-
-	if (existingServer) {
-		lang = existingServer.dataValues.lang;
-	} else {
+	if (!existingServer) {
 		throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not initialize');
 	}
-	return lang;
+	return existingServer.dataValues.lang;
 };
 
 export const getAllServer = async (): Promise<ServerInfo[]> => {

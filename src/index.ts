@@ -19,7 +19,7 @@ import { deleteAllPlayersOfServer, deleteServer } from "./database/databaseHelpe
 import logger from "./logger/logger";
 import { purgeOldGames } from "./tracking/purge";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // Crons and the recap window (isTimestampInRecapRange) use local time. Pin it
 // so the 6:33 recap doesn't depend on the host's timezone; set TZ in .env to

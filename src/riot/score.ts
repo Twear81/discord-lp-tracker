@@ -125,11 +125,9 @@ export function computePlayerScore(
 		const targetValue = currentTargets[statName];
 		const weight = currentWeights[statName];
 
-		let ratio = 0;
-
 		if (statName === "deaths") {
 			if (playerValue <= targetValue) {
-				ratio = 1 / (1 + playerValue / targetValue);
+				const ratio = 1 / (1 + playerValue / targetValue);
 				score += Math.pow(ratio, 1.2) * weight;
 			} else {
 				const excessDeaths = playerValue - targetValue;
@@ -137,7 +135,7 @@ export function computePlayerScore(
 			}
 			continue;
 		} else {
-			ratio = playerValue / targetValue;
+			const ratio = playerValue / targetValue;
 			// Sécurité : On cap le ratio positif à 1.5 pour éviter qu'une seule stat ultra-haute offre le 100/100
 			const cappedRatio = Math.min(1.5, ratio);
 			score += Math.pow(cappedRatio, 1.2) * weight;

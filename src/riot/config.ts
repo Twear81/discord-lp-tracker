@@ -2,7 +2,7 @@ import { LolApi, TftApi, RiotApi } from "twisted";
 import dotenv from "dotenv";
 import Bottleneck from "bottleneck";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // Twisted replaces @fightmegg/riot-api. Architecture:
 //   - lolApi       = LoL endpoints (Summoner, League, MatchV5)  on RIOT_API key
