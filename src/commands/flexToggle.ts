@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
 import { updateFlexToggleServer } from '../database/databaseHelper';
-import { AppError, ErrorTypes } from '../error/error';
+import { replyCommandError } from './commandError';
 import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
@@ -29,19 +29,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		});
 		logger.info(`The flextoggle has been changed for serverId: ${serverId}`);
 	} catch (error) {
-		if (error instanceof AppError) {
-			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
-				await interaction.reply({
-					content: 'You have to init the bot first',
-					flags: MessageFlags.Ephemeral,
-				});
-			}
-		} else {
-			logger.error('Failed to change flex toggle:', error);
-			await interaction.reply({
-				content: 'Failed to change flex toggle, contact the dev',
-				flags: MessageFlags.Ephemeral,
-			});
-		}
+		await replyCommandError(interaction, error, 'Failed to change flex toggle, contact the dev');
 	}
 }

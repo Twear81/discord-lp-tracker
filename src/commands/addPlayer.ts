@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { addPlayer, getPlayerForSpecificServer, updatePlayerInfoCurrentAndLastForQueueType, updatePlayerLastGameId } from '../database/databaseHelper';
 import { AppError, ErrorTypes } from '../error/error';
+import { replyCommandError } from './commandError';
 import { getLastRankedLeagueMatch, getLastTFTMatch, getPlayerRankInfo, getSummonerByName, getTFTPlayerRankInfo, getTFTSummonerByName } from '../riot';
 import { GameQueueType, ManagedGameQueueType } from '../tracking/GameQueueType';
 import logger from '../logger/logger';
@@ -118,29 +119,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		});
 		logger.info(`The player ${accountname}#${tag} has been added for serverId: ${serverId}`);
 	} catch (error: unknown) {
-		let content: string;
-
-		if (error instanceof AppError) {
-			switch (error.type) {
-				case ErrorTypes.SERVER_NOT_INITIALIZE:
-					content = 'You have to init the bot first';
-					break;
-				case ErrorTypes.DATABASE_ALREADY_INSIDE:
-					content = 'Player already added';
-					break;
-				case ErrorTypes.PLAYER_NOT_FOUND:
-					content = API_ERROR_MESSAGE;
-					break;
-				default:
-					content = GENERIC_ERROR_MESSAGE;
-					logger.error('Failed to add the player:', error);
-					break;
-			}
-		} else {
-			content = GENERIC_ERROR_MESSAGE;
-			logger.error('Failed to add the player:', error);
-		}
-
-		await interaction.editReply({ content });
+		await replyCommandError(interaction, error, GENERIC_ERROR_MESSAGE, {
+			[ErrorTypes.DATABASE_ALREADY_INSIDE]: 'Player already added',
+			[ErrorTypes.PLAYER_NOT_FOUND]: API_ERROR_MESSAGE,
+		});
 	}
 }

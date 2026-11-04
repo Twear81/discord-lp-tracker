@@ -192,7 +192,7 @@ Toutes les commandes sont déployées **globalement** (`Routes.applicationComman
 ## Conventions & Patterns
 
 - **Une commande = un fichier** exportant `data` (`SlashCommandBuilder`) et `execute(interaction)`, puis agrégé dans `commands/index.ts` sous la map `commands`.
-- **Erreurs typées** via `AppError` + `ErrorTypes` (`src/error/error.ts`). On attrape généralement dans la couche appelante et on log via `logger.error(...)`.
+- **Erreurs typées** via `AppError` + `ErrorTypes` (`src/error/error.ts`). On attrape généralement dans la couche appelante et on log via `logger.error(...)`. Côté slash commands, le `catch` délègue à `replyCommandError(interaction, error, fallback, knownErrors)` (`commands/commandError.ts`) qui mappe les `AppError` connues (dont `SERVER_NOT_INITIALIZE`) et répond quel que soit l'état de l'interaction (fresh / deferred / replied).
 - **Réponses éphémères** (`MessageFlags.Ephemeral`) sur les erreurs d'interaction et l'embed `/help`.
 - **Channel de sortie** = `Server.channelid` du serveur — c'est là que partent les embeds de fin de partie, récap quotidien et récap mensuel.
 - **GuildDelete** → nettoyage complet (players + server). Pas besoin de gérer manuellement.

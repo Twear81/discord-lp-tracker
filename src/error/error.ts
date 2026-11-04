@@ -9,7 +9,7 @@ export const ErrorTypes = {
 	GAMEDETAIL_NOT_FOUND: 'GAMEDETAIL_NOT_FOUND',
 } as const;
 
-type ErrorType = keyof typeof ErrorTypes;
+export type ErrorType = keyof typeof ErrorTypes;
 
 export class AppError extends Error {
 	public type: ErrorType;

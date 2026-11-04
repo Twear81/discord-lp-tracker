@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { deletePlayer } from '../database/databaseHelper';
-import { AppError, ErrorTypes } from '../error/error';
+import { ErrorTypes } from '../error/error';
+import { replyCommandError } from './commandError';
 import logger from '../logger/logger';
 
 export const data = new SlashCommandBuilder()
@@ -43,26 +44,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		});
 		logger.info(`The player ${accountname}#${tag} has been deleted for serverId: ${serverId}`);
 	} catch (error: unknown) {
-		let content: string;
-        
-        if (error instanceof AppError) {
-            switch (error.type) {
-                case ErrorTypes.SERVER_NOT_INITIALIZE:
-                    content = 'You have to init the bot first';
-                    break;
-                case ErrorTypes.PLAYER_NOT_FOUND:
-                    content = 'Player not found';
-                    break;
-                default:
-                    content = 'Failed to delete the player, contact the dev';
-                    logger.error('Failed to delete the player:', error);
-                    break;
-            }
-        } else {
-            content = 'Failed to delete the player, contact the dev';
-            logger.error('Failed to delete the player:', error);
-        }
-
-        await interaction.editReply({ content });
+		await replyCommandError(interaction, error, 'Failed to delete the player, contact the dev', {
+			[ErrorTypes.PLAYER_NOT_FOUND]: 'Player not found',
+		});
 	}
 }

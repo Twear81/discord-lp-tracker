@@ -88,8 +88,11 @@ export const getServer = async (serverId: string): Promise<ServerInfo> => {
 		}
 		throw new AppError(ErrorTypes.SERVER_NOT_INITIALIZE, 'Server not initialize');
 	} catch (error) {
-		logger.error('❌ Failed to list servers :', error);
-		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to list servers');
+		// Let SERVER_NOT_INITIALIZE (and any other typed error) through so the
+		// commands can tell the user to run /init.
+		if (error instanceof AppError) throw error;
+		logger.error(`❌ Failed to get the server ${serverId} :`, error);
+		throw new AppError(ErrorTypes.DATABASE_ERROR, 'Failed to get the server');
 	}
 };
 

@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, CommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
 import { getServer, listAllPlayerForQueueInfoForSpecificServer, listAllPlayerForSpecificServer, PlayerForQueueInfo, PlayerInfo } from '../database/databaseHelper';
-import { AppError, ErrorTypes } from '../error/error';
+import { replyCommandError } from './commandError';
 import { GameQueueType } from '../tracking/GameQueueType';
 import { sortPlayersByRank } from '../tracking/rank';
 import { getTranslations } from '../translation/translation';
@@ -40,26 +40,7 @@ export async function execute(interaction: CommandInteraction): Promise<void> {
 		await generateLeaderboardMessage(interaction, serverInfo.lang, playerInfoList, playerSortForSoloQ, GameQueueType.RANKED_SOLO_5x5, hasAlreadySentAMessage);
 		logger.info('The leaderboard has been demanded');
 	} catch (error) {
-		if (error instanceof AppError) {
-			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
-				await interaction.editReply({
-					content: 'You have to init the bot first',
-				});
-			}
-		} else {
-			logger.error('Failed to display the leaderboard:', error);
-			if (interaction.replied || interaction.deferred) {
-				await interaction.followUp({
-					content: 'Failed to display the leaderboard, contact the dev',
-					flags: MessageFlags.Ephemeral,
-				});
-			} else {
-				await interaction.reply({
-					content: 'Failed to display the leaderboard, contact the dev',
-					flags: MessageFlags.Ephemeral,
-				});
-			}
-		}
+		await replyCommandError(interaction, error, 'Failed to display the leaderboard, contact the dev');
 	}
 }
 

@@ -1,5 +1,5 @@
-import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
-import { AppError, ErrorTypes } from '../error/error';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { replyCommandError } from './commandError';
 import { updateTFTToggleServer } from '../database/databaseHelper';
 import logger from '../logger/logger';
 
@@ -29,18 +29,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		});
 		logger.info(`The tfttoggle has been changed for serverId: ${serverId}`);
 	} catch (error) {
-		if (error instanceof AppError) {
-			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
-				await interaction.reply({
-					content: 'You have to init the bot first',
-					flags: MessageFlags.Ephemeral,
-				});
-			}
-		} else {
-			logger.error('Failed to change tft toggle:', error);
-			await interaction.editReply({
-				content: 'Failed to change tft toggle, contact the dev'
-			});
-		}
+		await replyCommandError(interaction, error, 'Failed to change tft toggle, contact the dev');
 	}
 }

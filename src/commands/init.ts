@@ -1,6 +1,7 @@
 import { ChannelType, SlashCommandBuilder, ChatInputCommandInteraction, MessageFlags } from 'discord.js';
 import { addOrUpdateServer } from '../database/databaseHelper';
 import logger from '../logger/logger';
+import { replyCommandError } from './commandError';
 
 export const data = new SlashCommandBuilder()
 	.setName('init')
@@ -55,10 +56,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		});
 		logger.info(`Bot has been setup for serverId: ${serverId}`);
 	} catch (error) {
-		logger.error('Failed to init :', error);
-		await interaction.reply({
-			content: 'Failed to init, contact the dev',
-			flags: MessageFlags.Ephemeral,
-		});
+		await replyCommandError(interaction, error, 'Failed to init, contact the dev');
 	}
 }

@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, MessageFlags, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { getServer, listAllPlayerForSpecificServer, PlayerInfo } from '../database/databaseHelper';
-import { AppError, ErrorTypes } from '../error/error';
+import { replyCommandError } from './commandError';
 import { getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
 
@@ -39,19 +39,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 		}
 		logger.info('The list has been demanded');
 	} catch (error) {
-		if (error instanceof AppError) {
-			if (error.type === ErrorTypes.SERVER_NOT_INITIALIZE) {
-				await interaction.reply({
-					content: 'You have to init the bot first',
-					flags: MessageFlags.Ephemeral,
-				});
-			}
-		} else {
-			logger.error('Failed to display the list:', error);
-			await interaction.reply({
-				content: 'Failed to display the list, contact the dev',
-				flags: MessageFlags.Ephemeral,
-			});
-		}
+		await replyCommandError(interaction, error, 'Failed to display the list, contact the dev');
 	}
 }

@@ -3,6 +3,7 @@ import { getLangServer } from '../database/databaseHelper';
 import { generateMonthlyRecap } from '../tracking/monthlyRecap';
 import { getTranslations } from '../translation/translation';
 import logger from '../logger/logger';
+import { replyCommandError } from './commandError';
 
 export const data = new SlashCommandBuilder()
 	.setName('monthlyrecap')
@@ -58,22 +59,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
 		logger.info(`✅ Monthly recap for ${month}/${year} sent successfully.`);
 	} catch (error) {
-		logger.error('❌ Failed to generate monthly recap:', error);
-		const errorMessage = t.monthlyRecapCommand.failure;
-		try {
-			if (interaction.deferred || interaction.replied) {
-				await interaction.followUp({
-					content: errorMessage,
-					flags: MessageFlags.Ephemeral,
-				});
-			} else {
-				await interaction.reply({
-					content: errorMessage,
-					flags: MessageFlags.Ephemeral,
-				});
-			}
-		} catch (followUpError) {
-			logger.error('❌ Failed to send error reply:', followUpError);
-		}
+		await replyCommandError(interaction, error, t.monthlyRecapCommand.failure);
 	}
 }
